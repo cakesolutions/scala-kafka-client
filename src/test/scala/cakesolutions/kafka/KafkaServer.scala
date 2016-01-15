@@ -1,4 +1,4 @@
-package kafkaingest
+package cakesolutions.kafka
 
 import java.net.ServerSocket
 import java.util.Properties

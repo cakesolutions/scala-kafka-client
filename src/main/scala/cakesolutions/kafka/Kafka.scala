@@ -1,4 +1,4 @@
-package kafkaingest
+package cakesolutions.kafka
 
 import org.slf4j.{Logger, LoggerFactory}
 
