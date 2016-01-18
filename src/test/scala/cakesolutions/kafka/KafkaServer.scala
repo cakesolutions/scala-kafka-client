@@ -59,7 +59,7 @@ object KafkaServer {
         yield new ServerSocket(0)
     val socketList = sockets.toList
     val ports = socketList.map(_.getLocalPort)
-    socketList.map(_.close)
+    socketList.foreach(_.close())
     ports
   }
 }
