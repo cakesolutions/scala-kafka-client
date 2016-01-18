@@ -4,22 +4,24 @@ import java.util.Properties
 
 import com.typesafe.config.Config
 import org.apache.kafka.clients.producer.{Callback, ProducerRecord, RecordMetadata}
-import org.apache.kafka.common.serialization.{Serializer, StringSerializer}
+import org.apache.kafka.common.serialization.Serializer
 import org.slf4j.{Logger, LoggerFactory}
+import scala.concurrent.{Future, Promise}
+import scala.util.{Success, Failure, Try}
+import cakesolutions.kafka.TypesafeConfigExtensions._
 
 object KafkaProducer {
-  def apply[K, V](props: Properties, keySerializer: Serializer[K], valueSerializer: Serializer[V]) =
+  def apply[K, V](props: Properties, keySerializer: Serializer[K], valueSerializer: Serializer[V]): KafkaProducer[K, V] =
     new KafkaProducer[K, V](props, keySerializer, valueSerializer)
 
-  def apply[K, V](bootstrapServers: String = "localhost:9092",
+  def apply[K, V](keySerializer: Serializer[K],
+                  valueSerializer: Serializer[V],
+                  bootstrapServers: String = "localhost:9092",
                   acks: String = "all",
                   retries: Int = 0,
                   batchSize: Int = 16384,
                   lingerMs: Int = 1,
-                  bufferMemory: Int = 33554432,
-                  keySerializer: Serializer[K] = new StringSerializer(),
-                  valueSerializer: Serializer[V] = new StringSerializer()
-                   ): KafkaProducer[K, V] = {
+                  bufferMemory: Int = 33554432): KafkaProducer[K, V] = {
     val props = new Properties()
     props.put("bootstrap.servers", bootstrapServers)
     props.put("acks", acks)
@@ -27,62 +29,62 @@ object KafkaProducer {
     props.put("batch.size", batchSize.toString)
     props.put("linger.ms", lingerMs.toString)
     props.put("buffer.memory", bufferMemory.toString)
-    //    props.put("key.serializer", keySerializer)
-    //    props.put("value.serializer", valueSerializer)
-
-    new KafkaProducer(props, keySerializer, valueSerializer)
+    apply(props, keySerializer, valueSerializer)
   }
 
-  //TODO based on config
-  def apply[K, V](config: Config) = ???
-
+  def apply[K, V](config: Config, keySerializer: Serializer[K], valueSerializer: Serializer[V]): KafkaProducer[K, V] =
+    apply(config.toProperties, keySerializer, valueSerializer)
 }
 
 class KafkaProducer[K, V](props: Properties, keySerializer: Serializer[K], valueSerializer: Serializer[V]) {
 
   import org.apache.kafka.clients.producer.{KafkaProducer => JKafkaProducer}
 
-  val log: Logger = LoggerFactory.getLogger(getClass)
+  private val log: Logger = LoggerFactory.getLogger(getClass)
 
   val producer = new JKafkaProducer[K, V](props, keySerializer, valueSerializer)
 
-  //TODO return future metadata
-  def send(topic: String, key: K, value: V): Unit = {
-    //TODO support scala Future[RecordMetadata]
+  def send(topic: String, value: V, key: Option[K] = None): Future[RecordMetadata] = {
+    val promise = Promise[RecordMetadata]()
     log.info("Sending message to topic=[{}], key=[{}], value=[{}]", topic, key.toString, value.toString)
-    producer.send(kafkaMessage(topic, key, value))
-    ()
+    producer.send(kafkaMessage(topic, key, value), producerCallback(promise))
+    promise.future
   }
 
-  //Send with callback
-  def sendWithCallback(topic: String, key: K, value: V)(callback: RecordMetadata => Unit): Unit = {
+  def sendWithCallback(topic: String, value: V, key: Option[K] = None)(callback: Try[RecordMetadata] => Unit): Unit = {
     log.info("Sending message to topic: [{}], key=[{}], value=[{}]]", topic, key.toString, value.toString)
     producer.send(kafkaMessage(topic, key, value), producerCallback(callback))
-    ()
   }
 
   def flush(): Unit = {
     producer.flush()
   }
 
-  //TODO send with callback
-
   //TODO metrics?
 
   //TODO partitions for?
 
-  private def kafkaMessage(topic: String, key: K, value: V): ProducerRecord[K, V] = {
-    new ProducerRecord(topic, key, value)
+  private def kafkaMessage(topic: String, key: Option[K], value: V): ProducerRecord[K, V] = {
+    val k: K = key.getOrElse(null.asInstanceOf[K])
+    new ProducerRecord(topic, k, value)
   }
 
-  def close = {
+  def close() = {
     log.debug("Closing consumer")
     producer.close()
   }
 
-  private def producerCallback(callback: RecordMetadata => Unit): Callback = {
+  private def producerCallback(promise: Promise[RecordMetadata]): Callback =
+    producerCallback(result => promise.complete(result))
+
+  private def producerCallback(callback: Try[RecordMetadata] => Unit): Callback = {
     new Callback {
-      override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit = callback(metadata)
+      override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit = {
+        val result =
+          if (exception == null) Success(metadata)
+          else Failure(exception)
+        callback(result)
+      }
     }
   }
 }
