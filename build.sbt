@@ -1,4 +1,6 @@
-name := "kafkaingest"
+name := "scala-kafka-client"
+
+organization := "cakesolutions"
 
 version := "1.0"
 
@@ -8,7 +10,8 @@ val akkaVersion = "2.4.0"
 val slf4jVersion = "1.7.12"
 
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-actor" % akkaVersion,
+//  "com.typesafe.akka" %% "akka-actor" % akkaVersion
+  "com.typesafe" % "config" % "1.3.0",
 
   "org.apache.kafka" % "kafka-clients" % "0.9.0.0",
   "org.slf4j" % "slf4j-api" % slf4jVersion,
