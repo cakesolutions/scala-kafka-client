@@ -1,40 +1,37 @@
 package cakesolutions.kafka
 
+import java.util
+
+import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.slf4j.LoggerFactory
 
+class KafkaIntSpec extends KafkaTestServer {
 
-//class KafkaIntSpec extends KafkaTestServer {
-
-//  val log = LoggerFactory.getLogger(getClass)
+  val log = LoggerFactory.getLogger(getClass)
 
 //  "Ka" should "test" in {
 //    val kafkaPort = kafkaServer.kafkaPort
 //    log.info("ZK:" + kafkaServer.zookeeperConnect)
 //    log.info("!!:" + kafkaServer)
 //    log.info("Kafka Port: [{}]", kafkaPort)
-//    //    Thread.sleep(5000)
-//    val consumer = KafkaConsumer[String, String](bootstrapServers = "localhost:" + kafkaPort)
-//    var count = 0
-
-    //TODO block version of call
-
+//    val consumer = KafkaConsumer(new StringDeserializer(), new StringDeserializer(), bootstrapServers = "localhost:" + kafkaPort)
+//
 //    log.info("Kafka producer connecting on port: [{}]", kafkaPort)
-//    val producer = KafkaProducer[String, String](bootstrapServers = "localhost:" + kafkaPort)
-//    log.info("!!::" + count)
-//    producer.send("test", "a", "1")
-//    producer.send("test", "a", "1")
-//    producer.send("test", "a", "1")
-//    producer.send("test", "a", "1")
-//    producer.send("test", "a", "1")
+//    val producer = KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = "localhost:" + kafkaPort)
+//    producer.send(KafkaProducerRecord("test", Some("1"), "a"))
+//    producer.send(KafkaProducerRecord("test", Some("2"), "a"))
 //    producer.flush()
 //    log.info("!!!!!!!!")
-//    Thread.sleep(20000)
-//    consumer.consume("test") { (_, _) => count += 1 }
-//    log.info("!!" + count)
 //
-//    count shouldEqual 1
+//    val a = new util.ArrayList[String]()
+//    a.add("test")
 //
-//    //    producer.close
+//    consumer.subscribe(a)
+//    val records = consumer.poll(20000)
+//
+//    records.count() shouldEqual 2
+//
+//    producer.close
 //    consumer.close
 //  }
-//}
+}
