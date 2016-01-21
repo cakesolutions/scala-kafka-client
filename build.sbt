@@ -1,6 +1,6 @@
 name := "scala-kafka-client"
 
-organization := "cakesolutions"
+organization := "net.cakesolutions"
 
 version := "1.0"
 
