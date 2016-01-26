@@ -1,11 +1,10 @@
-package cakesolutions.kafka
+package cakesolutions.kafka.testkit
 
 import java.net.ServerSocket
 import java.util.Properties
 
 import kafka.server.{KafkaConfig, KafkaServerStartable}
 import org.apache.curator.test.TestingServer
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.slf4j.LoggerFactory
 
 object KafkaServer {
@@ -96,17 +95,3 @@ class KafkaServer {
     zkServer.stop()
   }
 }
-
-//Scalatest base class that provides a running kafka instance.
-trait KafkaTestServer extends FlatSpec with Matchers with BeforeAndAfterAll {
-  val kafkaServer = new KafkaServer()
-
-  override def beforeAll() = {
-    kafkaServer.startup()
-  }
-
-  override def afterAll() = {
-    kafkaServer.close()
-  }
-}
-
