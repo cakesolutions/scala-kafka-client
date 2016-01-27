@@ -1,7 +1,7 @@
 name := "scala-kafka-client"
 organization := "net.cakesolutions"
 
-version := "0.2.0"
+version := "0.3.0"
 
 scalaVersion := "2.11.7"
 
@@ -19,10 +19,10 @@ libraryDependencies ++= Seq(
 
   //Test deps
   "org.scalatest" % "scalatest_2.11" % "3.0.0-M14" % "test",
-  "org.apache.kafka" %% "kafka" % "0.9.0.0" % "test"
+  "org.apache.kafka" %% "kafka" % "0.9.0.0"
     exclude("log4j", "log4j")
     exclude("org.slf4j", "slf4j-log4j12"),
-  "org.apache.curator" % "curator-test" % "2.7.0" % "test" //3.0.0
+  "org.apache.curator" % "curator-test" % "2.7.0" //3.0.0
 )
 
 publishMavenStyle := true
