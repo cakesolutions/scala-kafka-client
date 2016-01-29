@@ -39,13 +39,3 @@ lazy val scalaKafkaClient = project.in(file("client")).dependsOn(kafkaTestkit % 
 
 lazy val kafkaTestkit = project.in(file("testkit"))
   .settings(commonSettings: _*)
-//
-//fork in Test := false
-//
-//fork in IntegrationTest := false
-//
-//parallelExecution in Test := false
-//
-//publishLocal := {}
-//
-//publish := {}

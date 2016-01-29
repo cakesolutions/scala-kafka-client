@@ -1,6 +1,5 @@
-package cakesolutions
+package cakesolutions.kafka
 
-import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.slf4j.LoggerFactory

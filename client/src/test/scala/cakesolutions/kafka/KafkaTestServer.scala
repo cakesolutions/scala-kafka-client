@@ -1,4 +1,4 @@
-package cakesolutions
+package cakesolutions.kafka
 
 import cakesolutions.kafka.testkit.KafkaServer
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
