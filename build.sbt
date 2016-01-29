@@ -30,7 +30,7 @@ lazy val commonSettings = Seq(
       </developer>
     </developers>,
 
-  licenses := ("GNU General Public License (GPL), Version 3.0", url("http://opensource.org/licenses/GPL-3.0")) :: Nil
+  licenses := ("MIT", url("http://opensource.org/licenses/MIT")):: Nil
 )
 
 lazy val scalaKafkaClient = project.in(file("client")).dependsOn(kafkaTestkit % "test")
