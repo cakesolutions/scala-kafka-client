@@ -9,5 +9,5 @@ To include, add the following to the build.sbt
 
     resolvers += Resolver.bintrayRepo("simonsouter", "maven")
     
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.1.0"
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.4.0"
     
