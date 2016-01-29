@@ -1,6 +1,5 @@
 lazy val commonSettings = Seq(
   organization := "net.cakesolutions",
-  version := "0.4.0",
   scalaVersion := "2.11.7",
   publishMavenStyle := true,
   bintrayOrganization := Some("simonsouter"),
