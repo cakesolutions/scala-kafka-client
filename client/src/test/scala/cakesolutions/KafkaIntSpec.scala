@@ -1,4 +1,4 @@
-package kafka.testkit
+package cakesolutions
 
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import org.apache.kafka.clients.consumer.ConsumerRecords

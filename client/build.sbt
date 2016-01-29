@@ -3,7 +3,6 @@ import Dependencies._
 name := "scala-kafka-client"
 
 libraryDependencies ++= Seq(
-  //  "com.typesafe.akka" %% "akka-actor" % akkaVersion
   "com.typesafe" % "config" % "1.3.0",
 
   "org.apache.kafka" % "kafka-clients" % versions.kafka,
@@ -13,5 +12,4 @@ libraryDependencies ++= Seq(
 
   //Test deps
   "org.scalatest" % "scalatest_2.11" % versions.scalaTest % "test"
-//  "org.apache.curator" % "curator-test" % "2.7.0" //3.0.0
 )

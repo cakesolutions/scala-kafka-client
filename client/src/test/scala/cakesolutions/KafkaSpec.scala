@@ -1,4 +1,4 @@
-package kafka.testkit
+package cakesolutions
 
 import org.scalatest.{FlatSpec, Matchers}
 

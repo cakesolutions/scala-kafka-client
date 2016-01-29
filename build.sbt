@@ -34,10 +34,10 @@ lazy val commonSettings = Seq(
   licenses := ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0.txt")) :: Nil
 )
 
-lazy val scalaKafkaClient = project.in(file("client"))
+lazy val scalaKafkaClient = project.in(file("client")).dependsOn(kafkaTestkit % "test")
   .settings(commonSettings: _*)
 
-lazy val kafkaTestkit = project.in(file("testkit")).dependsOn(scalaKafkaClient)
+lazy val kafkaTestkit = project.in(file("testkit"))
   .settings(commonSettings: _*)
 //
 //fork in Test := false
