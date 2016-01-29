@@ -68,7 +68,7 @@ class KafkaServer(val kafkaPort: Int = KafkaServer.choosePort(), val zookeeperPo
   val zkServer = new TestingServer(zookeeperPort)
 
   //Build Kafka config with zookeeper connection
-  val config = portConfig(zkServer.getConnectString)((kafkaPort,1))
+  val config = portConfig(zkServer.getConnectString)((kafkaPort, 1))
   log.info("ZK Connect: " + zkServer.getConnectString)
 
   // Kafka Test Server
