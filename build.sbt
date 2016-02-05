@@ -3,10 +3,10 @@ lazy val commonSettings = Seq(
   scalaVersion := "2.11.7",
   publishMavenStyle := true,
   bintrayOrganization := Some("simonsouter"),
-  bintrayPackageLabels := Seq("scala", "kafka "),
+  bintrayPackageLabels := Seq("scala", "kafka"),
 
 //  publishTo :=
-  //TODO publis snapshots to OSS
+  //TODO publish snapshots to OSS
   //  if (Version.endsWith("-SNAPSHOT"))
   //    Seq(
   //      publishTo := Some("Artifactory Realm" at "http://oss.jfrog.org/artifactory/oss-snapshot-local"),
@@ -34,6 +34,9 @@ lazy val commonSettings = Seq(
 )
 
 lazy val scalaKafkaClient = project.in(file("client")).dependsOn(kafkaTestkit % "test")
+  .settings(commonSettings: _*)
+
+lazy val scalaKafkaClientAkka = project.in(file("akka")).dependsOn(scalaKafkaClient).dependsOn(kafkaTestkit % "test")
   .settings(commonSettings: _*)
 
 lazy val kafkaTestkit = project.in(file("testkit"))
