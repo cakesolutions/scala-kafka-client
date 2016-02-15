@@ -11,7 +11,7 @@ class KafkaIntSpec extends KafkaTestServer {
 
   val log = LoggerFactory.getLogger(getClass)
 
-  "Kafka client" should "send and recieve" in {
+  "Kafka client" should "send and receive" in {
     val kafkaPort = kafkaServer.kafkaPort
     val topic = randomString(5)
     log.info(s"Using topic [$topic] and kafka port [$kafkaPort]")

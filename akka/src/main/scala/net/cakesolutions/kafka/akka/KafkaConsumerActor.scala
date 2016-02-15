@@ -10,10 +10,11 @@ import org.apache.kafka.common.errors.WakeupException
 import scala.collection.JavaConversions._
 import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success, Try}
+import scala.concurrent.duration._
 
 object KafkaConsumerActor {
 
-  case class Offsets(val offsetsMap: Map[TopicPartition, Long]) extends AnyVal {
+  case class Offsets(offsetsMap: Map[TopicPartition, Long]) extends AnyVal {
     def get(topic: TopicPartition): Option[Long] = offsetsMap.get(topic)
 
     def forAllOffsets(that: Offsets)(f: (Long, Long) => Boolean): Boolean =
@@ -51,9 +52,11 @@ object KafkaConsumerActor {
   sealed trait Command
   case class Reset(offsets: Offsets) extends Command
   case class ConfirmOffsets(offsets: Offsets, commit: Boolean = false) extends Command
+
+  //Poll is private and internal only
   case object Poll extends Command
 
-  case class Conf[K, V](consumerConfig: Config, topics: List[String], pollTimeout: Long)
+  case class Conf[K, V](consumerConfig: Config, topics: List[String])
 
   object State {
     def empty[K, V]: State[K, V] = State(None, None)
@@ -72,6 +75,12 @@ object KafkaConsumerActor {
     ))
 }
 
+/**
+ * @param conf
+ * @param nextActor Consumed messages are pushed here.
+ * @tparam K
+ * @tparam V
+ */
 class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K, V], nextActor: ActorRef)
   extends Actor with ActorLogging {
 
@@ -84,9 +93,6 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K
 
   consumer.subscribe(conf.topics, trackPartitions)
 
-  // Ensures that assignments are made, so that offsets can be adjusted later.
-  consumer.poll(0)
-
   log.info(s"Starting consumer for topics [${conf.topics.mkString(", ")}]")
 
   private var state: State[K, V] = State.empty
@@ -94,7 +100,7 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K
   override def receive: Receive = {
     case Reset(offsets) =>
       log.info(s"Resetting offsets. ${conf.topics}, $offsets")
-      setOffsets(offsets)
+      trackPartitions.offsets = offsets.offsetsMap
       state = State.empty
       schedulePoll()
 
@@ -102,7 +108,9 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K
       log.info(s"Buffers are full. Not gonna poll. ${conf.topics}")
 
     case Poll =>
+      log.info("poll")
       poll() foreach { records =>
+        log.info("!Records")
         state = appendRecords(state, records)
       }
 
@@ -143,12 +151,13 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K
     }
   }
 
+  //TODO change this
   private def appendRecords(currentState: State[K, V], records: Records[K, V]): State[K, V] = {
     (currentState.onTheFly, currentState.buffer) match {
       case (None, None) =>
         // Nothing stored. Send the records immediately.
         sendRecords(records)
-        State(Some(records), poll())
+        State(Some(records), None)
       case (Some(_), None) =>
         // Fill the buffer
         currentState.copy(buffer = Some(records))
@@ -164,7 +173,7 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K
   }
 
   private def poll(): Option[Records[K, V]] = {
-    val result = Try(consumer.poll(conf.pollTimeout)) match {
+    val result = Try(consumer.poll(0)) match {
       case Success(rs) if rs.count() > 0 =>
 //        counterConsume.foreach(_.increment(rs.count()))
         Some(Records(currentConsumerOffsets, rs))
@@ -181,6 +190,8 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K
     if (result.isEmpty) {
       // Always schedule a new poll when no results were received
       schedulePoll()
+    } else {
+      pollImmediate()
     }
 
     result
@@ -198,7 +209,14 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K
     nextActor ! records
   }
 
+  //TODO schedule conf
   private def schedulePoll(): Unit = {
+    log.info("Schedule Poll")
+    context.system.scheduler.scheduleOnce(500 millis, self, Poll)(context.dispatcher)
+  }
+
+  private def pollImmediate(): Unit = {
+    log.info("Poll immediate")
     self ! Poll
   }
 
@@ -208,11 +226,6 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K
       .toMap
     Offsets(offsetsMap)
   }
-
-  private def setOffsets(offsets: Offsets): Unit =
-    offsets.offsetsMap.foreach {
-      case (topic, offset) => consumer.seek(topic, offset)
-    }
 
   private def commitOffsets(offsets: Offsets): Unit = {
     log.debug(s"Committing offsets. ${offsets}")

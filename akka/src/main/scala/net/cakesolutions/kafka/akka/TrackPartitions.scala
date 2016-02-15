@@ -4,6 +4,7 @@ import java.util.{Collection => JCollection}
 
 import org.apache.kafka.clients.consumer.{ConsumerRebalanceListener, KafkaConsumer}
 import org.apache.kafka.common.TopicPartition
+import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
@@ -13,22 +14,20 @@ object TrackPartitions {
 }
 
 /**
-  * Not thread safe. Can be used with Kafka consumer 0.9 API.
-  */
+ * Not thread safe. Can be used with Kafka consumer 0.9 API.
+ */
 class TrackPartitions(consumer: KafkaConsumer[_, _]) extends ConsumerRebalanceListener {
 
-  private val offsets = mutable.Map[TopicPartition, Long]()
-
-  def getOffsets = offsets
+  var offsets = Map[TopicPartition, Long]()
 
   def clearOffsets(): Unit = offsets.clear()
 
-  override def onPartitionsAssigned(partitions: JCollection[TopicPartition]): Unit =
+  override def onPartitionsRevoked(partitions: JCollection[TopicPartition]): Unit =
     partitions.foreach { partition =>
       offsets += (partition -> consumer.position(partition))
     }
 
-  override def onPartitionsRevoked(partitions: JCollection[TopicPartition]): Unit =
+  override def onPartitionsAssigned(partitions: JCollection[TopicPartition]): Unit =
     for {
       partition <- partitions
       offset <- offsets.get(partition)
