@@ -30,7 +30,7 @@ object KafkaConsumerActor {
 
   case class ConfirmOffsets(offsets: Offsets, commit: Boolean = false) extends Command
 
-  case object Unsubsribe extends Command
+  case object Unsubscribe extends Command
 
   // Internal poll trigger
   private case object Poll extends Command
@@ -80,10 +80,8 @@ object KafkaConsumerActor {
    * @tparam V
    */
   private[akka] class ClientCache[K, V](unconfirmedTimeoutSecs: Long, maxBuffer: Int) {
-
     var unconfirmed: Option[Records[K, V]] = None
     var buffer = new mutable.Queue[Records[K, V]]()
-
     var deliveryTime: Option[LocalDateTime] = None
 
     def isFull: Boolean = buffer.size >= maxBuffer
@@ -95,7 +93,7 @@ object KafkaConsumerActor {
      * unconfirmed.
      * @return
      */
-    def getRecordToDeliver: Option[Records[K, V]] = {
+    def getRecordsToDeliver(): Option[Records[K, V]] = {
       if (unconfirmed.isEmpty && buffer.nonEmpty) {
         val record = buffer.dequeue()
         unconfirmed = Some(record)
@@ -168,7 +166,7 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K
     case ConfirmOffsets(offsets, commit) =>
       log.info(s"Confirm Offsets ${conf.topics}, $offsets")
       clientCache.confirm()
-      clientCache.getRecordToDeliver().foreach(records => sendRecords(records))
+      clientCache.getRecordsToDeliver().foreach(records => sendRecords(records))
 
       //TODO
       if (commit) {
@@ -180,9 +178,9 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K
       log.info("poll")
 
       //Check for unconfirmed timed-out messages and redeliver
-      if (clientCache.isMessageTimeout()) {
+      if (clientCache.isMessageTimeout) {
         log.info("Message timed out, redelivering")
-        sendRecords(clientCache.getRedeliveryRecords())
+        sendRecords(clientCache.getRedeliveryRecords)
       }
 
       //Only poll kafka if buffer is not full
@@ -194,10 +192,10 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K
           clientCache.bufferRecords(records)
         }
       }
-      clientCache.getRecordToDeliver().foreach(records => sendRecords(records))
+      clientCache.getRecordsToDeliver().foreach(records => sendRecords(records))
 
     //TODO need to ignore future poll and stop scheduling poll and disconnect from Kafka.
-    case Unsubsribe =>
+    case Unsubscribe =>
       log.info("Unsubscribing")
       consumer.unsubscribe()
       clientCache.reset()
