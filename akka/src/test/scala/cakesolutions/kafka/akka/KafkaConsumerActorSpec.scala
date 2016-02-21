@@ -4,9 +4,8 @@ import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
 import cakesolutions.kafka.{KafkaProducer, KafkaProducerRecord, KafkaTestServer}
 import com.typesafe.config.ConfigFactory
-import net.cakesolutions.kafka.akka.KafkaConsumerActor.{Offsets, Reset, Poll, Records}
+import net.cakesolutions.kafka.akka.KafkaConsumerActor.{Records, Subscribe}
 import net.cakesolutions.kafka.akka.{KafkaActor, KafkaConsumerActor}
-import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.StringSerializer
 import org.slf4j.LoggerFactory
 
@@ -36,7 +35,7 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
     )
   }
 
-  "KafkaConsumerActor in manual commit mode" should "consume a sequence of messages" in {
+  "KafkaConsumerActor in self managed offsets mode" should "consume a sequence of messages" in {
 
     val kafkaPort = kafkaServer.kafkaPort
     val topic = randomString(5)
@@ -52,19 +51,20 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
     //    producer.send(KafkaProducerRecord(topic, Some("key"), "value"))
     //    producer.send(KafkaProducerRecord(topic, Some("key"), "value"))
     producer.flush()
-    Thread.sleep(30000)
     log.info("ready to poll")
     //    consumer ! Reset(Offsets(Map(TopicPartition(), 0)))
-    consumer ! Poll
+    consumer ! Subscribe()
     Thread.sleep(5000)
     producer.send(KafkaProducerRecord(topic, None, "value"))
     Thread.sleep(5000)
     producer.send(KafkaProducerRecord(topic, None, "value"))
-    //    consumer ! Poll
-    //    consumer ! Poll
 
     implicit val timeout:FiniteDuration = 120.seconds
     expectMsgClass(timeout, classOf[Records[String, String]])
+  }
+
+  "KafkaConsumerActor in commit mode" should "consume a sequence of messages" in {
+
   }
 
   //  ConfigFactory.parseString(

@@ -1,5 +1,8 @@
 package net.cakesolutions.kafka.akka
 
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
+
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import cakesolutions.kafka.KafkaConsumer
 import com.typesafe.config.{Config, ConfigFactory}
@@ -8,11 +11,27 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success, Try}
 import scala.concurrent.duration._
 
 object KafkaConsumerActor {
+
+  //Supported Actor messages
+  sealed trait Command
+
+  /**
+   * Initiate consumption from Kafka or reset an already started stream.
+   *
+   * @param offsets Consumption starts from specified offsets or kafka default (TODO depending on which config)
+   */
+  case class Subscribe(offsets: Option[Offsets] = None) extends Command
+
+  case class ConfirmOffsets(offsets: Offsets, commit: Boolean = false) extends Command
+
+  // Internal poll trigger
+  private case object Poll extends Command
 
   case class Offsets(offsetsMap: Map[TopicPartition, Long]) extends AnyVal {
     def get(topic: TopicPartition): Option[Long] = offsetsMap.get(topic)
@@ -27,7 +46,7 @@ object KafkaConsumerActor {
 
     override def toString: String =
       offsetsMap
-        .map { case (t, o) => s"$t: $o"}
+        .map { case (t, o) => s"$t: $o" }
         .mkString("Offsets(", ", ", ")")
   }
 
@@ -49,24 +68,60 @@ object KafkaConsumerActor {
     def values: Seq[V] = records.toList.map(_.value())
   }
 
-  sealed trait Command
-  case class Reset(offsets: Offsets) extends Command
-  case class ConfirmOffsets(offsets: Offsets, commit: Boolean = false) extends Command
-
-  //Poll is private and internal only
-  case object Poll extends Command
-
   case class Conf[K, V](consumerConfig: Config, topics: List[String])
 
-  object State {
-    def empty[K, V]: State[K, V] = State(None, None)
-  }
+  class ClientCache[K, V](unconfirmedTimeoutSecs: Long, maxBuffer: Int) {
 
-  case class State[K, V](onTheFly: Option[Records[K, V]], buffer: Option[Records[K, V]]) {
-    def offsetsAreOld(offsets: Offsets): Boolean =
-      onTheFly.exists(_ isNewerThan offsets)
+    var unconfirmed: Option[Records[K, V]] = None
+    var buffer = new mutable.Queue[Records[K, V]]()
 
-    def isFull: Boolean = onTheFly.nonEmpty && buffer.nonEmpty
+    var deliveryTime: Option[LocalDateTime] = None
+
+    def isFull(): Boolean = buffer.size >= maxBuffer
+
+    def bufferRecords(records: Records[K, V]) = buffer += records
+
+    /**
+     * If the client has no unconfirmed messages and there are messages in the buffer, get one to send and also add to 
+     * unconfirmed.
+     * @return
+     */
+    def getRecordToDeliver(): Option[Records[K, V]] = {
+      if (unconfirmed.isEmpty && !buffer.isEmpty) {
+        val record = buffer.dequeue()
+        unconfirmed = Some(record)
+        deliveryTime = Some(LocalDateTime.now())
+        Some(record)
+      } else None
+    }
+
+    def getRedeliveryRecords(): Records[K, V] = {
+      assert(!unconfirmed.isEmpty)
+      deliveryTime = Some(LocalDateTime.now())
+      unconfirmed.get
+    }
+
+    def isMessageTimeout(): Boolean = {
+      deliveryTime match {
+        case Some(time) =>
+          val now = LocalDateTime.now()
+          val ex = time.plus(unconfirmedTimeoutSecs, ChronoUnit.SECONDS)
+
+          if (time.plus(unconfirmedTimeoutSecs, ChronoUnit.SECONDS).isBefore(LocalDateTime.now())) true else false
+        case None =>
+          false
+      }
+    }
+
+    def confirm(): Unit = {
+      unconfirmed = None
+    }
+
+    def reset(): Unit = {
+      unconfirmed = None
+      buffer.clear()
+      deliveryTime = None
+    }
   }
 
   val defaultConsumerConfig: Config =
@@ -89,82 +144,59 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K
   private val kafkaConfig = defaultConsumerConfig.withFallback(conf.consumerConfig)
   private val consumer = KafkaConsumer[K, V](kafkaConfig)
   private val trackPartitions = TrackPartitions(consumer)
-//  private val counterConsume = KamonHelper.recorderOption(KafkaMetrics, self.path.name).map(_.pulledFromKafka)
 
   consumer.subscribe(conf.topics, trackPartitions)
 
   log.info(s"Starting consumer for topics [${conf.topics.mkString(", ")}]")
 
-  private var state: State[K, V] = State.empty
+  // The actor's mutable state TODO params
+  private val clientCache: ClientCache[K, V] = new ClientCache[K, V](10, 10)
 
   override def receive: Receive = {
-    case Reset(offsets) =>
-      log.info(s"Resetting offsets. ${conf.topics}, $offsets")
-      trackPartitions.offsets = offsets.offsetsMap
-      state = State.empty
+
+    //Subscribe - start polling or reset offsets and begin again
+    case Subscribe(offsets) =>
+      log.info(s"Subscribing to topic(s): ${conf.topics}")
+      offsets.foreach(o => trackPartitions.offsets = o.offsetsMap)
+      clientCache.reset()
       schedulePoll()
 
-    case Poll if state.isFull =>
-      log.info(s"Buffers are full. Not gonna poll. ${conf.topics}")
-
-    case Poll =>
-      log.info("poll")
-      poll() foreach { records =>
-        log.info("!Records")
-        state = appendRecords(state, records)
-      }
-
+    //Confirm - no offsets needed? (commit mode is config defined)
     case ConfirmOffsets(offsets, commit) =>
       log.info(s"Confirm Offsets ${conf.topics}, $offsets")
-      log.warning("${state}")
-      if (state.offsetsAreOld(offsets)) {
-        log.info(s"Offsets old, resending ${conf.topics}")
-        resendCurrentRecords(state)
-      } else {
-        log.info(s"Offsets new, ${conf.topics}")
-        state = sendNextRecords(state)
-        if (commit) {
-          commitOffsets(offsets)
-        }
+      clientCache.confirm()
+      clientCache.getRecordToDeliver().foreach(records => sendRecords(records))
+
+      //TODO
+      if (commit) {
+        commitOffsets(offsets)
       }
 
-//    case GracefulShutdown =>
-//      context.stop(self)
-  }
+    //Internal
+    case Poll =>
+      log.info("poll")
 
-  private def sendNextRecords(currentState: State[K, V]): State[K, V] = {
-    currentState.buffer.orElse(poll()) match { // get the buffer or poll from Kafka
-      case Some(records) => // Got records. Send them and try to fetch more.
-        log.debug("Got next records. Sending.")
-        sendRecords(records)
-        currentState.copy(onTheFly = Some(records), buffer = poll())
-      case None => // Got nothing, sending nothing. Poll has been scheduled.
-        log.debug("No records available.")
-        State.empty
-    }
-  }
+      //Check for unconfirmed timed-out messages and redeliver
+      if (clientCache.isMessageTimeout()) {
+        log.info("Message timed out, redelivering")
+        sendRecords(clientCache.getRedeliveryRecords())
+      }
 
-  private def resendCurrentRecords(currentState: State[K, V]): Unit = {
-    currentState.onTheFly.foreach { rs =>
-      log.debug("Resending current records.")
-      sendRecords(rs)
-    }
-  }
+      //Only poll kafka if buffer is not full
+      if (clientCache.isFull) {
+        log.info(s"Buffers are full. Not gonna poll. ${conf.topics}")
+      } else {
+        poll() foreach { records =>
+          log.info("!Records")
+          clientCache.bufferRecords(records)
+        }
+      }
+      clientCache.getRecordToDeliver().foreach(records => sendRecords(records))
 
-  //TODO change this
-  private def appendRecords(currentState: State[K, V], records: Records[K, V]): State[K, V] = {
-    (currentState.onTheFly, currentState.buffer) match {
-      case (None, None) =>
-        // Nothing stored. Send the records immediately.
-        sendRecords(records)
-        State(Some(records), None)
-      case (Some(_), None) =>
-        // Fill the buffer
-        currentState.copy(buffer = Some(records))
-      case _ =>
-        // Polled too much. Ignoring the given records.
-        currentState
-    }
+    //TODO implement stop poll
+
+    //    case GracefulShutdown =>
+    //      context.stop(self)
   }
 
   override def postStop(): Unit = {
@@ -172,10 +204,12 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K
     close()
   }
 
+  /**
+   * Attempt to get new records from Kafka
+   */
   private def poll(): Option[Records[K, V]] = {
     val result = Try(consumer.poll(0)) match {
       case Success(rs) if rs.count() > 0 =>
-//        counterConsume.foreach(_.increment(rs.count()))
         Some(Records(currentConsumerOffsets, rs))
       case Success(rs) =>
         None
@@ -187,12 +221,7 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K
         None
     }
 
-    if (result.isEmpty) {
-      // Always schedule a new poll when no results were received
-      schedulePoll()
-    } else {
-      pollImmediate()
-    }
+    if (!result.isEmpty) pollImmediate() else schedulePoll()
 
     result
   }
@@ -205,14 +234,16 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K
     consumer.close()
   }
 
+  //TODO remove
   private def sendRecords(records: Records[K, V]): Unit = {
+    log.info("Delivering records")
     nextActor ! records
   }
 
   //TODO schedule conf
   private def schedulePoll(): Unit = {
     log.info("Schedule Poll")
-    context.system.scheduler.scheduleOnce(500 millis, self, Poll)(context.dispatcher)
+    context.system.scheduler.scheduleOnce(3000 millis, self, Poll)(context.dispatcher)
   }
 
   private def pollImmediate(): Unit = {
