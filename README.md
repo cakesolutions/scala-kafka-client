@@ -37,10 +37,10 @@ To include, add the following to the build.sbt
     
  ## Version Compatibility
     
- | scala-kafka-client | Kafka Java Driver
- | ------------------ | -----------------
- | 0.5                | 0.9.0.1          
- | 0.4                | 0.9.0.0          
+ scala-kafka-client | Kafka Java Driver
+ ------------------ | -----------------
+ 0.5 | 0.9.0.1          
+ 0.4  | 0.9.0.0          
     
  ## License
     
