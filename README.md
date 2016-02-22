@@ -26,7 +26,7 @@ To include, add the following to the build.sbt
     For akka support:
     libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.5.0"
 
- ## Version Compatibility
+## Version Compatibility
 
  scala-kafka-client | Kafka Java Driver
  ------------------ | -----------------
