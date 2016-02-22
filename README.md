@@ -46,7 +46,7 @@ The Akka module provides a Consumer Actor that can be convenient when developing
 ## scaka-kafka-client-testkit
 The scala-kafka-client-tesktkit supports integration testing of Kafka client code by providing helpers that can start an in-process Kafka and Zookeeper server. 
 
- ## License
+## License
     
  Copyright 2016, Cake Solutions.
     
