@@ -22,7 +22,6 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
   }
 
   def consumerConf(topic: String): KafkaConsumerActor.Conf[String, String] = {
-
     KafkaConsumerActor.Conf(
       ConfigFactory.parseString(
         s"""
@@ -30,36 +29,25 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
            | group.id = "test"
            | key.deserializer = "org.apache.kafka.common.serialization.StringDeserializer"
            | value.deserializer = "org.apache.kafka.common.serialization.StringDeserializer"
+           | auto.offset.reset = "earliest"
         """.stripMargin),
       List(topic)
     )
   }
 
-  "KafkaConsumerActor in self managed offsets mode" should "consume a sequence of messages" in {
-
+  "KafkaConsumerActor in self managed offsets mode" should "consume a messages" in {
     val kafkaPort = kafkaServer.kafkaPort
     val topic = randomString(5)
     log.info(s"Using topic [$topic] and kafka port [$kafkaPort]")
 
     val producer = KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = "localhost:" + kafkaPort)
-
-    //    val probe = TestProbe()
-    val consumer = system.actorOf(KafkaActor.consumer(consumerConf(topic), testActor), "consumer")
-
     producer.send(KafkaProducerRecord(topic, None, "value"))
-//    producer.send(KafkaProducerRecord(topic, Some("key"), "value"))
-    //    producer.send(KafkaProducerRecord(topic, Some("key"), "value"))
-    //    producer.send(KafkaProducerRecord(topic, Some("key"), "value"))
     producer.flush()
-    log.info("ready to poll")
-    //    consumer ! Reset(Offsets(Map(TopicPartition(), 0)))
-    consumer ! Subscribe()
-    Thread.sleep(5000)
-    producer.send(KafkaProducerRecord(topic, None, "value"))
-    Thread.sleep(5000)
-    producer.send(KafkaProducerRecord(topic, None, "value"))
 
-    implicit val timeout:FiniteDuration = 120.seconds
+    val consumer = system.actorOf(KafkaActor.consumer(consumerConf(topic), testActor), "consumer")
+    consumer ! Subscribe()
+
+    implicit val timeout: FiniteDuration = 30.seconds
     expectMsgClass(timeout, classOf[Records[String, String]])
   }
 

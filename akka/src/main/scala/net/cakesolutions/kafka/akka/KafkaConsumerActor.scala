@@ -160,7 +160,7 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K
       consumer.subscribe(conf.topics, trackPartitions)
       offsets.foreach(o => trackPartitions.offsets = o.offsetsMap)
       clientCache.reset()
-      schedulePoll()
+      pollImmediate()
 
     //Confirm - no offsets needed? (commit mode is config defined)
     case ConfirmOffsets(offsets, commit) =>
