@@ -2,7 +2,7 @@ package cakesolutions.kafka.akka
 
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
-import cakesolutions.kafka.{KafkaProducer, KafkaProducerRecord, KafkaTestServer}
+import cakesolutions.kafka.{KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.ConfigFactory
 import net.cakesolutions.kafka.akka.KafkaConsumerActor.{Records, Subscribe}
 import net.cakesolutions.kafka.akka.{KafkaActor, KafkaConsumerActor}
