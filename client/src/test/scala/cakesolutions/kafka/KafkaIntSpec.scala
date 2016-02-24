@@ -1,5 +1,6 @@
 package cakesolutions.kafka
 
+import cakesolutions.kafka.KafkaConsumer.Conf
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.slf4j.LoggerFactory
@@ -17,7 +18,7 @@ class KafkaIntSpec extends KafkaTestServer {
     log.info(s"Using topic [$topic] and kafka port [$kafkaPort]")
 
     val producer = KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = "localhost:" + kafkaPort)
-    val consumer = KafkaConsumer(new StringDeserializer(), new StringDeserializer(), bootstrapServers = "localhost:" + kafkaPort)
+    val consumer = KafkaConsumer(Conf(new StringDeserializer(), new StringDeserializer(), bootstrapServers = "localhost:" + kafkaPort))
     consumer.subscribe(List(topic))
 
     val records1 = consumer.poll(1000)

@@ -2,11 +2,11 @@ package cakesolutions.kafka.akka
 
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
-import cakesolutions.kafka.{KafkaProducer, KafkaProducerRecord}
+import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.ConfigFactory
 import net.cakesolutions.kafka.akka.KafkaConsumerActor.{Records, Subscribe}
 import net.cakesolutions.kafka.akka.{KafkaActor, KafkaConsumerActor}
-import org.apache.kafka.common.serialization.StringSerializer
+import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
@@ -22,15 +22,16 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
   }
 
   def consumerConf(topic: String): KafkaConsumerActor.Conf[String, String] = {
-    KafkaConsumerActor.Conf(
+    KafkaConsumerActor.Conf(KafkaConsumer.Conf(
       ConfigFactory.parseString(
         s"""
            | bootstrap.servers = "localhost:${kafkaServer.kafkaPort}",
            | group.id = "test"
-           | key.deserializer = "org.apache.kafka.common.serialization.StringDeserializer"
-           | value.deserializer = "org.apache.kafka.common.serialization.StringDeserializer"
+//          TODO support conf based serializers?
+//           | key.deserializer = "org.apache.kafka.common.serialization.StringDeserializer"
+//           | value.deserializer = "org.apache.kafka.common.serialization.StringDeserializer"
            | auto.offset.reset = "earliest"
-        """.stripMargin),
+        """.stripMargin), new StringDeserializer, new StringDeserializer),
       List(topic)
     )
   }
