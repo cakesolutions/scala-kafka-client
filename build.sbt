@@ -16,6 +16,8 @@ lazy val commonSettings = Seq(
   //    )
   //  else
 
+//  parallelExecution in Test := false,
+
   publishArtifact in Test := false,
 
   pomExtra := <scm>

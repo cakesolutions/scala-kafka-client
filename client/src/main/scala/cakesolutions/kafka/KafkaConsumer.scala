@@ -44,6 +44,10 @@ object KafkaConsumer {
       props.putAll(config.toProperties)
       this
     }
+
+    def isAutoCommitMode: Boolean = {
+      props.getProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG).equals("true")
+    }
   }
 
   def apply[K, V](conf: Conf[K, V]): JKafkaConsumer[K, V] =

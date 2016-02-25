@@ -4,8 +4,8 @@ import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.ConfigFactory
-import net.cakesolutions.kafka.akka.KafkaConsumerActor.{Records, Subscribe}
-import net.cakesolutions.kafka.akka.{KafkaActor, KafkaConsumerActor}
+import net.cakesolutions.kafka.akka.KafkaConsumerActor
+import net.cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records, Subscribe}
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.slf4j.LoggerFactory
 
@@ -27,9 +27,7 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
         s"""
            | bootstrap.servers = "localhost:${kafkaServer.kafkaPort}",
            | group.id = "test"
-//          TODO support conf based serializers?
-//           | key.deserializer = "org.apache.kafka.common.serialization.StringDeserializer"
-//           | value.deserializer = "org.apache.kafka.common.serialization.StringDeserializer"
+           | enable.auto.commit = false
            | auto.offset.reset = "earliest"
         """.stripMargin), new StringDeserializer, new StringDeserializer),
       List(topic)
@@ -45,27 +43,32 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
     producer.send(KafkaProducerRecord(topic, None, "value"))
     producer.flush()
 
-    val consumer = system.actorOf(KafkaActor.consumer(consumerConf(topic), testActor), "consumer")
+    val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf(topic), testActor))
     consumer ! Subscribe()
 
     implicit val timeout: FiniteDuration = 30.seconds
     expectMsgClass(timeout, classOf[Records[String, String]])
+    consumer ! Confirm(None)
+    expectNoMsg(5.seconds)
   }
 
   "KafkaConsumerActor in commit mode" should "consume a sequence of messages" in {
+    val kafkaPort = kafkaServer.kafkaPort
+    val topic = randomString(5)
+    log.info(s"Using topic [$topic] and kafka port [$kafkaPort]")
 
+    val producer = KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = "localhost:" + kafkaPort)
+    producer.send(KafkaProducerRecord(topic, None, "value"))
+    producer.flush()
+
+    val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf(topic), testActor))
+    consumer ! Subscribe()
+
+    implicit val timeout: FiniteDuration = 30.seconds
+    val rec = expectMsgClass(timeout, classOf[Records[String, String]])
+    consumer ! Confirm(Some(rec.offsets))
+    expectNoMsg(5.seconds)
   }
-
-  //  ConfigFactory.parseString(
-  //    """
-  //      |akka.actor.deployment {
-  //      |  /amqpProducer/workers {
-  //      |    router = round-robin-pool
-  //      |    nr-of-instances = 5
-  //      |  }
-  //      |}
-  //      |
-  //    """.stripMargin)
 
   val random = new Random()
 
