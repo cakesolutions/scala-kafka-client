@@ -50,10 +50,35 @@ Key and Value Deserialisers are also required as documented in the Kafka client 
 val consumer = KafkaConsumer(Conf(new StringDeserializer(), new StringDeserializer(), bootstrapServers = "localhost:8082"))
 ```
 
-The conf class provides additional properties with defaults.
+The Conf class provides additional properties with defaults:
+
+```
+Conf(new StringDeserializer(), new StringDeserializer()
+    bootstrapServers = "localhost:9092",
+    groupId: = "group",
+    enableAutoCommit = true,
+    autoCommitInterval = 1000,
+    sessionTimeoutMs = 30000
+```
 
 #### Typesafe Configuration
-A cakesolutions.kafka.KafkaConsumer.Conf can also take a [Typesafe Config file](https://github.com/typesafehub/config):
+The configuration for the KafkaConsumer can also specified in a [Typesafe Config](https://github.com/typesafehub/config) file:  
+Pass a Config to cakesolutions.kafka.KafkaConsumer.Conf: 
+
+```
+application.conf:
+
+{
+      bootstrap.servers = "localhost:8082"
+}
+
+val conf = ConfigFactory.load
+
+val consumer = KafkaConsumer(Conf(new StringDeserializer(), new StringDeserializer(), conf))
+```
+
+#### Additional Config Options
+A combination of static properties and Typesafe config properties is also an option.  The Typesafe config properties will override predefined properties:
 
 ```
 val conf = ConfigFactory.parseString(
@@ -62,23 +87,8 @@ val conf = ConfigFactory.parseString(
            | group.id = "group1"
         """.stripMargin)
 
-val conf = Conf(new StringDeserializer(), new StringDeserializer(), groupId = "group1", enableAutoCommit = false).withConf(conf)
+val conf = Conf(new StringDeserializer(), new StringDeserializer(), enableAutoCommit = false).withConf(conf)
 val consumer = KafkaConsumer(conf)
-```
-
-#### Additional Config Options
-A combination of static properties and Typesafe config properties is also an option:
-
-application.conf:
-
-```
-{
-      bootstrap.servers = "localhost:8082"
-}
-
-val conf = ConfigFactory.load
-
-val consumer = KafkaConsumer(Conf(new StringDeserializer(), new StringDeserializer(), conf))
 ```
 
 ## scala-kafka-client-akka
