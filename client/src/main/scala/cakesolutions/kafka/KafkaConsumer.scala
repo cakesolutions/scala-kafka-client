@@ -18,6 +18,7 @@ object KafkaConsumer {
                     autoCommitInterval: Int = 1000,
                     sessionTimeoutMs: Int = 30000): Conf[K, V] = {
 
+      //TODO - Immutable
       val props = new Properties()
       props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
       props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId)
@@ -35,8 +36,11 @@ object KafkaConsumer {
                         keyDeserializer: Deserializer[K],
                         valueDeserializer: Deserializer[V]) {
 
+    /**
+     * Sets the OffsetResetStrategy.  One of: LATEST, EARLIEST, NONE
+     */
     def witAutoOffsetReset(strategy: OffsetResetStrategy): Conf[K,V] = {
-      props.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,  strategy.toString)
+      props.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,  strategy.toString.toLowerCase)
       this
     }
 

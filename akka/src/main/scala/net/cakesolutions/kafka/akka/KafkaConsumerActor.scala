@@ -5,9 +5,11 @@ import java.time.temporal.ChronoUnit
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import cakesolutions.kafka.KafkaConsumer
+import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.kafka.clients.consumer.{ConsumerRecords, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
+import org.apache.kafka.common.serialization.StringDeserializer
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
@@ -72,16 +74,47 @@ object KafkaConsumerActor {
     def values: Seq[V] = records.toList.map(_.value())
   }
 
-  case class Conf[K, V](conf: KafkaConsumer.Conf[K, V], topics: List[String])
+  object Conf {
+
+    /**
+     * Configuration for KafkaConsumerActor from Config
+     *
+     * @param config
+     * @return
+     */
+    def apply(config: Config): Conf = {
+      val topics = config.getStringList("consumer.topics")
+
+      //TODO schedule Interval
+      //TODO unconfirmedTimeout
+      apply(topics.toList)
+    }
+  }
+
+  /**
+   * Configuration for KafkaConsumerActor
+   *
+   * @param topics
+   * @param scheduleInterval
+   * @param unconfirmedTimeout
+   */
+  case class Conf(topics: List[String],
+                  scheduleInterval: FiniteDuration = 3000.millis,
+                  unconfirmedTimeout: FiniteDuration = 3.seconds,
+                  bufferSize: Int = 8) {
+    def withConf(config: Config): Conf = {
+      this.copy(topics = config.getStringList("consumer.topics").toList)
+    }
+  }
 
   /**
    *
-   * @param unconfirmedTimeoutSecs - Seconds before unconfirmed messages is considered for redelivery.
+   * @param unconfirmedTimeout - Seconds before unconfirmed messages is considered for redelivery.
    * @param maxBuffer - Max number of record batches to cache.
    * @tparam K
    * @tparam V
    */
-  private[akka] class ClientCache[K, V](unconfirmedTimeoutSecs: Long, maxBuffer: Int) {
+  private[akka] class ClientCache[K, V](unconfirmedTimeout: FiniteDuration, maxBuffer: Int) {
 
     //Records sent to client, but not yet confirmed
     var unconfirmed: Option[Records[K, V]] = None
@@ -124,7 +157,7 @@ object KafkaConsumerActor {
     def confirmationTimeout: Boolean = {
       deliveryTime match {
         case Some(time) if unconfirmed.isDefined =>
-          time plus(unconfirmedTimeoutSecs, ChronoUnit.SECONDS) isBefore LocalDateTime.now()
+          time plus(unconfirmedTimeout.toMillis, ChronoUnit.MILLIS) isBefore LocalDateTime.now()
         case _ =>
           false
       }
@@ -146,35 +179,36 @@ object KafkaConsumerActor {
   //      "enable.auto.commit" -> "false"
   //    ))
 
-  def props[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K, V], nextActor: ActorRef): Props = {
-    Props(new KafkaConsumerActor[K, V](conf, nextActor))
+  def props[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Conf[K, V],
+                                    actorConf: KafkaConsumerActor.Conf,
+                                    nextActor: ActorRef): Props = {
+    Props(new KafkaConsumerActor[K, V](consumerConf, actorConf, nextActor))
   }
 }
 
 /**
- * @param conf
+ * @param consumerConf
  * @param nextActor Consumed messages are pushed here.
  * @tparam K
  * @tparam V
  */
-class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K, V], nextActor: ActorRef)
+class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Conf[K, V], actorConf: KafkaConsumerActor.Conf, nextActor: ActorRef)
   extends Actor with ActorLogging {
 
   import KafkaConsumerActor._
 
-  private val consumer = KafkaConsumer[K, V](conf.conf)
+  private val consumer = KafkaConsumer[K, V](consumerConf)
   private val trackPartitions = TrackPartitions(consumer)
 
-  // The actor's mutable state TODO params
-  private val clientCache: ClientCache[K, V] = new ClientCache[K, V](1, 10)
+  private val clientCache: ClientCache[K, V] = new ClientCache[K, V](actorConf.unconfirmedTimeout, actorConf.bufferSize)
 
   override def receive: Receive = {
 
     //Subscribe - start polling or reset offsets and begin again
     case Subscribe(offsets) =>
-      log.info(s"Subscribing to topic(s): [${conf.topics.mkString(", ")}]")
-      log.info("!!" + conf.conf.isAutoCommitMode)
-      consumer.subscribe(conf.topics, trackPartitions)
+      log.info(s"Subscribing to topic(s): [${actorConf.topics.mkString(", ")}]")
+      log.info("!!" + consumerConf.isAutoCommitMode)
+      consumer.subscribe(actorConf.topics, trackPartitions)
       offsets.foreach(o => trackPartitions.offsets = o.offsetsMap)
       clientCache.reset()
       pollImmediate()
@@ -203,7 +237,7 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K
 
       //Only poll kafka if buffer is not full
       if (clientCache.isFull) {
-        log.info(s"Buffers are full. Not gonna poll. ${conf.topics}")
+        log.info(s"Buffers are full. Not gonna poll. ${actorConf.topics}")
       } else {
         poll() foreach { records =>
           log.info("!Records")
@@ -262,10 +296,9 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](conf: KafkaConsumerActor.Conf[K
     nextActor ! records
   }
 
-  //TODO schedule conf
   private def schedulePoll(): Unit = {
     log.info("Schedule Poll")
-    context.system.scheduler.scheduleOnce(3000 millis, self, Poll)(context.dispatcher)
+    context.system.scheduler.scheduleOnce(actorConf.scheduleInterval, self, Poll)(context.dispatcher)
   }
 
   private def pollImmediate(): Unit = {
