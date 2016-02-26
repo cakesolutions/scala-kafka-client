@@ -57,7 +57,7 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
         """.stripMargin)
     )
 
-  "KafkaConsumerActor different configuration types" should "consume a message successful" in {
+  "KafkaConsumerActors with different configuration types" should "consume a message successful" in {
 
     (List(consumerConfFromConfig, consumerConf) zip List(actorConf(randomString(5)), actorConfFromConfig(randomString(5))))
       .foreach {
