@@ -19,14 +19,14 @@ import scala.util.{Failure, Success, Try}
 object KafkaConsumerActor {
 
   /**
-   * Actor Message - Initiate consumption from Kafka or reset an already started stream.
+   * Actor API - Initiate consumption from Kafka or reset an already started stream.
    *
    * @param offsets Consumption starts from specified offsets or kafka default, depending on (auto.offset.reset) setting.
    */
   case class Subscribe(offsets: Option[Offsets] = None)
 
   /**
-   * Actor Message - Confirm receipt of previous records.  If Offets are provided, they are committed synchronously to Kafka.
+   * Actor API - Confirm receipt of previous records.  If Offets are provided, they are committed synchronously to Kafka.
    * If no offsets provided, no commit is made.
    *
    * @param offsets Some(offsets) if a commit to Kafka is required.
@@ -34,7 +34,7 @@ object KafkaConsumerActor {
   case class Confirm(offsets: Option[Offsets] = None)
 
   /**
-   * Actor Message - Unsubscribe from Kafka.
+   * Actor API - Unsubscribe from Kafka.
    */
   case object Unsubscribe
 
@@ -199,21 +199,24 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
   private val consumer = KafkaConsumer[K, V](consumerConf)
   private val trackPartitions = TrackPartitions(consumer)
 
+  //Actor's mutable state
   private val clientCache: ClientCache[K, V] = new ClientCache[K, V](actorConf.unconfirmedTimeout, actorConf.bufferSize)
 
   override def receive: Receive = {
 
     //Subscribe - start polling or reset offsets and begin again
     case Subscribe(offsets) =>
-      log.info(s"Subscribing to topic(s): [${actorConf.topics.mkString(", ")}]")
-      log.info("!!" + consumerConf.isAutoCommitMode)
+      log.info("Subscribing to topic(s): [{}]", actorConf.topics.mkString(", "))
       consumer.subscribe(actorConf.topics, trackPartitions)
-      offsets.foreach(o => trackPartitions.offsets = o.offsetsMap)
+      offsets.foreach(o => {
+        log.debug("Seeking to provided offsets")
+        trackPartitions.offsets = o.offsetsMap
+      })
       clientCache.reset()
       pollImmediate()
 
     case Confirm(offsetsO) =>
-      log.info(s"Confirming")
+      log.debug(s"Records confirmed")
       clientCache.confirm()
 
       offsetsO match {
@@ -226,20 +229,20 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
 
     //Internal
     case Poll =>
-      log.info("poll")
+      log.debug("Poll loop")
 
       //Check for unconfirmed timed-out messages and redeliver
       if (clientCache.confirmationTimeout) {
-        log.info("Message timed out, redelivering")
+        log.debug("Message timed out, redelivering")
         sendRecords(clientCache.getRedeliveryRecords)
       }
 
       //Only poll kafka if buffer is not full
       if (clientCache.isFull) {
-        log.info(s"Buffers are full. Not gonna poll. ${actorConf.topics}")
+        log.debug(s"Buffers are full. Not gonna poll.")
       } else {
         poll() foreach { records =>
-          log.info("!Records")
+          log.debug("Received records")
           clientCache.bufferRecords(records)
         }
       }
@@ -291,17 +294,17 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
   }
 
   private def sendRecords(records: Records[K, V]): Unit = {
-    log.info("Delivering records")
+    log.debug("Delivering records to client")
     nextActor ! records
   }
 
   private def schedulePoll(): Unit = {
-    log.info("Schedule Poll")
+    log.debug("Scheduling Poll")
     context.system.scheduler.scheduleOnce(actorConf.scheduleInterval, self, Poll)(context.dispatcher)
   }
 
   private def pollImmediate(): Unit = {
-    log.info("Poll immediate")
+    log.debug("Poll immediate")
     self ! Poll
   }
 
@@ -313,7 +316,7 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
   }
 
   private def commitOffsets(offsets: Offsets): Unit = {
-    log.info(s"Committing offsets. $offsets")
+    log.debug("Committing offsets. {}", offsets)
     consumer.commitSync(offsets.toCommitMap)
   }
 
