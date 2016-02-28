@@ -29,11 +29,12 @@ The scala-kafka-client is a thin wrapper around the Java client API, providing s
 
 ### Resolve
 
-    For basic kafka client support:
     libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.5.0"
 
 
 ### Producer
+
+TODO
 
 ### Consumer
 The [KafkaConsumer](https://kafka.apache.org/090/javadoc/index.html?org/apache/kafka/clients/consumer/KafkaConsumer.html) is typically setup by creating a Java Properties with required consumer configuration.
@@ -88,15 +89,16 @@ val conf = Conf(new StringDeserializer(), new StringDeserializer(), enableAutoCo
 val consumer = KafkaConsumer(conf)
 ```
 
-## Scala Kafka Client - Akka
-The Akka module provides a Consumer Actor that can be convenient when developing applications with Akka.
+## Scala Kafka Client - Asyc
+The scala-kafka-client-akka module provides an asynchronous and non-blocking Kafka Consumer built using Akka, that 
+can be useful when developing [Reactive](http://www.reactivemanifesto.org/) applications or when high throughput and scalability are required.
 
-## Resolve
+### Resolve
 
     // Latest release:
     libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.5.0"
 
-### Asynchronous and Non Blocking Kafka Consumer
+### Motivation
 This module provides a configurable KafkaConsumerActor which utilises Akka to provide an asynchronous and non-blocking Kafka consumer,
 which is often desirable when building highly scalable and reactive applications with a Scala stack.
 
@@ -125,7 +127,6 @@ is via Actor messages.
 
 ```
 case class Subscribe(offsets: Option[Offsets] = None)
-
 
 consumer ! Subscribe()
 
