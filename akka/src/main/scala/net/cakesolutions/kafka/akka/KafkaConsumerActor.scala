@@ -9,10 +9,11 @@ import com.typesafe.config.Config
 import org.apache.kafka.clients.consumer.{ConsumerRecords, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
+import org.apache.kafka.common.serialization.Deserializer
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
-import scala.concurrent.duration._
+import scala.concurrent.duration.{Duration, MILLISECONDS => Millis, _}
 import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success, Try}
 
@@ -84,9 +85,11 @@ object KafkaConsumerActor {
     def apply(config: Config): Conf = {
       val topics = config.getStringList("consumer.topics")
 
-      //TODO schedule Interval
-      //TODO unconfirmedTimeout
-      apply(topics.toList)
+      val scheduleInterval = Duration(config.getDuration("schedule.interval", Millis), Millis)
+      val unconfirmedTimeout = Duration(config.getDuration("unconfirmed.timeout", Millis), Millis)
+      val bufferSize = config.getInt("buffer.size")
+
+      apply(topics.toList, scheduleInterval, unconfirmedTimeout, bufferSize)
     }
   }
 
@@ -178,6 +181,19 @@ object KafkaConsumerActor {
   //      "enable.auto.commit" -> "false"
   //    ))
 
+  /**
+   * All config from Typesafe config file.
+   */
+  def props[K: TypeTag, V: TypeTag](keyDeserializer: Deserializer[K],
+                                    valueDeserializer: Deserializer[V],
+                                    conf:Config,
+                                    nextActor: ActorRef): Props = {
+    Props(new KafkaConsumerActor[K, V](KafkaConsumer.Conf[K, V](conf, keyDeserializer, valueDeserializer), KafkaConsumerActor.Conf(conf), nextActor))
+  }
+
+  /**
+   * Construct with configured KafkaConsumer and Actor configurations.
+   */
   def props[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Conf[K, V],
                                     actorConf: KafkaConsumerActor.Conf,
                                     nextActor: ActorRef): Props = {

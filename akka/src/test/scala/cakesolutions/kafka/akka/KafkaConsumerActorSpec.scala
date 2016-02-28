@@ -54,6 +54,9 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
     KafkaConsumerActor.Conf(ConfigFactory.parseString(
       s"""
          | consumer.topics = ["$topic"]
+         | schedule.interval = 3000 milliseconds
+         | unconfirmed.timeout = 3000 milliseconds
+         | buffer.size = 8
         """.stripMargin)
     )
 
