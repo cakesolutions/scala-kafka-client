@@ -13,18 +13,9 @@ The following modules are provided
  - **scaka-kafka-client-testkit.** Supports integration testing of Kafka client code by providing helpers that can start an in-process Kafka and Zookeeper server.
 
 ### Latest release
-To include, add the following to the build.sbt
+To include, add the following relolver to the build.sbt
 
     resolvers += Resolver.bintrayRepo("simonsouter", "maven")
-
-    For basic kafka client support:
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.5.0"
-
-    For kafka integration test support:
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-tesktkit" % "0.5.0" % "test"
-
-    For akka support:
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.5.0"
 
 ## Version Compatibility
 
@@ -33,8 +24,14 @@ To include, add the following to the build.sbt
  0.5 | 0.9.0.1
  0.4  | 0.9.0.0
 
-## scaka-kafka-client
+## Scala Kafka Client
 The scala-kafka-client is a thin wrapper around the Java client API, providing some helpers for configuring the client.
+
+### Resolve
+
+    For basic kafka client support:
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.5.0"
+
 
 ### Producer
 
@@ -91,8 +88,13 @@ val conf = Conf(new StringDeserializer(), new StringDeserializer(), enableAutoCo
 val consumer = KafkaConsumer(conf)
 ```
 
-## scala-kafka-client-akka
+## Scala Kafka Client - Akka
 The Akka module provides a Consumer Actor that can be convenient when developing applications with Akka.
+
+## Resolve
+
+    // Latest release:
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.5.0"
 
 ### Asynchronous and Non Blocking Kafka Consumer
 This module provides a configurable KafkaConsumerActor which utilises Akka to provide an asynchronous and non-blocking Kafka consumer,
@@ -106,8 +108,9 @@ some known drawbacks:
 2. One thread is required per consumer.
 3. Network IO and message processing occurs on the same thread, increasing round-trip latency.
 
-The KafkaConsumerActor utilises Akka's message dispatch architecture to implement an asynchronous consumer with a poll loop that pull and buffer records from
-Kafka and dispatches to the client asynchronously with a separate thread (analogous to the [Reactor Pattern](https://en.wikipedia.org/wiki/Reactor_pattern)).
+The KafkaConsumerActor utilises Akka's message dispatch architecture to implement an asynchronous consumer with an
+[Akka Scheduler](http://doc.akka.io/docs/akka/snapshot/scala/scheduler.html) driven poll loop that requests and buffers records from
+Kafka and dispatches to the client asynchronously on a separate thread (analogous to the [Reactor Pattern](https://en.wikipedia.org/wiki/Reactor_pattern)).
  
 - TODO Confirmation pattern (at least once)  - commit modes (redelivery) - caching
 
@@ -115,10 +118,72 @@ Kafka and dispatches to the client asynchronously with a separate thread (analog
 
 
 ### Message Exchange Patterns
+Once the KafkaConsumerActor is created with the required configuration, communication between the client and the consumer actor
+is via Actor messages.
+
+#### Subscribe
+
+```
+case class Subscribe(offsets: Option[Offsets] = None)
 
 
-## scaka-kafka-client-testkit
-The scala-kafka-client-tesktkit supports integration testing of Kafka client code by providing helpers that can start an in-process Kafka and Zookeeper server. 
+consumer ! Subscribe()
+
+```
+
+Initiates a subscription based on initial configuration.  Initial offets may be provided to seek from a known point in each Topic+Partition
+that consumer is subscribed to.  This allows the client to self manage commit offets as described [here](https://kafka.apache.org/090/javadoc/index.html?org/apache/kafka/clients/consumer/KafkaConsumer.html)
+in section "Manual Offset Control".
+ 
+If no offsets are provided (i.e. Subscribe()), the consumer will seek (for each topic/partition) to the last committed offset as
+recorded by Kafka itself, and also based on the "auto.offset.reset" client property.
+
+Once the client has sent the consumer a Subscribe message, it can assume that the subscription will be made and any 
+messages destined for it will be received by the provided actor callback.  Any failure to connect to Kafka or other exception
+will be propagated to the supervisor actor.
+
+### Records[K, V]
+
+```
+case class Records(offsets: Offsets, records: ConsumerRecords[K, V])
+```
+
+The payload delivered to the client contains the offsets for the records sent and the ConsumerRecords,
+which contains a sequence of Records for each Topic Partition.  The ConsumerRecords can be iterated and read as described
+in the Kafka Client docs.  The Offsets can be used when confirming the message to commit the offsets to Kafka. 
+
+### Confirm
+
+```
+case class Confirm(offsets: Option[Offsets] = None)
+
+consumer ! Confirm()
+```
+
+For each Records received by the client, a corresponding Confirm() message should be sent back to the consumer
+to acknowledge the message.  If the message is not confirmed within ("unconfirmed.timeout") it is redelivered (by default).
+
+If offsets are provided, they are commited to Kafka.  If no offsets are provided, the message is removed from the Consumer
+Actor's buffer, but is not commited to Kafka.
+
+### Unsubscribe
+
+```
+case object Unsubscribe
+
+consumer ! Unsubscribe
+```
+
+THe Actor clears its state and disconnects from Kakfa.
+
+## TestKit 
+The scala-kafka-client-tesktkit module provides some tools to support integration testing for client service code that
+depends on a running Kafka Server.  Helps the setup of an in-process Kafka and Zookeeper server. 
+
+### Resolve
+
+    //For kafka integration test support:
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-tesktkit" % "0.5.0" % "test"
 
 ## License
     
