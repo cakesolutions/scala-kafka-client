@@ -47,7 +47,7 @@ The cakesolutions.kafka.KafkaConsumer.Conf case class models the configuration r
 Key and Value Deserialisers are also required as documented in the Kafka client docs.
 
 ```
-val consumer = KafkaConsumer(Conf(new StringDeserializer(), new StringDeserializer(), bootstrapServers = "localhost:8082"))
+val consumer = KafkaConsumer(KafkaConsumer.Conf(new StringDeserializer(), new StringDeserializer(), bootstrapServers = "localhost:8082"))
 ```
 
 The Conf class provides additional properties with defaults:
@@ -74,7 +74,7 @@ application.conf:
 
 val conf = ConfigFactory.load
 
-val consumer = KafkaConsumer(Conf(new StringDeserializer(), new StringDeserializer(), conf))
+val consumer = KafkaConsumer(KafkaConsumer.Conf(new StringDeserializer(), new StringDeserializer(), conf))
 ```
 
 #### Additional Config Options
@@ -92,7 +92,30 @@ val consumer = KafkaConsumer(conf)
 ```
 
 ## scala-kafka-client-akka
-The Akka module provides a Consumer Actor that can be convenient when developing applications with Akka.  The Akka consumer has buffering capabilities to increase throughput as well as some helpers to provide easy configuration.
+The Akka module provides a Consumer Actor that can be convenient when developing applications with Akka.
+
+### Asynchronous and Non Blocking Kafka Consumer
+This module provides a configurable KafkaConsumerActor which utilises Akka to provide an asynchronous and non-blocking Kafka consumer,
+which is often desirable when building highly scalable and reactive applications with a Scala stack.
+
+The basic KafkaConsumer provided by the Kafka Java client is not thread safe and must be driven by a client poll thread,
+typically from a blocking style poll loop.  While this type of approach may be adequate for many applications, there are
+some known drawbacks:
+ 
+1. Threading code must be implemented to facilitate the poll loop.
+2. One thread is required per consumer.
+3. Network IO and message processing occurs on the same thread, increasing round-trip latency.
+
+The KafkaConsumerActor utilises Akka's message dispatch architecture to implement an asynchronous consumer with a poll loop that pull and buffer records from
+Kafka and dispatches to the client asynchronously with a separate thread (analogous to the [Reactor Pattern](https://en.wikipedia.org/wiki/Reactor_pattern)).
+ 
+- TODO Confirmation pattern (at least once)  - commit modes (redelivery) - caching
+
+### Configuration
+
+
+### Message Exchange Patterns
+
 
 ## scaka-kafka-client-testkit
 The scala-kafka-client-tesktkit supports integration testing of Kafka client code by providing helpers that can start an in-process Kafka and Zookeeper server. 

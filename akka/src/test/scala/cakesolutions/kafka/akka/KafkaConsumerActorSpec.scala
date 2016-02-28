@@ -1,6 +1,6 @@
 package cakesolutions.kafka.akka
 
-import akka.actor.{Props, ActorSystem}
+import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.{Config, ConfigFactory}
