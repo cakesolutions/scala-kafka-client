@@ -1,9 +1,9 @@
 package cakesolutions.kafka.akka
 
-import akka.actor.ActorSystem
+import akka.actor.{Props, ActorSystem}
 import akka.testkit.{ImplicitSender, TestKit}
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 import net.cakesolutions.kafka.akka.KafkaConsumerActor
 import net.cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records, Subscribe}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
@@ -14,7 +14,18 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.duration._
 import scala.util.Random
 
+object KafkaConsumerActorSpec {
+  def kafkaProducer(kafkaPort: Int): KafkaProducer[String, String] =
+    KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = "localhost:" + kafkaPort)
+
+  def actorConf(topic: String): KafkaConsumerActor.Conf = {
+    KafkaConsumerActor.Conf(List(topic))
+  }
+}
+
 class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with KafkaTestServer with ImplicitSender with AsyncAssertions {
+  import KafkaConsumerActorSpec._
+
   val log = LoggerFactory.getLogger(getClass)
 
   def this() = this(ActorSystem("MySpec"))
@@ -43,13 +54,6 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
       enableAutoCommit = false).witAutoOffsetReset(OffsetResetStrategy.EARLIEST)
   }
 
-  def kafkaProducer(kafkaPort: Int): KafkaProducer[String, String] =
-    KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = "localhost:" + kafkaPort)
-
-  def actorConf(topic: String): KafkaConsumerActor.Conf = {
-    KafkaConsumerActor.Conf(List(topic))
-  }
-
   def actorConfFromConfig(topic: String): KafkaConsumerActor.Conf =
     KafkaConsumerActor.Conf(ConfigFactory.parseString(
       s"""
@@ -60,7 +64,21 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
         """.stripMargin)
     )
 
-  "KafkaConsumerActors with different configuration types" should "consume a message successful" in {
+  def configuredActor(topic: String): Config = {
+    ConfigFactory.parseString(
+      s"""
+         | bootstrap.servers = "localhost:${kafkaServer.kafkaPort}",
+         | group.id = "test"
+         | enable.auto.commit = false
+         | auto.offset.reset = "earliest"
+         | consumer.topics = ["$topic"]
+         | schedule.interval = 3000 milliseconds
+         | unconfirmed.timeout = 3000 milliseconds
+         | buffer.size = 8
+        """.stripMargin)
+  }
+
+  "KafkaConsumerActors with different configuration types" should "consume a message successfully" in {
 
     (List(consumerConfFromConfig, consumerConf) zip List(actorConf(randomString(5)), actorConfFromConfig(randomString(5))))
       .foreach {
@@ -78,6 +96,28 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
       }
   }
 
+  "KafkaConsumerActor configured via props" should "consume a sequence of messages" in {
+    val kafkaPort = kafkaServer.kafkaPort
+    val topic = randomString(5)
+
+    val producer = kafkaProducer(kafkaPort)
+    producer.send(KafkaProducerRecord(topic, None, "value"))
+    producer.flush()
+
+    // Consumer and actor config in same config file
+    val consumer = system.actorOf(KafkaConsumerActor.props(configuredActor(topic), new StringDeserializer(), new StringDeserializer(), testActor))
+    consumer ! Subscribe()
+
+    expectMsgClass(30.seconds, classOf[Records[String, String]])
+    consumer ! Confirm()
+    expectNoMsg(5.seconds)
+  }
+
+  //TODO changing actor config settings - timeout etc
+
+  //TODO test message pattern
+
+  //TODO review
   "KafkaConsumerActor in commit mode" should "consume a sequence of messages" in {
     val kafkaPort = kafkaServer.kafkaPort
     val topic = randomString(5)
@@ -90,8 +130,7 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
     val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, actorConf(topic), testActor))
     consumer ! Subscribe()
 
-    implicit val timeout: FiniteDuration = 30.seconds
-    val rec = expectMsgClass(timeout, classOf[Records[String, String]])
+    val rec = expectMsgClass(30.seconds, classOf[Records[String, String]])
     consumer ! Confirm(Some(rec.offsets))
     expectNoMsg(5.seconds)
   }

@@ -96,9 +96,9 @@ object KafkaConsumerActor {
   /**
    * Configuration for KafkaConsumerActor
    *
-   * @param topics
-   * @param scheduleInterval
-   * @param unconfirmedTimeout
+   * @param topics List of topics to subscribe to.
+   * @param scheduleInterval Poll Latency.
+   * @param unconfirmedTimeout Seconds before unconfirmed messages is considered for redelivery.
    */
   case class Conf(topics: List[String],
                   scheduleInterval: FiniteDuration = 3000.millis,
@@ -182,13 +182,16 @@ object KafkaConsumerActor {
   //    ))
 
   /**
-   * All config from Typesafe config file.
+   * KafkaConsumer config and the consumer actors config all contained in a Typesafe Config.
    */
-  def props[K: TypeTag, V: TypeTag](keyDeserializer: Deserializer[K],
+  def props[K: TypeTag, V: TypeTag](conf:Config,
+                                    keyDeserializer: Deserializer[K],
                                     valueDeserializer: Deserializer[V],
-                                    conf:Config,
                                     nextActor: ActorRef): Props = {
-    Props(new KafkaConsumerActor[K, V](KafkaConsumer.Conf[K, V](conf, keyDeserializer, valueDeserializer), KafkaConsumerActor.Conf(conf), nextActor))
+    Props(
+      new KafkaConsumerActor[K, V](KafkaConsumer.Conf[K, V](conf, keyDeserializer, valueDeserializer),
+        KafkaConsumerActor.Conf(conf),
+        nextActor))
   }
 
   /**
