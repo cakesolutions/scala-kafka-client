@@ -1,4 +1,4 @@
-# Scala wrapper for Apache Kafka's Java client library 0.9.x.x
+# Scala extensions for Apache Kafka's Java client library 0.9.0.x
 
 This project comprises a few helper modules for operating the [Kafka Java Client Driver](https://kafka.apache.org/090/javadoc/index.html) in a Scala codebase.
 
@@ -8,12 +8,12 @@ This project is currently a work-in-progress and not yet ready for proper use!
 ## Modules
 
 The following modules are provided
- - **scaka-kafka-client.** A thin wrapper around the Java client API, providing some helpers for configuring the client.
+ - **scaka-kafka-client.** A thin wrapper around the Java client API, providing some helpers for convenient configuration the client.
  - **scala-kafka-client-akka.** Provides a Consumer Actor that can be convenient when developing applications with Akka.  The Akka consumer has buffering capabilities to increase throughput as well as some helpers to provide easy configuration.
  - **scaka-kafka-client-testkit.** Supports integration testing of Kafka client code by providing helpers that can start an in-process Kafka and Zookeeper server.
 
 ### Latest release
-To include, add the following relolver to the build.sbt
+To include, add the following resolver to the build.sbt
 
     resolvers += Resolver.bintrayRepo("simonsouter", "maven")
 
@@ -30,8 +30,7 @@ The scala-kafka-client is a thin wrapper around the Java client API, providing s
 ### Resolve
 
     libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.5.0"
-
-
+    
 ### Producer
 
 TODO
@@ -89,7 +88,7 @@ val conf = Conf(new StringDeserializer(), new StringDeserializer(), enableAutoCo
 val consumer = KafkaConsumer(conf)
 ```
 
-## Scala Kafka Client - Asyc
+## Scala Kafka Client - Async
 The scala-kafka-client-akka module provides an asynchronous and non-blocking Kafka Consumer built using Akka, that 
 can be useful when developing [Reactive](http://www.reactivemanifesto.org/) applications or when high throughput and scalability are required.
 
@@ -117,7 +116,35 @@ Kafka and dispatches to the client asynchronously on a separate thread (analogou
 - TODO Confirmation pattern (at least once)  - commit modes (redelivery) - caching
 
 ### Configuration
+To create a KafkaConsumerActor the dependencies in the KafkaConsumerActor.props() function need to be satisfied.  This can be 
+done with a Key and Value deserializer with all other consumer properties supplied in a Typesafe configuration.
 
+```
+{
+    //KafkaConsumer config
+    bootstrap.servers = "localhost:9092",
+    group.id = "test"
+    enable.auto.commit = false
+    auto.offset.reset = "earliest"
+    consumer.topics = ["topic1"]
+    //KafkaConsumerActor config
+    schedule.interval = 3000 milliseconds
+    unconfirmed.timeout = 3000 milliseconds
+    buffer.size = 8
+}
+       
+```
+
+An alternative approach
+is to provide KafkaConsumer.Conf and KafkaConsumerActor.Conf configuration case classes which can be created in the following ways:
+
+#### KafkaConsumer.Conf
+
+- TODO
+
+#### KafkaConsumerActor.Conf
+
+- TODO
 
 ### Message Exchange Patterns
 Once the KafkaConsumerActor is created with the required configuration, communication between the client and the consumer actor

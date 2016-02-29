@@ -30,6 +30,11 @@ lazy val commonSettings = Seq(
         <name>Simon Souter</name>
         <url>https://github.com/simonsouter</url>
       </developer>
+      <developer>
+        <id>jkpl</id>
+        <name>Jaakko Pallari</name>
+        <url>https://github.com/jkpl</url>
+      </developer>
     </developers>,
 
   licenses := ("MIT", url("http://opensource.org/licenses/MIT")):: Nil

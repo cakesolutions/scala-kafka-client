@@ -50,6 +50,8 @@ with AsyncAssertions {
 
     val rec1 = expectMsgClass(30.seconds, classOf[Records[String, String]])
     rec1.offsets.get(new TopicPartition(topic,0)) shouldBe Some(1)
+
+    //Commit the message
     consumer ! Confirm(Some(rec1.offsets))
     expectNoMsg(5.seconds)
 
@@ -65,6 +67,7 @@ with AsyncAssertions {
 
     consumer ! Unsubscribe
 
+    // New subscription starts from commit point
     consumer ! Subscribe()
     val rec3 = expectMsgClass(30.seconds, classOf[Records[String, String]])
     rec3.offsets.get(new TopicPartition(topic,0)) shouldBe Some(2)
