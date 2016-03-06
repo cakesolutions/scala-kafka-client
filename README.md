@@ -21,7 +21,7 @@ To include, add the following resolver to the build.sbt
 
  scala-kafka-client | Kafka Java Driver
  ------------------ | -----------------
- 0.5 | 0.9.0.1
+ 0.5 | 0.9.0.1 | Not Yet Released!
  0.4  | 0.9.0.0
 
 ## Scala Kafka Client

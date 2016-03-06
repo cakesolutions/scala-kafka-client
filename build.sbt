@@ -16,7 +16,7 @@ lazy val commonSettings = Seq(
   //    )
   //  else
 
-//  parallelExecution in Test := false,
+  parallelExecution in Test := false,
 
   publishArtifact in Test := false,
 

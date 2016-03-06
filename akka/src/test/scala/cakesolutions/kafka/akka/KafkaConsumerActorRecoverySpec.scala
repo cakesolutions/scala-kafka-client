@@ -25,6 +25,7 @@ with AsyncAssertions {
   def this() = this(ActorSystem("MySpec"))
 
   override def afterAll() {
+    super.afterAll()
     TestKit.shutdownActorSystem(system)
   }
 
@@ -41,7 +42,7 @@ with AsyncAssertions {
     val kafkaPort = kafkaServer.kafkaPort
     val topic = randomString(5)
 
-    val producer = kafkaProducer(kafkaPort)
+    val producer = kafkaProducer("localhost", kafkaPort)
     producer.send(KafkaProducerRecord(topic, None, "value"))
     producer.flush()
 
@@ -73,6 +74,51 @@ with AsyncAssertions {
     rec3.offsets.get(new TopicPartition(topic,0)) shouldBe Some(2)
     consumer ! Confirm()
     expectNoMsg(5.seconds)
+
+    consumer ! Unsubscribe
+    producer.close()
+  }
+
+  "KafkaConsumerActor with self managed offsets" should "recover to a specified offset" in {
+    val kafkaPort = kafkaServer.kafkaPort
+    val topic = randomString(5)
+
+    val producer = kafkaProducer("localhost", kafkaPort)
+    producer.send(KafkaProducerRecord(topic, None, "value"))
+    producer.flush()
+
+    val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, actorConf(topic), testActor))
+    consumer ! Subscribe()
+
+    val rec1 = expectMsgClass(30.seconds, classOf[Records[String, String]])
+    rec1.offsets.get(new TopicPartition(topic,0)) shouldBe Some(1)
+
+    //Stash the offsets for recovery, and confirm the message.
+    val offsets = rec1.offsets
+    consumer ! Confirm()
+    expectNoMsg(5.seconds)
+
+    producer.send(KafkaProducerRecord(topic, None, "value"))
+    producer.flush()
+
+    val rec2 = expectMsgClass(30.seconds, classOf[Records[String, String]])
+    rec2.offsets.get(new TopicPartition(topic,0)) shouldBe Some(2)
+
+    //Message confirmed
+    consumer ! Confirm()
+    expectNoMsg(5.seconds)
+
+    consumer ! Unsubscribe
+
+    // New subscription starts from specified offset
+    consumer ! Subscribe(Some(offsets))
+    val rec3 = expectMsgClass(30.seconds, classOf[Records[String, String]])
+    rec3.offsets.get(new TopicPartition(topic,0)) shouldBe Some(2)
+    consumer ! Confirm()
+    expectNoMsg(5.seconds)
+
+    consumer ! Unsubscribe
+    producer.close()
   }
 
   //TODO duplication

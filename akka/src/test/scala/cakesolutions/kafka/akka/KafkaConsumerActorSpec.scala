@@ -5,7 +5,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.{Config, ConfigFactory}
 import net.cakesolutions.kafka.akka.KafkaConsumerActor
-import net.cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records, Subscribe}
+import net.cakesolutions.kafka.akka.KafkaConsumerActor.{Unsubscribe, Confirm, Records, Subscribe}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.scalatest.concurrent.AsyncAssertions
@@ -15,8 +15,8 @@ import scala.concurrent.duration._
 import scala.util.Random
 
 object KafkaConsumerActorSpec {
-  def kafkaProducer(kafkaPort: Int): KafkaProducer[String, String] =
-    KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = "localhost:" + kafkaPort)
+  def kafkaProducer(kafkaHost: String, kafkaPort: Int): KafkaProducer[String, String] =
+    KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = kafkaHost + ":" + kafkaPort)
 
   def actorConf(topic: String): KafkaConsumerActor.Conf = {
     KafkaConsumerActor.Conf(List(topic))
@@ -24,6 +24,7 @@ object KafkaConsumerActorSpec {
 }
 
 class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with KafkaTestServer with ImplicitSender with AsyncAssertions {
+
   import KafkaConsumerActorSpec._
 
   val log = LoggerFactory.getLogger(getClass)
@@ -31,6 +32,7 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
   def this() = this(ActorSystem("MySpec"))
 
   override def afterAll() {
+    super.afterAll()
     TestKit.shutdownActorSystem(system)
   }
 
@@ -83,7 +85,7 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
     (List(consumerConfFromConfig, consumerConf) zip List(actorConf(randomString(5)), actorConfFromConfig(randomString(5))))
       .foreach {
         case (consumerConfig, actorConf) =>
-          val producer = kafkaProducer(kafkaServer.kafkaPort)
+          val producer = kafkaProducer("localhost", kafkaServer.kafkaPort)
           producer.send(KafkaProducerRecord(actorConf.topics.head, None, "value"))
           producer.flush()
 
@@ -93,6 +95,9 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
           expectMsgClass(30.seconds, classOf[Records[String, String]])
           consumer ! Confirm()
           expectNoMsg(5.seconds)
+
+          consumer ! Unsubscribe
+          producer.close()
       }
   }
 
@@ -100,7 +105,7 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
     val kafkaPort = kafkaServer.kafkaPort
     val topic = randomString(5)
 
-    val producer = kafkaProducer(kafkaPort)
+    val producer = kafkaProducer("localhost", kafkaPort)
     producer.send(KafkaProducerRecord(topic, None, "value"))
     producer.flush()
 
@@ -111,6 +116,9 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
     expectMsgClass(30.seconds, classOf[Records[String, String]])
     consumer ! Confirm()
     expectNoMsg(5.seconds)
+
+    consumer ! Unsubscribe
+    producer.close()
   }
 
   //TODO changing actor config settings - timeout etc
@@ -123,7 +131,7 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
     val topic = randomString(5)
     log.info(s"Using topic [$topic] and kafka port [$kafkaPort]")
 
-    val producer = kafkaProducer(kafkaPort)
+    val producer = kafkaProducer("localhost", kafkaPort)
     producer.send(KafkaProducerRecord(topic, None, "value"))
     producer.flush()
 
@@ -133,6 +141,9 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
     val rec = expectMsgClass(30.seconds, classOf[Records[String, String]])
     consumer ! Confirm(Some(rec.offsets))
     expectNoMsg(5.seconds)
+
+    consumer ! Unsubscribe
+    producer.close()
   }
 
   val random = new Random()

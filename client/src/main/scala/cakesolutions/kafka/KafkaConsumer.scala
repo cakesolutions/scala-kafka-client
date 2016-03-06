@@ -15,13 +15,15 @@ object KafkaConsumer {
                     groupId: String = "test",
                     enableAutoCommit: Boolean = true,
                     autoCommitInterval: Int = 1000,
-                    sessionTimeoutMs: Int = 30000): Conf[K, V] = {
+                    sessionTimeoutMs: Int = 30000,
+                    maxPartitionFetchBytes: String = 262144.toString): Conf[K, V] = {
 
       val configMap = Map[String, AnyRef](ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> bootstrapServers,
       ConsumerConfig.GROUP_ID_CONFIG -> groupId,
       ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> enableAutoCommit.toString,
       ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG -> autoCommitInterval.toString,
-      ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG -> sessionTimeoutMs.toString)
+      ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG -> sessionTimeoutMs.toString,
+      ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG -> maxPartitionFetchBytes)
 
       apply(configMap, keyDeserializer, valueDeserializer)
     }
