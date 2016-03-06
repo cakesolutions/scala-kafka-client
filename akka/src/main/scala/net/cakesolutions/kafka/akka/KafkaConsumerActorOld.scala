@@ -3,19 +3,21 @@ package net.cakesolutions.kafka.akka
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 
-import akka.actor._
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import cakesolutions.kafka.KafkaConsumer
 import com.typesafe.config.Config
 import org.apache.kafka.clients.consumer.{ConsumerRecords, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.serialization.Deserializer
-import scala.reflect.runtime.universe._
+import org.slf4j.LoggerFactory
+
 import scala.collection.JavaConversions._
 import scala.concurrent.duration.{Duration, MILLISECONDS => Millis, _}
-import scala.util.{Random, Failure, Success, Try}
+import scala.reflect.runtime.universe._
+import scala.util.{Failure, Success, Try}
 
-object KafkaConsumerActor {
+object KafkaConsumerActorOld {
 
   /**
     * Actor API - Initiate consumption from Kafka or reset an already started stream.
@@ -37,20 +39,8 @@ object KafkaConsumerActor {
     */
   case object Unsubscribe
 
-  /**
-    * // Internal poll trigger
-    * @param correlation unique correlation id
-    * @param timeout Kafka blocking timeout.  Usually we don't want to block when polling the driver for new messages (default 0),
-    *                but in some cases we want to apply a small timeout to reduce poll latency.  Specifically when we are
-    *                consuming faster than we are pulling from Kafka, but there is still a backlog to get through.
-    */
-  private case class Poll(correlation: Int, timeout: Int = 0)
-
-  //Receive State
-  case class Unconfirmed[K, V](unconfirmed: Records[K, V], deliveryTime: LocalDateTime = LocalDateTime.now())
-
-  //Receive State
-  case class Buffered[K, V](unconfirmed: Records[K, V], deliveryTime: LocalDateTime = LocalDateTime.now(), buffered: Records[K, V])
+  // Internal poll trigger
+  private case class Poll(timeout: Int = 0)
 
   case class Offsets(offsetsMap: Map[TopicPartition, Long]) extends AnyVal {
     def get(topic: TopicPartition): Option[Long] = offsetsMap.get(topic)
@@ -84,8 +74,6 @@ object KafkaConsumerActor {
     def values: Seq[V] = records.toList.map(_.value())
   }
 
-  private val random = Random
-
   object Conf {
 
     /**
@@ -112,12 +100,87 @@ object KafkaConsumerActor {
     * @param unconfirmedTimeout Seconds before unconfirmed messages is considered for redelivery.
     */
   case class Conf(topics: List[String],
-                  scheduleInterval: FiniteDuration = 1000.millis,
+                  scheduleInterval: FiniteDuration = 500.millis,
                   unconfirmedTimeout: FiniteDuration = 3.seconds) {
     def withConf(config: Config): Conf = {
       this.copy(topics = config.getStringList("consumer.topics").toList)
     }
   }
+
+  /**
+    *
+    * @param unconfirmedTimeout - Seconds before unconfirmed messages is considered for redelivery.
+    * @tparam K
+    * @tparam V
+    */
+  private[akka] class ClientCache[K, V](unconfirmedTimeout: FiniteDuration) {
+    val log = LoggerFactory.getLogger(getClass)
+
+    //Records sent to client, but not yet confirmed
+    var unconfirmed: Option[Records[K, V]] = None
+
+    //Message buffered from Kafka but not yet sent to client
+    var buffer: Option[Records[K, V]] = None
+
+    //Time unconfirmed records were sent to client, for checking timeout 
+    var deliveryTime: Option[LocalDateTime] = None
+
+    def bufferRecords(records: Records[K, V]) = {
+      log.info("Buffer")
+      buffer = Some(records)
+    }
+
+    /**
+      * If the client has no unconfirmed records and there is a record in the buffer, get it for sending and also add to
+      * unconfirmed.
+      *
+      * @return
+      */
+    def recordsForDelivery(): Option[Records[K, V]] = {
+      if (unconfirmed.isEmpty && buffer.nonEmpty) {
+        val record = buffer.get
+        unconfirmed = Some(record)
+        deliveryTime = Some(LocalDateTime.now())
+        Some(record)
+      } else None
+    }
+
+    //Assumes there are unconfirmed records
+    def getRedeliveryRecords: Records[K, V] = {
+      assert(unconfirmed.isDefined)
+      deliveryTime = Some(LocalDateTime.now())
+      unconfirmed.get
+    }
+
+    /**
+      * True if records unconfirmed for longer than unconfirmedTimeoutSecs
+      *
+      * @return
+      */
+    def confirmationTimeout: Boolean = {
+      deliveryTime match {
+        case Some(time) if unconfirmed.isDefined =>
+          time plus(unconfirmedTimeout.toMillis, ChronoUnit.MILLIS) isBefore LocalDateTime.now()
+        case _ =>
+          false
+      }
+    }
+
+    def confirm(): Unit = {
+      unconfirmed = None
+    }
+
+    def reset(): Unit = {
+      unconfirmed = None
+      buffer = None
+      deliveryTime = None
+    }
+  }
+
+  //  val defaultConsumerConfig: Config =
+  //    ConfigFactory.parseMap(Map(
+  //      "enable.auto.commit" -> "false"
+  //    ))
 
   /**
     * KafkaConsumer config and the consumer actors config all contained in a Typesafe Config.
@@ -127,8 +190,8 @@ object KafkaConsumerActor {
                                     valueDeserializer: Deserializer[V],
                                     nextActor: ActorRef): Props = {
     Props(
-      new KafkaConsumerActor[K, V](KafkaConsumer.Conf[K, V](conf, keyDeserializer, valueDeserializer),
-        KafkaConsumerActor.Conf(conf),
+      new KafkaConsumerActorOld[K, V](KafkaConsumer.Conf[K, V](conf, keyDeserializer, valueDeserializer),
+        KafkaConsumerActorOld.Conf(conf),
         nextActor))
   }
 
@@ -136,31 +199,32 @@ object KafkaConsumerActor {
     * Construct with configured KafkaConsumer and Actor configurations.
     */
   def props[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Conf[K, V],
-                                    actorConf: KafkaConsumerActor.Conf,
+                                    actorConf: KafkaConsumerActorOld.Conf,
                                     nextActor: ActorRef): Props = {
-    Props(new KafkaConsumerActor[K, V](consumerConf, actorConf, nextActor))
+    Props(new KafkaConsumerActorOld[K, V](consumerConf, actorConf, nextActor))
   }
 }
 
-class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Conf[K, V], actorConf: KafkaConsumerActor.Conf, nextActor: ActorRef)
+/**
+  * @param consumerConf
+  * @param nextActor Consumed messages are pushed here.
+  * @tparam K
+  * @tparam V
+  */
+class KafkaConsumerActorOld[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Conf[K, V], actorConf: KafkaConsumerActorOld.Conf, nextActor: ActorRef)
   extends Actor with ActorLogging {
 
-  import context.become
-  import KafkaConsumerActor._
+  import KafkaConsumerActorOld._
 
   private val consumer = KafkaConsumer[K, V](consumerConf)
   private val trackPartitions = TrackPartitions(consumer)
 
-  //Tracks identifier of most recent poll request, so we can ignore old ones.
-  private var pollCorrelation: Option[Int] = None
+  //Actor's mutable state
+  private val clientCache: ClientCache[K, V] = new ClientCache[K, V](actorConf.unconfirmedTimeout)
 
-  //Handle on the poll schedule cancellable
-  private var cancel: Option[Cancellable] = None
+  override def receive: Receive = {
 
-  override def receive = unsubscribed
-
-  //Initial state
-  def unsubscribed: Receive = {
+    //Subscribe - start polling or reset offsets and begin again
     case Subscribe(offsets) =>
       log.info("Subscribing to topic(s): [{}]", actorConf.topics.mkString(", "))
       consumer.subscribe(actorConf.topics, trackPartitions)
@@ -168,80 +232,66 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
         log.info("Seeking to provided offsets")
         trackPartitions.offsets = o.offsetsMap
       })
-      log.info("To Ready state")
-      become(ready)
-      pollImmediate(200)
-  }
-
-  //No unconfirmed or buffered messages
-  def ready: Receive = {
-    case Poll(correlation, timeout) if pollCorrelation.getOrElse(0) == correlation =>
-      pollKafka(timeout) match {
-        case Some(records) =>
-          nextActor ! records
-          log.info("To unconfirmed state")
-          become(unconfirmed(Unconfirmed(records)))
-          pollImmediate()
-
-        case None =>
-          schedulePoll()
-      }
-    case Unsubscribe =>
-      become(unsubscribed)
-  }
-
-  // Unconfirmed message with client, buffer empty
-  def unconfirmed(state: Unconfirmed[K, V]): Receive = {
-    case Poll(correlation, _) if pollCorrelation.getOrElse(0) == correlation =>
-
-      if (isConfirmationTimeout(state.deliveryTime)) {
-        nextActor ! state.unconfirmed
-      }
-
-      pollKafka() match {
-        case Some(records) =>
-          nextActor ! records
-          log.info("To Buffer Full state")
-          become(bufferFull(Buffered(state.unconfirmed, state.deliveryTime, records)))
-          schedulePoll()
-        case None =>
-          schedulePoll()
-      }
-    case Confirm(offsetsO) =>
-      log.info(s"Records confirmed")
-      offsetsO.foreach { offsets => commitOffsets(offsets) }
-      log.info("To Ready state")
-      become(ready)
-
-      //immediate poll after confirm with block to reduce poll latency when backlog but processing is fast...
-      pollImmediate(200)
-
-    case Unsubscribe =>
-      become(unsubscribed)
-  }
-
-  //Buffered message and unconfirmed message
-  def bufferFull(state: Buffered[K, V]): Receive = {
-    case Poll(correlation, _) if pollCorrelation.getOrElse(0) == correlation =>
-      if (isConfirmationTimeout(state.deliveryTime)) {
-        nextActor ! state.unconfirmed
-      }
-
-      log.info(s"Buffer is full. Not gonna poll.")
-      schedulePoll()
-    case Confirm(offsetsO) =>
-      log.info(s"Records confirmed")
-      offsetsO.foreach { offsets => commitOffsets(offsets) }
-      nextActor ! state.buffered
-      log.info("To unconfirmed state")
-      become(unconfirmed(Unconfirmed(state.buffered)))
+      clientCache.reset()
       pollImmediate()
 
+    case Confirm(offsetsO) =>
+      log.info(s"Records confirmed")
+      clientCache.confirm()
+
+      offsetsO match {
+        case Some(offsets) =>
+          commitOffsets(offsets)
+        case None =>
+      }
+
+      if (clientCache.buffer.isDefined) {
+        clientCache.recordsForDelivery().foreach(records => sendRecords(records))
+
+      }
+
+    //Internal
+    case Poll(timeout) =>
+      log.info("Poll loop")
+
+      //Check for unconfirmed timed-out messages and redeliver
+      if (clientCache.confirmationTimeout) {
+        log.debug("Message timed out, redelivering")
+        sendRecords(clientCache.getRedeliveryRecords)
+      }
+
+      pollKafka(timeout)
+      schedulePoll()
+
+    //TODO need to ignore future poll and stop scheduling poll and disconnect from Kafka.
     case Unsubscribe =>
-      become(unsubscribed)
+      log.info("Unsubscribing")
+      consumer.unsubscribe()
+      clientCache.reset()
+
+    //    case GracefulShutdown =>
+    //      context.stop(self)
+  }
+
+  private def pollKafka(timeout: Int = 0): Unit = {
+    if (clientCache.buffer.isDefined) {
+      log.info(s"Buffers is full. Not gonna poll.")
+    } else {
+      poll(timeout) match {
+        case Some(records) =>
+          log.info("Received records")
+          clientCache.bufferRecords(records)
+          clientCache.recordsForDelivery().foreach(records => sendRecords(records))
+          if (clientCache.buffer.isEmpty) {
+            pollKafka()
+          }
+        case _ =>
+      }
+    }
   }
 
   override def postStop(): Unit = {
+    interrupt()
     close()
   }
 
@@ -251,11 +301,11 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
     * @param timeout - specify a blocking poll timeout.  Default 0 for non blocking poll.
     * @return
     */
-  private def pollKafka(timeout: Int = 0): Option[Records[K, V]] = {
-    log.info("poll kafka {}", timeout)
+  private def poll(timeout: Int = 0): Option[Records[K, V]] = {
+    log.info("poll")
     Try(consumer.poll(timeout)) match {
       case Success(rs) if rs.count() > 0 =>
-        log.info("Records Received!")
+        log.info("!!")
         Some(Records(currentConsumerOffsets, rs))
       case Success(rs) =>
         None
@@ -268,27 +318,27 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
     }
   }
 
-  private def schedulePoll(): Unit = {
-    log.info("Scheduling Poll, with timeout")
-
-    cancelScheduledPoll()
-    pollCorrelation = Some(random.nextInt())
-    cancel = Some(
-      context.system.scheduler.scheduleOnce(actorConf.scheduleInterval, self, Poll(pollCorrelation.get))(context.dispatcher)
-    )
+  private def interrupt(): Unit = {
+    consumer.wakeup()
   }
 
-  private def pollImmediate(timeout: Int = 0): Unit = {
-    log.info("Poll immediate {}", timeout)
-
-    cancelScheduledPoll()
-    val correlation = random.nextInt()
-    pollCorrelation = Some(correlation)
-    self ! Poll(correlation, timeout)
+  private def close(): Unit = {
+    consumer.close()
   }
 
-  private def cancelScheduledPoll() = {
-    cancel.foreach(_.cancel())
+  private def sendRecords(records: Records[K, V]): Unit = {
+    log.info("Delivering records to client")
+    nextActor ! records
+  }
+
+  private def schedulePoll(timeout: Int = 0): Unit = {
+    log.info("Scheduling Poll, with timeout {}", timeout)
+    context.system.scheduler.scheduleOnce(actorConf.scheduleInterval, self, Poll(timeout))(context.dispatcher)
+  }
+
+  private def pollImmediate(): Unit = {
+    log.info("Poll immediate")
+    self ! Poll()
   }
 
   private def currentConsumerOffsets: Offsets = {
@@ -296,15 +346,6 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
       .map(p => p -> consumer.position(p))
       .toMap
     Offsets(offsetsMap)
-  }
-
-  /**
-    * True if records unconfirmed for longer than unconfirmedTimeoutSecs
-    *
-    * @return
-    */
-  private def isConfirmationTimeout(deliveryTime: LocalDateTime): Boolean = {
-    deliveryTime plus(actorConf.unconfirmedTimeout.toMillis, ChronoUnit.MILLIS) isBefore LocalDateTime.now()
   }
 
   private def commitOffsets(offsets: Offsets): Unit = {
@@ -315,9 +356,5 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
   override def unhandled(message: Any): Unit = {
     super.unhandled(message)
     log.warning("Unknown message: {}", message)
-  }
-
-  private def close(): Unit = {
-    consumer.close()
   }
 }
