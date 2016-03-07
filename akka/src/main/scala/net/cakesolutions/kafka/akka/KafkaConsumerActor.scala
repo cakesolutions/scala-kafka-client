@@ -165,6 +165,7 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
   private val unsubscribeReceive: Receive = {
     case Unsubscribe =>
       log.info("Unsubscribing")
+      cancelPoll()
       consumer.unsubscribe()
       trackPartitions.clearOffsets()
       become(unsubscribed)

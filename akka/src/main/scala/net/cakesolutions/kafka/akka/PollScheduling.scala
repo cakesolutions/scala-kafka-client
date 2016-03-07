@@ -4,7 +4,7 @@ import akka.actor.{ActorLogging, Actor, Cancellable}
 
 import scala.concurrent.duration.FiniteDuration
 
-private [akka] object PollScheduling {
+protected object PollScheduling {
 
   /**
     * Internal poll trigger
@@ -17,7 +17,7 @@ private [akka] object PollScheduling {
   final case class Poll(correlationId: Long, timeout: Int = 0)
 }
 
-private [akka] trait PollScheduling extends ActorLogging {
+protected trait PollScheduling extends ActorLogging {
   self: Actor =>
 
   import PollScheduling._
@@ -63,7 +63,7 @@ private [akka] trait PollScheduling extends ActorLogging {
     */
   protected def pollImmediate(timeout: Int = 0): Unit = {
     log.debug("Poll immediate with {} timeout", timeout)
-    pollCancellable.cancel()
+    cancelPoll()
     context.self ! nextPoll(timeout)
   }
 
@@ -75,7 +75,9 @@ private [akka] trait PollScheduling extends ActorLogging {
   protected def schedulePoll(timeout: FiniteDuration): Unit = {
     log.debug("Schedule poll to occur after {}", timeout)
     import context.dispatcher
-    pollCancellable.cancel()
+    cancelPoll()
     pollCancellable = context.system.scheduler.scheduleOnce(timeout, context.self, nextPoll(0))
   }
+
+  protected def cancelPoll(): Unit = pollCancellable.cancel()
 }
