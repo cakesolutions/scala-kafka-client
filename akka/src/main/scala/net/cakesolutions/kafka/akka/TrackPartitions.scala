@@ -23,7 +23,7 @@ protected class TrackPartitions(consumer: KafkaConsumer[_, _]) extends ConsumerR
   private var _offsets = Map[TopicPartition, Long]()
 
   def seek(next: Map[TopicPartition, Long]): Unit = {
-    log.info("Seeking to provided offsets")
+    log.info("Seeking to offsets: {}", next)
     _offsets = next
   }
 

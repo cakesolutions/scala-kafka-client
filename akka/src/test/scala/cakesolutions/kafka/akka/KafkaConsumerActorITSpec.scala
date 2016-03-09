@@ -81,7 +81,7 @@ class KafkaConsumerActorITSpec(system: ActorSystem)
       log.info("Received {} records", r.records.count())
       cnt += r.records.count()
       Thread.sleep(5000)
-      consumer ! Confirm()
+      consumer ! Confirm(r.offsets)
     }
     log.info("Total {} records", cnt)
 

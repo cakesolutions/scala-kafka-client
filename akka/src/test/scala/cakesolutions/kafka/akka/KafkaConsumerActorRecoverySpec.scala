@@ -53,7 +53,7 @@ with AsyncAssertions {
     rec1.offsets.get(new TopicPartition(topic,0)) shouldBe Some(1)
 
     //Commit the message
-    consumer ! Confirm(Some(rec1.offsets))
+    consumer ! Confirm(rec1.offsets, commit = true)
     expectNoMsg(5.seconds)
 
     producer.send(KafkaProducerRecord(topic, None, "value"))
@@ -63,7 +63,7 @@ with AsyncAssertions {
     rec2.offsets.get(new TopicPartition(topic,0)) shouldBe Some(2)
 
     //Message confirmed, but not commited
-    consumer ! Confirm()
+    consumer ! Confirm(rec2.offsets)
     expectNoMsg(5.seconds)
 
     consumer ! Unsubscribe
@@ -72,7 +72,7 @@ with AsyncAssertions {
     consumer ! Subscribe()
     val rec3 = expectMsgClass(30.seconds, classOf[Records[String, String]])
     rec3.offsets.get(new TopicPartition(topic,0)) shouldBe Some(2)
-    consumer ! Confirm()
+    consumer ! Confirm(rec3.offsets)
     expectNoMsg(5.seconds)
 
     consumer ! Unsubscribe
@@ -95,7 +95,7 @@ with AsyncAssertions {
 
     //Stash the offsets for recovery, and confirm the message.
     val offsets = rec1.offsets
-    consumer ! Confirm()
+    consumer ! Confirm(offsets)
     expectNoMsg(5.seconds)
 
     producer.send(KafkaProducerRecord(topic, None, "value"))
@@ -105,7 +105,7 @@ with AsyncAssertions {
     rec2.offsets.get(new TopicPartition(topic,0)) shouldBe Some(2)
 
     //Message confirmed
-    consumer ! Confirm()
+    consumer ! Confirm(rec2.offsets)
     expectNoMsg(5.seconds)
 
     consumer ! Unsubscribe
@@ -114,7 +114,7 @@ with AsyncAssertions {
     consumer ! Subscribe(Some(offsets))
     val rec3 = expectMsgClass(30.seconds, classOf[Records[String, String]])
     rec3.offsets.get(new TopicPartition(topic,0)) shouldBe Some(2)
-    consumer ! Confirm()
+    consumer ! Confirm(rec3.offsets)
     expectNoMsg(5.seconds)
 
     consumer ! Unsubscribe

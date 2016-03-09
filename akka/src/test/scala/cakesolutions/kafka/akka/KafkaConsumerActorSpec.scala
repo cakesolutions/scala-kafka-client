@@ -21,6 +21,8 @@ object KafkaConsumerActorSpec {
   def actorConf(topic: String): KafkaConsumerActor.Conf = {
     KafkaConsumerActor.Conf(List(topic))
   }
+
+  val random = new Random()
 }
 
 class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with KafkaTestServer with ImplicitSender with AsyncAssertions {
@@ -41,18 +43,18 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
       ConfigFactory.parseString(
         s"""
            | bootstrap.servers = "localhost:${kafkaServer.kafkaPort}",
-           | group.id = "test"
+           | group.id = "${randomString(5)}"
            | enable.auto.commit = false
            | auto.offset.reset = "earliest"
         """.stripMargin), new StringDeserializer, new StringDeserializer)
   }
 
-  val consumerConf: KafkaConsumer.Conf[String, String] = {
+  def consumerConf: KafkaConsumer.Conf[String, String] = {
     KafkaConsumer.Conf(
       new StringDeserializer,
       new StringDeserializer,
       bootstrapServers = s"localhost:${kafkaServer.kafkaPort}",
-      groupId = "test",
+      groupId = randomString(5),
       enableAutoCommit = false).witAutoOffsetReset(OffsetResetStrategy.EARLIEST)
   }
 
@@ -70,7 +72,7 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
     ConfigFactory.parseString(
       s"""
          | bootstrap.servers = "localhost:${kafkaServer.kafkaPort}",
-         | group.id = "test"
+         | group.id = "${randomString(5)}"
          | enable.auto.commit = false
          | auto.offset.reset = "earliest"
          | consumer.topics = ["$topic"]
@@ -92,8 +94,8 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
           val consumer = system.actorOf(KafkaConsumerActor.props(consumerConfig, actorConf, testActor))
           consumer ! Subscribe()
 
-          expectMsgClass(30.seconds, classOf[Records[String, String]])
-          consumer ! Confirm()
+          val rs = expectMsgClass(30.seconds, classOf[Records[String, String]])
+          consumer ! Confirm(rs.offsets)
           expectNoMsg(5.seconds)
 
           consumer ! Unsubscribe
@@ -113,8 +115,8 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
     val consumer = system.actorOf(KafkaConsumerActor.props(configuredActor(topic), new StringDeserializer(), new StringDeserializer(), testActor))
     consumer ! Subscribe()
 
-    expectMsgClass(30.seconds, classOf[Records[String, String]])
-    consumer ! Confirm()
+    val rs = expectMsgClass(30.seconds, classOf[Records[String, String]])
+    consumer ! Confirm(rs.offsets)
     expectNoMsg(5.seconds)
 
     consumer ! Unsubscribe
@@ -139,14 +141,12 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
     consumer ! Subscribe()
 
     val rec = expectMsgClass(30.seconds, classOf[Records[String, String]])
-    consumer ! Confirm(Some(rec.offsets))
+    consumer ! Confirm(rec.offsets, commit = true)
     expectNoMsg(5.seconds)
 
     consumer ! Unsubscribe
     producer.close()
   }
-
-  val random = new Random()
 
   def randomString(length: Int): String =
     random.alphanumeric.take(length).mkString
