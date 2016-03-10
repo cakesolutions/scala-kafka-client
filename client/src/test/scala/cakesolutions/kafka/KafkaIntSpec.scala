@@ -35,6 +35,29 @@ class KafkaIntSpec extends KafkaTestServer {
     consumer.close
   }
 
+//  "Kafka client" should "send and receive2" in {
+//    val kafkaPort = kafkaServer.kafkaPort
+//    val topic = randomString(5)
+//    log.info(s"Using topic [$topic] and kafka port [$kafkaPort]")
+//
+//    val consumer = KafkaConsumer(Conf(new StringDeserializer(), new StringDeserializer(), bootstrapServers = "192.168.99.100:9092"))
+//    consumer.subscribe(List(topic))
+//    val records1 = consumer.poll(1000)
+//
+//    records1.count() shouldEqual 0
+//
+//    val producer = KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = "192.168.99.100:9092")
+//    log.info("Kafka producer connecting on port: [{}]", kafkaPort)
+//    producer.send(KafkaProducerRecord(topic, Some("key"), "value"))
+//    producer.flush()
+//
+//    val records2: ConsumerRecords[String, String] = consumer.poll(10000)
+//    records2.count() shouldEqual 1
+//
+//    producer.close
+//    consumer.close
+//  }
+
   val random = new Random()
 
   def randomString(length: Int): String =

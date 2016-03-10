@@ -23,7 +23,10 @@ object KafkaConsumerActorSpec {
   }
 }
 
-class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with KafkaTestServer with ImplicitSender with AsyncAssertions {
+class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system)
+  with KafkaTestServer
+  with ImplicitSender
+  with AsyncAssertions {
 
   import KafkaConsumerActorSpec._
 
@@ -80,26 +83,26 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
         """.stripMargin)
   }
 
-  "KafkaConsumerActors with different configuration types" should "consume a message successfully" in {
-
-    (List(consumerConfFromConfig, consumerConf) zip List(actorConf(randomString(5)), actorConfFromConfig(randomString(5))))
-      .foreach {
-        case (consumerConfig, actorConf) =>
-          val producer = kafkaProducer("localhost", kafkaServer.kafkaPort)
-          producer.send(KafkaProducerRecord(actorConf.topics.head, None, "value"))
-          producer.flush()
-
-          val consumer = system.actorOf(KafkaConsumerActor.props(consumerConfig, actorConf, testActor))
-          consumer ! Subscribe()
-
-          expectMsgClass(30.seconds, classOf[Records[String, String]])
-          consumer ! Confirm()
-          expectNoMsg(5.seconds)
-
-          consumer ! Unsubscribe
-          producer.close()
-      }
-  }
+//  "KafkaConsumerActors with different configuration types" should "consume a message successfully" in {
+//
+//    (List(consumerConfFromConfig, consumerConf) zip List(actorConf(randomString(5)), actorConfFromConfig(randomString(5))))
+//      .foreach {
+//        case (consumerConfig, actorConf) =>
+//          val producer = kafkaProducer("localhost", kafkaServer.kafkaPort)
+//          producer.send(KafkaProducerRecord(actorConf.topics.head, None, "value"))
+//          producer.flush()
+//
+//          val consumer = system.actorOf(KafkaConsumerActor.props(consumerConfig, actorConf, testActor))
+//          consumer ! Subscribe()
+//
+//          expectMsgClass(30.seconds, classOf[Records[String, String]])
+//          consumer ! Confirm()
+//          expectNoMsg(5.seconds)
+//
+//          consumer ! Unsubscribe
+//          producer.close()
+//      }
+//  }
 
   "KafkaConsumerActor configured via props" should "consume a sequence of messages" in {
     val kafkaPort = kafkaServer.kafkaPort
@@ -126,25 +129,25 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system) with K
   //TODO test message pattern
 
   //TODO review
-  "KafkaConsumerActor in commit mode" should "consume a sequence of messages" in {
-    val kafkaPort = kafkaServer.kafkaPort
-    val topic = randomString(5)
-    log.info(s"Using topic [$topic] and kafka port [$kafkaPort]")
-
-    val producer = kafkaProducer("localhost", kafkaPort)
-    producer.send(KafkaProducerRecord(topic, None, "value"))
-    producer.flush()
-
-    val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, actorConf(topic), testActor))
-    consumer ! Subscribe()
-
-    val rec = expectMsgClass(30.seconds, classOf[Records[String, String]])
-    consumer ! Confirm(Some(rec.offsets))
-    expectNoMsg(5.seconds)
-
-    consumer ! Unsubscribe
-    producer.close()
-  }
+//  "KafkaConsumerActor in commit mode" should "consume a sequence of messages" in {
+//    val kafkaPort = kafkaServer.kafkaPort
+//    val topic = randomString(5)
+//    log.info(s"Using topic [$topic] and kafka port [$kafkaPort]")
+//
+//    val producer = kafkaProducer("localhost", kafkaPort)
+//    producer.send(KafkaProducerRecord(topic, None, "value"))
+//    producer.flush()
+//
+//    val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, actorConf(topic), testActor))
+//    consumer ! Subscribe()
+//
+//    val rec = expectMsgClass(30.seconds, classOf[Records[String, String]])
+//    consumer ! Confirm(Some(rec.offsets))
+//    expectNoMsg(5.seconds)
+//
+//    consumer ! Unsubscribe
+//    producer.close()
+//  }
 
   val random = new Random()
 

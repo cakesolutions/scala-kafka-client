@@ -1,9 +1,9 @@
 package cakesolutions.kafka
 
 import cakesolutions.kafka.KafkaConsumer.Conf
-import org.apache.kafka.clients.consumer.{OffsetResetStrategy, ConsumerRecords}
-import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
-import org.scalatest.{Matchers, BeforeAndAfterAll, FlatSpecLike}
+import org.apache.kafka.clients.consumer.OffsetResetStrategy
+import org.apache.kafka.common.serialization.StringDeserializer
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._

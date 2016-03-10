@@ -2,8 +2,6 @@ import Dependencies._
 
 name := "scala-kafka-client-akka"
 
-parallelExecution in Test := false
-
 libraryDependencies ++= Seq(
   "com.typesafe" % "config" % "1.3.0",
   "com.typesafe.akka" %% "akka-actor" % versions.akka,

@@ -15,9 +15,10 @@ import scala.concurrent.duration._
 import scala.util.Random
 
 class KafkaConsumerActorRecoverySpec(system: ActorSystem) extends TestKit(system)
-with KafkaTestServer
-with ImplicitSender
-with AsyncAssertions {
+  with KafkaTestServer
+  with ImplicitSender
+  with AsyncAssertions {
+
   import KafkaConsumerActorSpec._
 
   val log = LoggerFactory.getLogger(getClass)
@@ -50,7 +51,7 @@ with AsyncAssertions {
     consumer ! Subscribe()
 
     val rec1 = expectMsgClass(30.seconds, classOf[Records[String, String]])
-    rec1.offsets.get(new TopicPartition(topic,0)) shouldBe Some(1)
+    rec1.offsets.get(new TopicPartition(topic, 0)) shouldBe Some(1)
 
     //Commit the message
     consumer ! Confirm(Some(rec1.offsets))
@@ -60,7 +61,7 @@ with AsyncAssertions {
     producer.flush()
 
     val rec2 = expectMsgClass(30.seconds, classOf[Records[String, String]])
-    rec2.offsets.get(new TopicPartition(topic,0)) shouldBe Some(2)
+    rec2.offsets.get(new TopicPartition(topic, 0)) shouldBe Some(2)
 
     //Message confirmed, but not commited
     consumer ! Confirm()
@@ -71,7 +72,7 @@ with AsyncAssertions {
     // New subscription starts from commit point
     consumer ! Subscribe()
     val rec3 = expectMsgClass(30.seconds, classOf[Records[String, String]])
-    rec3.offsets.get(new TopicPartition(topic,0)) shouldBe Some(2)
+    rec3.offsets.get(new TopicPartition(topic, 0)) shouldBe Some(2)
     consumer ! Confirm()
     expectNoMsg(5.seconds)
 
@@ -91,7 +92,7 @@ with AsyncAssertions {
     consumer ! Subscribe()
 
     val rec1 = expectMsgClass(30.seconds, classOf[Records[String, String]])
-    rec1.offsets.get(new TopicPartition(topic,0)) shouldBe Some(1)
+    rec1.offsets.get(new TopicPartition(topic, 0)) shouldBe Some(1)
 
     //Stash the offsets for recovery, and confirm the message.
     val offsets = rec1.offsets
@@ -102,7 +103,7 @@ with AsyncAssertions {
     producer.flush()
 
     val rec2 = expectMsgClass(30.seconds, classOf[Records[String, String]])
-    rec2.offsets.get(new TopicPartition(topic,0)) shouldBe Some(2)
+    rec2.offsets.get(new TopicPartition(topic, 0)) shouldBe Some(2)
 
     //Message confirmed
     consumer ! Confirm()
@@ -113,7 +114,7 @@ with AsyncAssertions {
     // New subscription starts from specified offset
     consumer ! Subscribe(Some(offsets))
     val rec3 = expectMsgClass(30.seconds, classOf[Records[String, String]])
-    rec3.offsets.get(new TopicPartition(topic,0)) shouldBe Some(2)
+    rec3.offsets.get(new TopicPartition(topic, 0)) shouldBe Some(2)
     consumer ! Confirm()
     expectNoMsg(5.seconds)
 
