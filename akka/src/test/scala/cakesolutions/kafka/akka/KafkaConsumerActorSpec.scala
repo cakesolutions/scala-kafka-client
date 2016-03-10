@@ -2,10 +2,9 @@ package cakesolutions.kafka.akka
 
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
+import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records, Subscribe, Unsubscribe}
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.{Config, ConfigFactory}
-import net.cakesolutions.kafka.akka.KafkaConsumerActor
-import net.cakesolutions.kafka.akka.KafkaConsumerActor.{Unsubscribe, Confirm, Records, Subscribe}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.scalatest.concurrent.AsyncAssertions
@@ -129,27 +128,6 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system)
   //TODO changing actor config settings - timeout etc
 
   //TODO test message pattern
-
-  //TODO review
-  "KafkaConsumerActor in commit mode" should "consume a sequence of messages" in {
-    val kafkaPort = kafkaServer.kafkaPort
-    val topic = randomString(5)
-    log.info(s"Using topic [$topic] and kafka port [$kafkaPort]")
-
-    val producer = kafkaProducer("localhost", kafkaPort)
-    producer.send(KafkaProducerRecord(topic, None, "value"))
-    producer.flush()
-
-    val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, actorConf(topic), testActor))
-    consumer ! Subscribe()
-
-    val rec = expectMsgClass(30.seconds, classOf[Records[String, String]])
-    consumer ! Confirm(rec.offsets, commit = true)
-    expectNoMsg(5.seconds)
-
-    consumer ! Unsubscribe
-    producer.close()
-  }
 
   def randomString(length: Int): String =
     random.alphanumeric.take(length).mkString

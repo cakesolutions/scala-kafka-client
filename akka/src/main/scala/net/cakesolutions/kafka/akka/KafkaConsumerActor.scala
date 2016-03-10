@@ -1,4 +1,4 @@
-package net.cakesolutions.kafka.akka
+package cakesolutions.kafka.akka
 
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
@@ -120,7 +120,8 @@ object KafkaConsumerActor {
     *
     * @param topics             List of topics to subscribe to.
     * @param scheduleInterval   Poll Latency.
-    * @param unconfirmedTimeout Seconds before unconfirmed messages is considered for redelivery.
+    * @param unconfirmedTimeout Seconds before unconfirmed messages is considered for redelivery.  To disable message redelivery
+    *                           provide a duration of 0.
     */
   case class Conf(topics: List[String],
                   scheduleInterval: FiniteDuration = 1000.millis,
@@ -249,11 +250,11 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
       log.debug("To Ready state")
       become(ready)
 
-      //immediate poll after confirm with block to reduce poll latency when backlog but processing is fast...
+      // Immediate poll after confirm with block to reduce poll latency in case the is a backlog in Kafka but processing is fast.
       pollImmediate(200)
   }
 
-  //Buffered message and unconfirmed message
+  // Buffered message and unconfirmed message
   def bufferFull(state: Buffered): Receive = unconfirmedCommonReceive(state) orElse {
     case Poll(correlation, _) if isCurrentPoll(correlation) =>
       if (isConfirmationTimeout(state.deliveryTime)) {
@@ -281,7 +282,7 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
   }
 
   /**
-    * Attempt to get new records from Kafka
+    * Attempt to get new records from Kafka,
     *
     * @param timeout - specify a blocking poll timeout.  Default 0 for non blocking poll.
     * @return
@@ -313,9 +314,7 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
   }
 
   /**
-    * True if records unconfirmed for longer than unconfirmedTimeoutSecs
-    *
-    * @return
+    * True if records unconfirmed for longer than unconfirmedTimeoutSecs.
     */
   private def isConfirmationTimeout(deliveryTime: LocalDateTime): Boolean =
     isTimeoutUsed && timeoutTime(deliveryTime).isBefore(LocalDateTime.now())

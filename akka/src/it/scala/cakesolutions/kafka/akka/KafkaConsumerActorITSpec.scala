@@ -3,8 +3,8 @@ package cakesolutions.kafka.akka
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducerRecord}
-import net.cakesolutions.kafka.akka.KafkaConsumerActor
-import net.cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records, Subscribe, Unsubscribe}
+import cakesolutions.kafka.akka.KafkaConsumerActor
+import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records, Subscribe, Unsubscribe}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.scalatest.concurrent.AsyncAssertions
