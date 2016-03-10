@@ -10,6 +10,6 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "log4j-over-slf4j" % versions.slf4j,
 
   //Test deps
-  "org.scalatest" % "scalatest_2.11" % versions.scalaTest % "test",
+  "org.scalatest" %% "scalatest" % versions.scalaTest % "test",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
 )

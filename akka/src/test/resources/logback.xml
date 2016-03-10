@@ -13,7 +13,7 @@
     <logger name="kafka.utils" level="WARN" />
     <logger name="org.apache.kafka" level="INFO" />
     <logger name="kafka" level="INFO" />
-    <logger name="net.cakesolutions" level="DEBUG" />
+    <logger name="cakesolutions" level="DEBUG" />
 
     <root level="DEBUG">
         <appender-ref ref="STDOUT" />

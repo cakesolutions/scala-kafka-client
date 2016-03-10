@@ -2,9 +2,8 @@ package cakesolutions.kafka.akka
 
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
-import cakesolutions.kafka.{KafkaProducerRecord, KafkaConsumer}
-import net.cakesolutions.kafka.akka.KafkaConsumerActor
-import net.cakesolutions.kafka.akka.KafkaConsumerActor.{Unsubscribe, Confirm, Records, Subscribe}
+import cakesolutions.kafka.akka.KafkaConsumerActor._
+import cakesolutions.kafka.{KafkaConsumer, KafkaProducerRecord}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.StringDeserializer
@@ -15,9 +14,10 @@ import scala.concurrent.duration._
 import scala.util.Random
 
 class KafkaConsumerActorRecoverySpec(system: ActorSystem) extends TestKit(system)
-with KafkaTestServer
-with ImplicitSender
-with AsyncAssertions {
+  with KafkaTestServer
+  with ImplicitSender
+  with AsyncAssertions {
+
   import KafkaConsumerActorSpec._
 
   val log = LoggerFactory.getLogger(getClass)
@@ -50,7 +50,7 @@ with AsyncAssertions {
     consumer ! Subscribe()
 
     val rec1 = expectMsgClass(30.seconds, classOf[Records[String, String]])
-    rec1.offsets.get(new TopicPartition(topic,0)) shouldBe Some(1)
+    rec1.offsets.get(new TopicPartition(topic, 0)) shouldBe Some(1)
 
     //Commit the message
     consumer ! Confirm(rec1.offsets, commit = true)
@@ -60,7 +60,7 @@ with AsyncAssertions {
     producer.flush()
 
     val rec2 = expectMsgClass(30.seconds, classOf[Records[String, String]])
-    rec2.offsets.get(new TopicPartition(topic,0)) shouldBe Some(2)
+    rec2.offsets.get(new TopicPartition(topic, 0)) shouldBe Some(2)
 
     //Message confirmed, but not commited
     consumer ! Confirm(rec2.offsets)
@@ -91,7 +91,7 @@ with AsyncAssertions {
     consumer ! Subscribe()
 
     val rec1 = expectMsgClass(30.seconds, classOf[Records[String, String]])
-    rec1.offsets.get(new TopicPartition(topic,0)) shouldBe Some(1)
+    rec1.offsets.get(new TopicPartition(topic, 0)) shouldBe Some(1)
 
     //Stash the offsets for recovery, and confirm the message.
     val offsets = rec1.offsets
@@ -102,7 +102,7 @@ with AsyncAssertions {
     producer.flush()
 
     val rec2 = expectMsgClass(30.seconds, classOf[Records[String, String]])
-    rec2.offsets.get(new TopicPartition(topic,0)) shouldBe Some(2)
+    rec2.offsets.get(new TopicPartition(topic, 0)) shouldBe Some(2)
 
     //Message confirmed
     consumer ! Confirm(rec2.offsets)

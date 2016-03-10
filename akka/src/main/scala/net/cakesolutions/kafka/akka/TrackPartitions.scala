@@ -1,4 +1,4 @@
-package net.cakesolutions.kafka.akka
+package cakesolutions.kafka.akka
 
 import java.util.{Collection => JCollection}
 

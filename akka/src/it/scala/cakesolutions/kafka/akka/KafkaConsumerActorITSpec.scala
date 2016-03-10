@@ -1,15 +1,14 @@
 package cakesolutions.kafka.akka
 
 import akka.actor.ActorSystem
-import akka.testkit.{TestProbe, ImplicitSender, TestKit}
-import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
-import com.typesafe.config.{Config, ConfigFactory}
-import net.cakesolutions.kafka.akka.KafkaConsumerActor
-import net.cakesolutions.kafka.akka.KafkaConsumerActor.{Unsubscribe, Confirm, Records, Subscribe}
+import akka.testkit.{ImplicitSender, TestKit, TestProbe}
+import cakesolutions.kafka.{KafkaConsumer, KafkaProducerRecord}
+import cakesolutions.kafka.akka.KafkaConsumerActor
+import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records, Subscribe, Unsubscribe}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
-import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
-import org.scalatest.{Matchers, BeforeAndAfterAll, FlatSpecLike}
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.scalatest.concurrent.AsyncAssertions
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
@@ -80,7 +79,7 @@ class KafkaConsumerActorITSpec(system: ActorSystem)
       val r = probe.expectMsgClass(30.seconds, classOf[Records[String, String]])
       log.info("Received {} records", r.records.count())
       cnt += r.records.count()
-      Thread.sleep(5000)
+      // Thread.sleep(5000)
       consumer ! Confirm(r.offsets)
     }
     log.info("Total {} records", cnt)

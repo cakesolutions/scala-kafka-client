@@ -21,7 +21,7 @@ To include, add the following resolver to the build.sbt
 
  scala-kafka-client | Kafka Java Driver
  ------------------ | -----------------
- 0.5 | 0.9.0.1 | Not Yet Released!
+ 0.5 | 0.9.0.1
  0.4  | 0.9.0.0
 
 ## Scala Kafka Client
@@ -44,12 +44,17 @@ The cakesolutions.kafka.KafkaConsumer.Conf case class models the configuration r
 Key and Value Deserialisers are also required as documented in the Kafka client docs.
 
 ```
-val consumer = KafkaConsumer(KafkaConsumer.Conf(new StringDeserializer(), new StringDeserializer(), bootstrapServers = "localhost:8082"))
+import cakesolutions.kafka.KafkaConsumer
+import cakesolutions.kafka.KafkaConsumer.Conf
+
+val consumer = KafkaConsumer(Conf(new StringDeserializer(), new StringDeserializer(), bootstrapServers = "localhost:8082"))
 ```
 
 The Conf class provides additional properties with defaults:
 
 ```
+import cakesolutions.kafka.KafkaConsumer.Conf
+
 Conf(new StringDeserializer(), new StringDeserializer()
     bootstrapServers = "localhost:9092",
     groupId: = "group",
@@ -64,28 +69,34 @@ Pass a Config to cakesolutions.kafka.KafkaConsumer.Conf:
 
 ```
 application.conf:
-
 {
       bootstrap.servers = "localhost:8082"
 }
 
+import cakesolutions.kafka.KafkaConsumer
+import cakesolutions.kafka.KafkaConsumer.Conf
+
 val conf = ConfigFactory.load
 
-val consumer = KafkaConsumer(KafkaConsumer.Conf(new StringDeserializer(), new StringDeserializer(), conf))
+val consumer = KafkaConsumer(Conf(conf, new StringDeserializer(), new StringDeserializer()))
 ```
 
 #### Additional Config Options
 A combination of static properties and Typesafe config properties is also an option.  The Typesafe config properties will override predefined properties:
 
 ```
+import cakesolutions.kafka.KafkaConsumer
+import cakesolutions.kafka.KafkaConsumer.Conf
+
 val conf = ConfigFactory.parseString(
         s"""
            | bootstrap.servers = "localhost:8082",
            | group.id = "group1"
         """.stripMargin)
 
-val conf = Conf(new StringDeserializer(), new StringDeserializer(), enableAutoCommit = false).withConf(conf)
-val consumer = KafkaConsumer(conf)
+val consumer = KafkaConsumer(
+    Conf(new StringDeserializer(), new StringDeserializer(), enableAutoCommit = false).withConf(conf)
+)
 ```
 
 ## Scala Kafka Client - Async
@@ -120,8 +131,9 @@ To create a KafkaConsumerActor the dependencies in the KafkaConsumerActor.props(
 done with a Key and Value deserializer with all other consumer properties supplied in a Typesafe configuration.
 
 ```
+
+//application.conf
 {
-    //KafkaConsumer config
     bootstrap.servers = "localhost:9092",
     group.id = "test"
     enable.auto.commit = false
@@ -132,7 +144,10 @@ done with a Key and Value deserializer with all other consumer properties suppli
     unconfirmed.timeout = 3000 milliseconds
     buffer.size = 8
 }
-       
+
+import cakesolutions.kafka.akka.KafkaConsumerActor
+
+val consumer = system.actorOf(KafkaConsumerActor.props(conf, new StringDeserializer(), new StringDeserializer(), receiverActor))
 ```
 
 An alternative approach
@@ -140,11 +155,27 @@ is to provide KafkaConsumer.Conf and KafkaConsumerActor.Conf configuration case 
 
 #### KafkaConsumer.Conf
 
-- TODO
+```
+import cakesolutions.kafka.KafkaConsumer
+import org.apache.kafka.common.serialization.StringDeserializer
+
+KafkaConsumer.Conf(
+    new StringDeserializer,
+    new StringDeserializer,
+    bootstrapServers = s"localhost:9092",
+    groupId = "groupId",
+    enableAutoCommit = false)
+```
 
 #### KafkaConsumerActor.Conf
 
-- TODO
+```
+import scala.concurrent.duration._
+import cakesolutions.kafka.akka.KafkaConsumerActor
+
+KafkaConsumerActor.Conf(List("topic1"), 1.seconds, 3.seconds)
+
+```
 
 ### Message Exchange Patterns
 Once the KafkaConsumerActor is created with the required configuration, communication between the client and the consumer actor
@@ -183,15 +214,15 @@ in the Kafka Client docs.  The Offsets can be used when confirming the message t
 ### Confirm
 
 ```
-case class Confirm(offsets: Option[Offsets] = None)
+case class Confirm(offsets: Offsets, commit: Boolean = false)
 
-consumer ! Confirm()
+consumer ! Confirm(offsets)
 ```
 
-For each Records received by the client, a corresponding Confirm() message should be sent back to the consumer
+For each Records received by the client, a corresponding Confirm(offsets) message should be sent back to the consumer
 to acknowledge the message.  If the message is not confirmed within ("unconfirmed.timeout") it is redelivered (by default).
 
-If offsets are provided, they are commited to Kafka.  If no offsets are provided, the message is removed from the Consumer
+If commit is provided as true, they offsets are commited to Kafka.  If commit is false, the records are removed from the Consumer
 Actor's buffer, but is not commited to Kafka.
 
 ### Unsubscribe
