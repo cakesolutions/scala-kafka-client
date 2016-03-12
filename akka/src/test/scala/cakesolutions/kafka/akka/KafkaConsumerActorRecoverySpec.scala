@@ -1,22 +1,17 @@
 package cakesolutions.kafka.akka
 
 import akka.actor.ActorSystem
-import akka.testkit.{ImplicitSender, TestKit}
 import cakesolutions.kafka.akka.KafkaConsumerActor._
+import cakesolutions.kafka.testkit.TestUtils
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducerRecord}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.StringDeserializer
-import org.scalatest.concurrent.AsyncAssertions
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
-import scala.util.Random
 
-class KafkaConsumerActorRecoverySpec(system: ActorSystem) extends TestKit(system)
-  with KafkaTestServer
-  with ImplicitSender
-  with AsyncAssertions {
+class KafkaConsumerActorRecoverySpec(system: ActorSystem) extends KafkaIntSpec(system) {
 
   import KafkaConsumerActorSpec._
 
@@ -24,23 +19,19 @@ class KafkaConsumerActorRecoverySpec(system: ActorSystem) extends TestKit(system
 
   def this() = this(ActorSystem("MySpec"))
 
-  override def afterAll() {
-    super.afterAll()
-    TestKit.shutdownActorSystem(system)
-  }
-
   val consumerConf: KafkaConsumer.Conf[String, String] = {
     KafkaConsumer.Conf(
       new StringDeserializer,
       new StringDeserializer,
-      bootstrapServers = s"localhost:${kafkaServer.kafkaPort}",
+      bootstrapServers = s"localhost:$kafkaPort",
       groupId = "test",
-      enableAutoCommit = false).witAutoOffsetReset(OffsetResetStrategy.EARLIEST)
+      enableAutoCommit = false,
+      autoOffsetReset = OffsetResetStrategy.EARLIEST)
   }
 
   "KafkaConsumerActor with manual commit" should "recover to a commit point" in {
-    val kafkaPort = kafkaServer.kafkaPort
-    val topic = randomString(5)
+
+    val topic = TestUtils.randomString(5)
 
     val producer = kafkaProducer("localhost", kafkaPort)
     producer.send(KafkaProducerRecord(topic, None, "value"))
@@ -80,8 +71,7 @@ class KafkaConsumerActorRecoverySpec(system: ActorSystem) extends TestKit(system
   }
 
   "KafkaConsumerActor with self managed offsets" should "recover to a specified offset" in {
-    val kafkaPort = kafkaServer.kafkaPort
-    val topic = randomString(5)
+    val topic = TestUtils.randomString(5)
 
     val producer = kafkaProducer("localhost", kafkaPort)
     producer.send(KafkaProducerRecord(topic, None, "value"))
@@ -120,10 +110,4 @@ class KafkaConsumerActorRecoverySpec(system: ActorSystem) extends TestKit(system
     consumer ! Unsubscribe
     producer.close()
   }
-
-  //TODO duplication
-  val random = new Random()
-
-  def randomString(length: Int): String =
-    random.alphanumeric.take(length).mkString
 }

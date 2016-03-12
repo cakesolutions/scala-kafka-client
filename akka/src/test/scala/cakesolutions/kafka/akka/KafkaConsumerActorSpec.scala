@@ -1,17 +1,15 @@
 package cakesolutions.kafka.akka
 
 import akka.actor.ActorSystem
-import akka.testkit.{ImplicitSender, TestKit}
 import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records, Subscribe, Unsubscribe}
+import cakesolutions.kafka.testkit.TestUtils
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
-import org.scalatest.concurrent.AsyncAssertions
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
-import scala.util.Random
 
 object KafkaConsumerActorSpec {
   def kafkaProducer(kafkaHost: String, kafkaPort: Int): KafkaProducer[String, String] =
@@ -20,32 +18,22 @@ object KafkaConsumerActorSpec {
   def actorConf(topic: String): KafkaConsumerActor.Conf = {
     KafkaConsumerActor.Conf(List(topic))
   }
-
-  val random = new Random()
 }
 
-class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system)
-  with KafkaTestServer
-  with ImplicitSender
-  with AsyncAssertions {
+class KafkaConsumerActorSpec(system: ActorSystem) extends KafkaIntSpec(system) {
 
   import KafkaConsumerActorSpec._
 
-  val log = LoggerFactory.getLogger(getClass)
-
   def this() = this(ActorSystem("MySpec"))
 
-  override def afterAll() {
-    super.afterAll()
-    TestKit.shutdownActorSystem(system)
-  }
+  val log = LoggerFactory.getLogger(getClass)
 
   val consumerConfFromConfig: KafkaConsumer.Conf[String, String] = {
     KafkaConsumer.Conf(
       ConfigFactory.parseString(
         s"""
-           | bootstrap.servers = "localhost:${kafkaServer.kafkaPort}",
-           | group.id = "${randomString(5)}"
+           | bootstrap.servers = "localhost:$kafkaPort",
+           | group.id = "${TestUtils.randomString(5)}"
            | enable.auto.commit = false
            | auto.offset.reset = "earliest"
         """.stripMargin), new StringDeserializer, new StringDeserializer)
@@ -55,9 +43,10 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system)
     KafkaConsumer.Conf(
       new StringDeserializer,
       new StringDeserializer,
-      bootstrapServers = s"localhost:${kafkaServer.kafkaPort}",
-      groupId = randomString(5),
-      enableAutoCommit = false).witAutoOffsetReset(OffsetResetStrategy.EARLIEST)
+      bootstrapServers = s"localhost:$kafkaPort",
+      groupId = TestUtils.randomString(5),
+      enableAutoCommit = false,
+      autoOffsetReset = OffsetResetStrategy.EARLIEST)
   }
 
   def actorConfFromConfig(topic: String): KafkaConsumerActor.Conf =
@@ -73,8 +62,8 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system)
   def configuredActor(topic: String): Config = {
     ConfigFactory.parseString(
       s"""
-         | bootstrap.servers = "localhost:${kafkaServer.kafkaPort}",
-         | group.id = "${randomString(5)}"
+         | bootstrap.servers = "localhost:$kafkaPort",
+         | group.id = "${TestUtils.randomString(5)}"
          | enable.auto.commit = false
          | auto.offset.reset = "earliest"
          | consumer.topics = ["$topic"]
@@ -86,10 +75,10 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system)
 
   "KafkaConsumerActors with different configuration types" should "consume a message successfully" in {
 
-    (List(consumerConfFromConfig, consumerConf) zip List(actorConf(randomString(5)), actorConfFromConfig(randomString(5))))
+    (List(consumerConfFromConfig, consumerConf) zip List(actorConf(TestUtils.randomString(5)), actorConfFromConfig(TestUtils.randomString(5))))
       .foreach {
         case (consumerConfig, actorConf) =>
-          val producer = kafkaProducer("localhost", kafkaServer.kafkaPort)
+          val producer = kafkaProducer("localhost", kafkaPort)
           producer.send(KafkaProducerRecord(actorConf.topics.head, None, "value"))
           producer.flush()
 
@@ -106,8 +95,7 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system)
   }
 
   "KafkaConsumerActor configured via props" should "consume a sequence of messages" in {
-    val kafkaPort = kafkaServer.kafkaPort
-    val topic = randomString(5)
+    val topic = TestUtils.randomString(5)
 
     val producer = kafkaProducer("localhost", kafkaPort)
     producer.send(KafkaProducerRecord(topic, None, "value"))
@@ -128,7 +116,4 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends TestKit(system)
   //TODO changing actor config settings - timeout etc
 
   //TODO test message pattern
-
-  def randomString(length: Int): String =
-    random.alphanumeric.take(length).mkString
 }

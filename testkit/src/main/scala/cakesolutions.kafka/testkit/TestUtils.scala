@@ -10,13 +10,13 @@ object TestUtils {
   def randomString(length: Int = 10): String =
     random.alphanumeric.take(length).mkString
 
-  def constructTempDir(dirPrefix: String) = {
+  private[testkit] def constructTempDir(dirPrefix: String) = {
     val f = new File(System.getProperty("java.io.tmpdir"), dirPrefix + randomString())
     f.deleteOnExit()
     f
   }
 
-  def deleteFile(path: File): Unit = {
+  private[testkit] def deleteFile(path: File): Unit = {
     if (path.isDirectory)
       path.listFiles().foreach(deleteFile)
 
