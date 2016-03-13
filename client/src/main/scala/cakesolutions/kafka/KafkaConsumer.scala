@@ -13,7 +13,7 @@ object KafkaConsumer {
     def apply[K, V](keyDeserializer: Deserializer[K],
                     valueDeserializer: Deserializer[V],
                     bootstrapServers: String = "localhost:9092",
-                    groupId: String = "test",
+                    groupId: String,
                     enableAutoCommit: Boolean = true,
                     autoCommitInterval: Int = 1000,
                     sessionTimeoutMs: Int = 30000,

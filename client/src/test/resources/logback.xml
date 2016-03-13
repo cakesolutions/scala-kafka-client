@@ -8,11 +8,11 @@
 
     <logger name="io.netty" level="INFO" />
     <logger name="akka.cluster" level="INFO" />
-    <logger name="org.apache.zookeeper" level="DEBUG" />
+    <logger name="org.apache.zookeeper" level="WARN" />
     <logger name="org.I0Itec" level="WARN" />
-    <logger name="kafka.utils" level="DEBUG" />
+    <logger name="kafka.utils" level="INFO" />
     <logger name="org.apache.kafka" level="INFO" />
-    <logger name="kafka" level="DEBUG" />
+    <logger name="kafka" level="WARN" />
     <logger name="cakesolutions" level="DEBUG" />
 
     <root level="DEBUG">

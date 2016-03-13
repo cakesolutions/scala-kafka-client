@@ -1,6 +1,7 @@
 package cakesolutions.kafka
 
 import cakesolutions.kafka.KafkaConsumer.Conf
+import cakesolutions.kafka.testkit.TestUtils
 import org.apache.kafka.clients.consumer.{ConsumerRecords, OffsetResetStrategy}
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
@@ -21,6 +22,7 @@ class KafkaConsumerIntSpec extends FlatSpecLike
       Conf(new StringDeserializer(),
         new StringDeserializer(),
         bootstrapServers = "192.168.99.100:9092",
+        groupId = "test",
         enableAutoCommit = false,
         autoOffsetReset = OffsetResetStrategy.EARLIEST)
     )
@@ -47,6 +49,7 @@ class KafkaConsumerIntSpec extends FlatSpecLike
       new StringDeserializer(),
         new StringDeserializer(),
         bootstrapServers = "192.168.99.100:9092",
+        groupId = TestUtils.randomString(5),
         autoOffsetReset = OffsetResetStrategy.EARLIEST)
     )
 

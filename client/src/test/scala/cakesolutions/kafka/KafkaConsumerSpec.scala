@@ -14,22 +14,32 @@ class KafkaConsumerSpec extends KafkaTestSpec {
 
   val log = LoggerFactory.getLogger(getClass)
 
-  val typesafeConfig: KafkaConsumer.Conf[String, String] = {
+  def typesafeConfig: KafkaConsumer.Conf[String, String] = {
     KafkaConsumer.Conf(
       ConfigFactory.parseString(
         s"""
            | bootstrap.servers = "localhost:$kafkaPort",
            | group.id = "${TestUtils.randomString(5)}"
            | enable.auto.commit = false
+           | auto.offset.reset = "earliest"
         """.stripMargin), new StringDeserializer, new StringDeserializer)
   }
 
-  val directConfig: KafkaConsumer.Conf[String, String] = {
-    Conf(new StringDeserializer(), new StringDeserializer(), bootstrapServers = s"localhost:$kafkaPort", enableAutoCommit = false)
+  def directConfig: KafkaConsumer.Conf[String, String] = {
+    Conf(new StringDeserializer(),
+      new StringDeserializer(),
+      bootstrapServers = s"localhost:$kafkaPort",
+      groupId = TestUtils.randomString(5),
+      enableAutoCommit = false)
   }
 
-  val configWithEarliest: KafkaConsumer.Conf[String, String] = {
-    Conf(new StringDeserializer(), new StringDeserializer(), bootstrapServers = s"localhost:$kafkaPort", enableAutoCommit = false, autoOffsetReset = OffsetResetStrategy.EARLIEST)
+  def configWithEarliest: KafkaConsumer.Conf[String, String] = {
+    Conf(new StringDeserializer(),
+      new StringDeserializer(),
+      bootstrapServers = s"localhost:$kafkaPort",
+      groupId = TestUtils.randomString(5),
+      enableAutoCommit = false,
+      autoOffsetReset = OffsetResetStrategy.EARLIEST)
   }
 
   "KafkaConsumer with direct config" should "receive a message" in {
@@ -52,22 +62,21 @@ class KafkaConsumerSpec extends KafkaTestSpec {
 
     producer.close()
     consumer.close()
+
   }
 
   "KafkaConsumer with typesafe config" should "receive a message" in {
     val topic = TestUtils.randomString(5)
-    log.info(s"Using topic [$topic] and kafka port [$kafkaPort]")
+    log.info(s"!!Using topic [$topic] and kafka port [$kafkaPort]")
 
     val producer = KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = "localhost:" + kafkaPort)
     val consumer = KafkaConsumer(typesafeConfig)
-    consumer.subscribe(List(topic))
-
-    val records1 = consumer.poll(1000)
-    records1.count() shouldEqual 0
 
     log.info("Kafka producer connecting on port: [{}]", kafkaPort)
     producer.send(KafkaProducerRecord(topic, Some("key"), "value"))
     producer.flush()
+
+    consumer.subscribe(List(topic))
 
     val records2: ConsumerRecords[String, String] = consumer.poll(1000)
     records2.count() shouldEqual 1
@@ -88,18 +97,17 @@ class KafkaConsumerSpec extends KafkaTestSpec {
       val consumer = KafkaConsumer(conf)
       consumer.subscribe(List(topic))
 
-      val count = (1 to 3).map { _ =>
+      val count = (1 to 30).map { _ =>
         consumer.poll(1000).count()
-      }
+      }.sum
       consumer.close()
-
-      count.sum
+      count
     }
 
     consumeAndCount(directConfig) shouldEqual 0
 
     consumeAndCount(configWithEarliest) shouldEqual 2
 
-    producer.close
+    producer.close()
   }
 }
