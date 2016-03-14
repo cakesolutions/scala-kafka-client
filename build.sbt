@@ -5,7 +5,7 @@ lazy val commonSettings = Seq(
   bintrayOrganization := Some("simonsouter"),
   bintrayPackageLabels := Seq("scala", "kafka"),
 
-//  publishTo :=
+  //  publishTo :=
   //TODO publish snapshots to OSS
   //  if (Version.endsWith("-SNAPSHOT"))
   //    Seq(
@@ -17,6 +17,7 @@ lazy val commonSettings = Seq(
   //  else
 
   parallelExecution in Test := false,
+  parallelExecution in IntegrationTest := true,
 
   publishArtifact in Test := false,
 
@@ -37,14 +38,14 @@ lazy val commonSettings = Seq(
       </developer>
     </developers>,
 
-  licenses := ("MIT", url("http://opensource.org/licenses/MIT")):: Nil
+  licenses := ("MIT", url("http://opensource.org/licenses/MIT")) :: Nil
 )
 
 lazy val kafkaTestkit = project.in(file("testkit"))
   .settings(commonSettings: _*)
 
 lazy val scalaKafkaClient = project.in(file("client")).dependsOn(kafkaTestkit % "test")
-  .settings(commonSettings: _*)
+  .configs(IntegrationTest extend(Test)).settings(commonSettings: _*)
 
 lazy val scalaKafkaClientAkka = project.in(file("akka")).dependsOn(scalaKafkaClient).dependsOn(kafkaTestkit % "test")
   .settings(commonSettings: _*)

@@ -2,9 +2,8 @@ package cakesolutions.kafka.akka
 
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
-import cakesolutions.kafka.{KafkaConsumer, KafkaProducerRecord}
-import cakesolutions.kafka.akka.KafkaConsumerActor
 import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records, Subscribe, Unsubscribe}
+import cakesolutions.kafka.{KafkaConsumer, KafkaProducerRecord}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.scalatest.concurrent.AsyncAssertions
@@ -38,7 +37,8 @@ class KafkaConsumerActorITSpec(system: ActorSystem)
       new StringDeserializer,
       bootstrapServers = "192.168.99.100:9092",
       groupId = "test",
-      enableAutoCommit = false).witAutoOffsetReset(OffsetResetStrategy.EARLIEST)
+      enableAutoCommit = false,
+      autoOffsetReset = OffsetResetStrategy.EARLIEST)
   }
   "KafkaConsumerActor " should "Produce" in {
     val producer = kafkaProducer("192.168.99.100", 9092)
