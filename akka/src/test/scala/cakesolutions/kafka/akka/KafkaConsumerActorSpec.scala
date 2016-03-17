@@ -1,7 +1,7 @@
 package cakesolutions.kafka.akka
 
 import akka.actor.ActorSystem
-import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records, Subscribe, Unsubscribe}
+import cakesolutions.kafka.akka.KafkaConsumerActor.{Unsubscribe, Confirm, Records, Subscribe}
 import cakesolutions.kafka.testkit.TestUtils
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.{Config, ConfigFactory}

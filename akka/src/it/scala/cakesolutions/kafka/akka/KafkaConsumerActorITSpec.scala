@@ -2,7 +2,6 @@ package cakesolutions.kafka.akka
 
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
-import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records, Subscribe, Unsubscribe}
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducerRecord}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.serialization.StringDeserializer
