@@ -201,10 +201,17 @@ should expect to receive `cakesolutions.kafka.akka.KafkaConsumerActor.Records[K,
 import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records}
 
 class ReceiverActor extends Actor {
+
   override def receive:Receive = {
-    case r:Records[String, String] =>
-      processRecords(r.records)
-      sender() ! Confirm(r.offsets)
+    case records:Records[_, _] =>
+      
+      //Type safe cast of records to correct serialisation type
+      records.cast[String, String] match {
+        case Some(records) =>
+          processRecords(r.records)
+          sender() ! Confirm(r.offsets)
+        case None => log.warning(Received wrong Kafka records type!)
+      }
   }
 ```
 
