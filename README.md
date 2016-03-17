@@ -264,7 +264,7 @@ case object Unsubscribe
 consumer ! Unsubscribe
 ```
 
-THe COnsumer Actor clears its state and disconnects from Kakfa.
+The Consumer Actor clears its state and disconnects from Kakfa.
 
 ## TestKit 
 The scala-kafka-client-tesktkit module provides some tools to support integration testing for client service code that
