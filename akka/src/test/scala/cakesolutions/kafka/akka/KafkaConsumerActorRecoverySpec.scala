@@ -1,7 +1,6 @@
 package cakesolutions.kafka.akka
 
 import akka.actor.ActorSystem
-import cakesolutions.kafka.akka.KafkaConsumerActor._
 import cakesolutions.kafka.testkit.TestUtils
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducerRecord}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
