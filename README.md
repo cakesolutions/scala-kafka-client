@@ -203,14 +203,14 @@ import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records}
 class ReceiverActor extends Actor {
 
   override def receive:Receive = {
-    case records:Records[_, _] =>
+    case r:Records[_, _] =>
       
       //Type safe cast of records to correct serialisation type
-      records.cast[String, String] match {
+      r.cast[String, String] match {
         case Some(records) =>
-          processRecords(r.records)
+          processRecords(records.records)
           sender() ! Confirm(r.offsets)
-        case None => log.warning(Received wrong Kafka records type!)
+        case None => log.warning("Received wrong Kafka records type!")
       }
   }
 ```

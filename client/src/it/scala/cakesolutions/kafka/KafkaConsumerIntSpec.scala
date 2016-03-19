@@ -18,34 +18,39 @@ class KafkaConsumerIntSpec extends FlatSpecLike
   val consumer = KafkaConsumer(
     Conf(new StringDeserializer(),
       new StringDeserializer(),
-      bootstrapServers = "192.168.99.100:9092",
+      bootstrapServers = "127.0.0.1:9092",
       groupId = "test",
       enableAutoCommit = false,
       autoOffsetReset = OffsetResetStrategy.EARLIEST)
   )
 
   "Kafka Consumer" should "perform" in {
-    val producer = KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = "192.168.99.100:9092")
+    val producer = KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = "127.0.0.1:9092")
     val topic = TestUtils.randomString(5)
 
     1 to 100000 foreach { n =>
-      producer.send(KafkaProducerRecord(topic, Some("key"), "value" + n))
+      producer.send(KafkaProducerRecord(topic, Some("key"), "valuevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevalue" + n))
     }
-    log.info("Delivered 10000 msg to topic {}", topic)
+    log.info("Delivered 100000 msg to topic {}", topic)
+
+    producer.flush()
 
     consumer.subscribe(List(topic))
 
-    val start = System.currentTimeMillis()
+    var start = 0l
 
     var total = 0
 
     while (total < 100000) {
-      total += consumer.poll(1000).count()
+      if(total == 0)
+        start = System.currentTimeMillis()
+      val count = consumer.poll(1000).count()
+      total += count
     }
 
     val totalTime = System.currentTimeMillis() - start
-    log.info("Total Time: {}" + totalTime)
-    log.info("Msg per sec: {}" + (100000 / totalTime * 100 ))
+    log.info("Total Time: {}", totalTime)
+    log.info("Msg per sec: {}", 100000 / totalTime * 100 )
 
     consumer.close()
     producer.close()
