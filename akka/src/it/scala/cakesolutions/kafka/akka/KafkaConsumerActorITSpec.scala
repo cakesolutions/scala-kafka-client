@@ -5,6 +5,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records, Subscribe}
 import cakesolutions.kafka.testkit.TestUtils
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
+import com.typesafe.config.ConfigFactory
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.scalatest.concurrent.AsyncAssertions
@@ -27,34 +28,37 @@ class KafkaConsumerActorITSpec(system: ActorSystem)
     TestKit.shutdownActorSystem(system)
   }
 
+  val config = ConfigFactory.load()
+
+  val msg1k = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/1k.txt")).mkString
+
   val consumerConf: KafkaConsumer.Conf[String, String] = {
-    KafkaConsumer.Conf(
+    KafkaConsumer.Conf(config.getConfig("consumer"),
       new StringDeserializer,
-      new StringDeserializer,
-      bootstrapServers = "127.0.0.1:9092",
-      groupId = "test",
-      enableAutoCommit = false,
-      autoOffsetReset = OffsetResetStrategy.EARLIEST)
+      new StringDeserializer
+    )
   }
 
   def actorConf(topic: String): KafkaConsumerActor.Conf = {
-    KafkaConsumerActor.Conf(List(topic))
+    KafkaConsumerActor.Conf(List(topic)).withConf(config.getConfig("consumer"))
   }
 
-  "KafkaConsumerActor " should "Produce" in {
-    val producer = KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = "127.0.0.1:9092")
+  "KafkaConsumerActor" should "perform" in {
     val topic = TestUtils.randomString(5)
+    val producer = KafkaProducer[String, String](config.getConfig("producer"))
+
     val receiver = system.actorOf(Props(classOf[ReceiverActor]))
+
     val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, actorConf(topic), receiver))
 
     1 to 100000 foreach { n =>
-      producer.send(KafkaProducerRecord(topic, Some("key"), "valuevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevalue" + n))
+      producer.send(KafkaProducerRecord(topic, None, msg1k))
     }
     producer.flush()
     log.info("Delivered 100000 msg to topic {}", topic)
     consumer ! Subscribe()
     Thread.sleep(10000)
-
+    log.info("Done")
   }
 }
 
@@ -69,7 +73,7 @@ class ReceiverActor extends Actor with ActorLogging {
   override def receive: Receive = {
     case records: Records[_, _] =>
 
-      if(total == 0)
+      if (total == 0)
         start = System.currentTimeMillis()
 
       //Type safe cast of records to correct serialisation type
@@ -78,10 +82,10 @@ class ReceiverActor extends Actor with ActorLogging {
           total += r.records.count()
           log.info("!!!" + total)
           sender() ! Confirm(r.offsets)
-          if(total >= 100000) {
+          if (total >= 100000) {
             val totalTime = System.currentTimeMillis() - start
             log.info("Total Time: {}", totalTime)
-            log.info("Msg per sec: {}", (100000 / totalTime * 100))
+            log.info("Msg per sec: {}", 100000 / totalTime * 100)
           }
 
         case None => log.warning("Received wrong Kafka records type!")

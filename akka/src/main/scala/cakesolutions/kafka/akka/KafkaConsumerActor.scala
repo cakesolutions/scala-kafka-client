@@ -32,7 +32,7 @@ object KafkaConsumerActor {
     * Offsets can be committed to Kafka using optional [[commit]] flag.
     *
     * @param offsets the offsets that are to be confirmed
-    * @param commit true to commit offsets
+    * @param commit  true to commit offsets
     */
   case class Confirm(offsets: Offsets, commit: Boolean = false)
 
@@ -100,6 +100,7 @@ object KafkaConsumerActor {
   }
 
   object Conf {
+
     import scala.concurrent.duration.{MILLISECONDS => Millis}
 
     /**
@@ -108,11 +109,13 @@ object KafkaConsumerActor {
     def apply(config: Config): Conf = {
       val topics = config.getStringList("consumer.topics")
 
-      val scheduleInterval = Duration(config.getDuration("schedule.interval", Millis), Millis)
-      val unconfirmedTimeout = Duration(config.getDuration("unconfirmed.timeout", Millis), Millis)
+      val scheduleInterval = durationFromConfig(config, "schedule.interval")
+      val unconfirmedTimeout = durationFromConfig(config, "unconfirmed.timeout")
 
       apply(topics.toList, scheduleInterval, unconfirmedTimeout)
     }
+
+    def durationFromConfig(config: Config, path: String) = Duration(config.getDuration(path, Millis), Millis)
   }
 
   /**
@@ -126,8 +129,19 @@ object KafkaConsumerActor {
   case class Conf(topics: List[String],
                   scheduleInterval: FiniteDuration = 1000.millis,
                   unconfirmedTimeout: FiniteDuration = 3.seconds) {
+
+    /**
+      * New Conf with values from supplied Typesafe config overriden
+      *
+      * @param config
+      * @return
+      */
     def withConf(config: Config): Conf = {
-      this.copy(topics = config.getStringList("consumer.topics").toList)
+      this.copy(
+        topics = if (config.hasPath("topics")) config.getStringList("topics").toList else topics,
+        scheduleInterval = if (config.hasPath("schedule.interval")) Conf.durationFromConfig(config, "schedule.interval") else scheduleInterval,
+        unconfirmedTimeout = if (config.hasPath("unconfirmed.timeout")) Conf.durationFromConfig(config, "unconfirmed.timeout") else unconfirmedTimeout
+      )
     }
   }
 
@@ -168,6 +182,7 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
   // Receive states
   private sealed trait HasUnconfirmedRecords {
     val unconfirmed: Records[K, V]
+
     def isCurrentOffset(offsets: Offsets): Boolean = unconfirmed.offsets == offsets
   }
 
@@ -191,7 +206,7 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
       log.warning("Attempted to subscribe while consumer was already subscribed")
 
     case Poll(correlationId, _) if !isCurrentPoll(correlationId) =>
-      // Do nothing
+    // Do nothing
   }
 
   // Initial state
@@ -208,7 +223,7 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
       pollImmediate(200)
 
     case Poll(correlationId, _) if !isCurrentPoll(correlationId) =>
-      // Do nothing
+    // Do nothing
   }
 
   // No unconfirmed or buffered messages

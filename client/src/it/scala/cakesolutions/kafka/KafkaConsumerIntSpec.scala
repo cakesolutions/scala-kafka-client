@@ -2,6 +2,7 @@ package cakesolutions.kafka
 
 import cakesolutions.kafka.KafkaConsumer.Conf
 import cakesolutions.kafka.testkit.TestUtils
+import com.typesafe.config.ConfigFactory
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.serialization.{StringSerializer, StringDeserializer}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
@@ -15,25 +16,25 @@ class KafkaConsumerIntSpec extends FlatSpecLike
 
   val log = LoggerFactory.getLogger(getClass)
 
+  val config = ConfigFactory.load()
+
+  val msg1k = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/1k.txt")).mkString
+
   val consumer = KafkaConsumer(
-    Conf(new StringDeserializer(),
-      new StringDeserializer(),
-      bootstrapServers = "127.0.0.1:9092",
-      groupId = "test",
-      enableAutoCommit = false,
-      autoOffsetReset = OffsetResetStrategy.EARLIEST)
+    Conf(config.getConfig("consumer"),
+      new StringDeserializer,
+      new StringDeserializer)
   )
 
   "Kafka Consumer" should "perform" in {
-    val producer = KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = "127.0.0.1:9092")
     val topic = TestUtils.randomString(5)
+    val producer = KafkaProducer[String, String](config.getConfig("producer"))
 
     1 to 100000 foreach { n =>
-      producer.send(KafkaProducerRecord(topic, Some("key"), "valuevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevaluevalue" + n))
+      producer.send(KafkaProducerRecord(topic, None, msg1k))
     }
-    log.info("Delivered 100000 msg to topic {}", topic)
-
     producer.flush()
+    log.info("Delivered 100000 msg to topic {}", topic)
 
     consumer.subscribe(List(topic))
 
