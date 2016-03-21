@@ -6,8 +6,7 @@ import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records, Subscribe}
 import cakesolutions.kafka.testkit.TestUtils
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.ConfigFactory
-import org.apache.kafka.clients.consumer.OffsetResetStrategy
-import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.scalatest.concurrent.AsyncAssertions
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.slf4j.LoggerFactory
