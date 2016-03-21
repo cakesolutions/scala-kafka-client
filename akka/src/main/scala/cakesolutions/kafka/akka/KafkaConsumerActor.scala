@@ -292,7 +292,12 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
       log.info("Received confirmation for unexpected offsets: {}", offsets)
   }
 
+  override def preStart() ={
+    log.info("Inside the preStart method of KafkaConsumerActor")
+  }
+
   override def postStop(): Unit = {
+    log.info("KafkaConsumerActor stopping ")
     close()
   }
 

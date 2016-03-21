@@ -149,7 +149,7 @@ done with a Key and Value deserializer with all other consumer properties suppli
     group.id = "test"
     enable.auto.commit = false
     auto.offset.reset = "earliest"
-    consumer.topics = ["topic1"]
+    topics = ["topic1"]
 
     //KafkaConsumerActor config
     schedule.interval = 3000 milliseconds

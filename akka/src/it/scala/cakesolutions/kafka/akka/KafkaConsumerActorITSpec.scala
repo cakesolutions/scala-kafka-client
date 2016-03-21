@@ -2,7 +2,7 @@ package cakesolutions.kafka.akka
 
 import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestKit}
-import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records, Subscribe}
+import cakesolutions.kafka.akka.KafkaConsumerActor.{Unsubscribe, Confirm, Records, Subscribe}
 import cakesolutions.kafka.testkit.TestUtils
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.ConfigFactory
@@ -58,6 +58,8 @@ class KafkaConsumerActorITSpec(system: ActorSystem)
     log.info("Delivered 100000 msg to topic {}", topic)
     consumer ! Subscribe()
     Thread.sleep(10000)
+    consumer ! Unsubscribe
+    producer.close()
     log.info("Done")
   }
 }
