@@ -9,7 +9,6 @@ import scala.collection.JavaConversions._
 object KafkaConsumer {
 
   object Conf {
-
     def apply[K, V](keyDeserializer: Deserializer[K],
                     valueDeserializer: Deserializer[V],
                     bootstrapServers: String = "localhost:9092",
@@ -20,13 +19,15 @@ object KafkaConsumer {
                     maxPartitionFetchBytes: String = 262144.toString,
                     autoOffsetReset: OffsetResetStrategy = OffsetResetStrategy.LATEST): Conf[K, V] = {
 
-      val configMap = Map[String, AnyRef](ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> bootstrapServers,
-      ConsumerConfig.GROUP_ID_CONFIG -> groupId,
-      ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> enableAutoCommit.toString,
-      ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG -> autoCommitInterval.toString,
-      ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG -> sessionTimeoutMs.toString,
-      ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG -> maxPartitionFetchBytes,
-      ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> autoOffsetReset.toString.toLowerCase)
+      val configMap = Map[String, AnyRef](
+        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> bootstrapServers,
+        ConsumerConfig.GROUP_ID_CONFIG -> groupId,
+        ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> enableAutoCommit.toString,
+        ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG -> autoCommitInterval.toString,
+        ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG -> sessionTimeoutMs.toString,
+        ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG -> maxPartitionFetchBytes,
+        ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> autoOffsetReset.toString.toLowerCase
+      )
 
       apply(configMap, keyDeserializer, valueDeserializer)
     }
@@ -36,10 +37,10 @@ object KafkaConsumer {
   }
 
   /**
-    * Configuration object for the KafkaConsumer.  Key and Value serialisers are provided explicitly.
+    * Configuration object for the KafkaConsumer.  Key and Value deserialisers are provided explicitly.
     * @param props Map of KafkaConsumer Properties.  Usually created via the Object helpers.
-    * @tparam K Key Serializer type
-    * @tparam V Value Serializer type
+    * @tparam K Key Deserializer type
+    * @tparam V Value Deserializer type
     */
   case class Conf[K, V](props: Map[String, AnyRef],
                         keyDeserializer: Deserializer[K],
@@ -57,7 +58,7 @@ object KafkaConsumer {
       * @return True if configured to Auto Commit Mode.
       */
     def isAutoCommitMode: Boolean = {
-      props.get(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG).getOrElse("").toString.equals("true")
+      props.getOrElse(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "").toString.equals("true")
     }
 
     /**

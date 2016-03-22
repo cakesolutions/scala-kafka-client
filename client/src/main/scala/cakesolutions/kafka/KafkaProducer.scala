@@ -1,47 +1,68 @@
 package cakesolutions.kafka
 
-import java.util.Properties
-
+import cakesolutions.kafka.TypesafeConfigExtensions._
 import com.typesafe.config.Config
-import org.apache.kafka.clients.producer.{KafkaProducer => JKafkaProducer}
-import org.apache.kafka.clients.producer.{Callback, ProducerRecord, RecordMetadata}
+import org.apache.kafka.clients.producer.{Callback, ProducerConfig, ProducerRecord, RecordMetadata, KafkaProducer => JKafkaProducer}
 import org.apache.kafka.common.serialization.Serializer
 import org.slf4j.{Logger, LoggerFactory}
-import cakesolutions.kafka.TypesafeConfigExtensions._
 
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
+import scala.collection.JavaConversions._
 
 object KafkaProducer {
-  def apply[K, V](producer: JKafkaProducer[K, V]): KafkaProducer[K, V] =
-    new KafkaProducer(producer)
 
-  def apply[K, V](props: Properties, keySerializer: Serializer[K], valueSerializer: Serializer[V]): KafkaProducer[K, V] =
-    apply(new JKafkaProducer[K, V](props, keySerializer, valueSerializer))
+  object Conf {
+    def apply[K, V](keySerializer: Serializer[K],
+                    valueSerializer: Serializer[V],
+                    bootstrapServers: String = "localhost:9092",
+                    acks: String = "all",
+                    retries: Int = 0,
+                    batchSize: Int = 16384,
+                    lingerMs: Int = 1,
+                    bufferMemory: Int = 33554432): Conf[K, V] = {
 
-  def apply[K, V](props: Properties): KafkaProducer[K, V] =
-    apply(new JKafkaProducer[K, V](props))
+      val configMap = Map[String, AnyRef](
+        ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> bootstrapServers,
+        ProducerConfig.ACKS_CONFIG -> acks,
+        ProducerConfig.RETRIES_CONFIG -> retries.toString,
+        ProducerConfig.BATCH_SIZE_CONFIG -> batchSize.toString,
+        ProducerConfig.LINGER_MS_CONFIG -> lingerMs.toString,
+        ProducerConfig.BUFFER_MEMORY_CONFIG -> bufferMemory.toString
+      )
 
-  def apply[K, V](keySerializer: Serializer[K],
-                  valueSerializer: Serializer[V],
-                  bootstrapServers: String = "localhost:9092",
-                  acks: String = "all",
-                  retries: Int = 0,
-                  batchSize: Int = 16384,
-                  lingerMs: Int = 1,
-                  bufferMemory: Int = 33554432): KafkaProducer[K, V] = {
-    val props = new Properties()
-    props.put("bootstrap.servers", bootstrapServers)
-    props.put("acks", acks)
-    props.put("retries", retries.toString)
-    props.put("batch.size", batchSize.toString)
-    props.put("linger.ms", lingerMs.toString)
-    props.put("buffer.memory", bufferMemory.toString)
-    apply(props, keySerializer, valueSerializer)
+      apply(configMap, keySerializer, valueSerializer)
+    }
+
+    def apply[K, V](config: Config, keySerializer: Serializer[K], valueSerializer: Serializer[V]): Conf[K, V] =
+      apply(config.toPropertyMap, keySerializer, valueSerializer)
   }
 
-  def apply[K, V](config: Config): KafkaProducer[K, V] =
-    apply(config.toProperties)
+  /**
+    * Configuration object for the KafkaProducer. Key and Value serialisers are provided explicitly.
+    * @param props Map of KafkaProducer Properties. Usually created via the Object helpers.
+    * @tparam K Key Serializer type
+    * @tparam V Value Serializer type
+    */
+  case class Conf[K, V](props: Map[String, AnyRef],
+                        keySerializer: Serializer[K],
+                        valueSerializer: Serializer[V]) {
+
+    def withConf(config: Config): Conf[K, V] = {
+      copy(props = props ++ config.toPropertyMap)
+    }
+
+    def withProperty(key: String, value: AnyRef) = {
+      copy(props = props + (key -> value))
+    }
+  }
+
+  def apply[K, V](conf: Conf[K, V]): KafkaProducer[K, V] = {
+    KafkaProducer(new JKafkaProducer[K, V](conf.props, conf.keySerializer, conf.valueSerializer))
+  }
+
+  def apply[K, V](producer: JKafkaProducer[K, V]): KafkaProducer[K, V] =
+    new KafkaProducer(producer)
 }
 
 class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) {
@@ -62,17 +83,13 @@ class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) {
 
   private def logSend(record: ProducerRecord[K, V]): Unit = {
     val key = Option(record.key()).map(_.toString).getOrElse("null")
-    log.info("Sending message to topic=[{}], key=[{}], value=[{}]",
+    log.debug("Sending message to topic=[{}], key=[{}], value=[{}]",
       record.topic(), key, record.value().toString)
   }
 
   def flush(): Unit = {
     producer.flush()
   }
-
-  //TODO metrics?
-
-  //TODO partitions for?
 
   def close() = {
     log.debug("Closing consumer")
