@@ -6,8 +6,6 @@ import java.time.temporal.ChronoUnit
 import akka.actor._
 import cakesolutions.kafka.KafkaConsumer
 import com.typesafe.config.Config
-import org.apache.kafka.clients.consumer.{ConsumerRecords, OffsetAndMetadata}
-import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.serialization.Deserializer
 
@@ -40,64 +38,6 @@ object KafkaConsumerActor {
     * Actor API - Unsubscribe from Kafka.
     */
   case object Unsubscribe
-
-  /**
-    * Map of partitions to partition offsets.
-    */
-  case class Offsets(offsetsMap: Map[TopicPartition, Long]) extends AnyVal {
-    def get(topic: TopicPartition): Option[Long] = offsetsMap.get(topic)
-
-    def forAllOffsets(that: Offsets)(f: (Long, Long) => Boolean): Boolean =
-      offsetsMap.forall {
-        case (topic, offset) => that.get(topic).forall(f(offset, _))
-      }
-
-    def toCommitMap: Map[TopicPartition, OffsetAndMetadata] =
-      offsetsMap.mapValues(offset => new OffsetAndMetadata(offset))
-
-    override def toString: String =
-      offsetsMap
-        .map { case (t, o) => s"$t: $o" }
-        .mkString("Offsets(", ", ", ")")
-  }
-
-  /**
-    * Records consumed from Kafka with the offsets related to the records.
-    * Offsets will contain all the partition offsets assigned to the client after the records were pulled from Kafka.
-    */
-  case class Records[K: TypeTag, V: TypeTag](offsets: Offsets, records: ConsumerRecords[K, V]) {
-    val keyTag = typeTag[K]
-    val valueTag = typeTag[V]
-
-    /**
-      * Compare given types to record types.
-      * Useful for regaining generic type information in runtime when it has been lost (e.g. in actor communication).
-      *
-      * @tparam K1 the key type to compare to
-      * @tparam V2 the value type to compare to
-      * @return true when given types match objects type parameters, and false otherwise
-      */
-    def hasType[K1: TypeTag, V2: TypeTag]: Boolean =
-      typeTag[K1].tpe <:< keyTag.tpe &&
-        typeTag[V2].tpe <:< valueTag.tpe
-
-    /**
-      * Attempt to cast record keys and values to given types.
-      * Useful for regaining generic type information in runtime when it has been lost (e.g. in actor communication).
-      *
-      * @tparam K1 the key type to cast to
-      * @tparam V2 the value type to cast to
-      * @return the same records in casted form when casting is possible, and otherwise [[None]]
-      */
-    def cast[K1: TypeTag, V2: TypeTag]: Option[Records[K1, V2]] =
-      if (hasType[K1, V2]) Some(this.asInstanceOf[Records[K1, V2]])
-      else None
-
-    /**
-      * Get all the values as a single sequence.
-      */
-    def values: Seq[V] = records.toList.map(_.value())
-  }
 
   object Conf {
     import scala.concurrent.duration.{MILLISECONDS => Millis}
@@ -167,14 +107,14 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
 
   // Receive states
   private sealed trait HasUnconfirmedRecords {
-    val unconfirmed: Records[K, V]
+    val unconfirmed: FullRecords[K, V]
     def isCurrentOffset(offsets: Offsets): Boolean = unconfirmed.offsets == offsets
   }
 
-  private case class Unconfirmed(unconfirmed: Records[K, V], deliveryTime: LocalDateTime = LocalDateTime.now())
+  private case class Unconfirmed(unconfirmed: FullRecords[K, V], deliveryTime: LocalDateTime = LocalDateTime.now())
     extends HasUnconfirmedRecords
 
-  private case class Buffered(unconfirmed: Records[K, V], deliveryTime: LocalDateTime = LocalDateTime.now(), buffered: Records[K, V])
+  private case class Buffered(unconfirmed: FullRecords[K, V], deliveryTime: LocalDateTime = LocalDateTime.now(), buffered: FullRecords[K, V])
     extends HasUnconfirmedRecords
 
   override def receive = unsubscribed
@@ -287,12 +227,12 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
     * @param timeout - specify a blocking poll timeout.  Default 0 for non blocking poll.
     * @return
     */
-  private def pollKafka(timeout: Int = 0): Option[Records[K, V]] = {
+  private def pollKafka(timeout: Int = 0): Option[FullRecords[K, V]] = {
     log.debug("Poll Kafka for {} milliseconds", timeout)
     Try(consumer.poll(timeout)) match {
       case Success(rs) if rs.count() > 0 =>
         log.debug("Records Received!")
-        Some(Records(currentConsumerOffsets, rs))
+        Some(FullRecords(currentConsumerOffsets, rs))
       case Success(rs) =>
         None
       case Failure(_: WakeupException) =>

@@ -40,7 +40,7 @@ class KafkaConsumerActorRecoverySpec(system: ActorSystem) extends KafkaIntSpec(s
     val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, actorConf(topic), testActor))
     consumer ! Subscribe()
 
-    val rec1 = expectMsgClass(30.seconds, classOf[Records[String, String]])
+    val rec1 = expectMsgClass(30.seconds, classOf[FullRecords[String, String]])
     rec1.offsets.get(new TopicPartition(topic, 0)) shouldBe Some(1)
 
     //Commit the message
@@ -50,7 +50,7 @@ class KafkaConsumerActorRecoverySpec(system: ActorSystem) extends KafkaIntSpec(s
     producer.send(KafkaProducerRecord(topic, None, "value"))
     producer.flush()
 
-    val rec2 = expectMsgClass(30.seconds, classOf[Records[String, String]])
+    val rec2 = expectMsgClass(30.seconds, classOf[FullRecords[String, String]])
     rec2.offsets.get(new TopicPartition(topic, 0)) shouldBe Some(2)
 
     //Message confirmed, but not commited
@@ -61,7 +61,7 @@ class KafkaConsumerActorRecoverySpec(system: ActorSystem) extends KafkaIntSpec(s
 
     // New subscription starts from commit point
     consumer ! Subscribe()
-    val rec3 = expectMsgClass(30.seconds, classOf[Records[String, String]])
+    val rec3 = expectMsgClass(30.seconds, classOf[FullRecords[String, String]])
     rec3.offsets.get(new TopicPartition(topic,0)) shouldBe Some(2)
     consumer ! Confirm(rec3.offsets)
     expectNoMsg(5.seconds)
@@ -80,7 +80,7 @@ class KafkaConsumerActorRecoverySpec(system: ActorSystem) extends KafkaIntSpec(s
     val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, actorConf(topic), testActor))
     consumer ! Subscribe()
 
-    val rec1 = expectMsgClass(30.seconds, classOf[Records[String, String]])
+    val rec1 = expectMsgClass(30.seconds, classOf[FullRecords[String, String]])
     rec1.offsets.get(new TopicPartition(topic, 0)) shouldBe Some(1)
 
     //Stash the offsets for recovery, and confirm the message.
@@ -91,7 +91,7 @@ class KafkaConsumerActorRecoverySpec(system: ActorSystem) extends KafkaIntSpec(s
     producer.send(KafkaProducerRecord(topic, None, "value"))
     producer.flush()
 
-    val rec2 = expectMsgClass(30.seconds, classOf[Records[String, String]])
+    val rec2 = expectMsgClass(30.seconds, classOf[FullRecords[String, String]])
     rec2.offsets.get(new TopicPartition(topic, 0)) shouldBe Some(2)
 
     //Message confirmed
@@ -102,7 +102,7 @@ class KafkaConsumerActorRecoverySpec(system: ActorSystem) extends KafkaIntSpec(s
 
     // New subscription starts from specified offset
     consumer ! Subscribe(Some(offsets))
-    val rec3 = expectMsgClass(30.seconds, classOf[Records[String, String]])
+    val rec3 = expectMsgClass(30.seconds, classOf[FullRecords[String, String]])
     rec3.offsets.get(new TopicPartition(topic,0)) shouldBe Some(2)
     consumer ! Confirm(rec3.offsets)
     expectNoMsg(5.seconds)
