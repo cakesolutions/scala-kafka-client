@@ -75,7 +75,7 @@ class KafkaConsumerActorITSpec(system: ActorSystem)
 
     var cnt = 0
     1 to 10000 foreach { _ =>
-      val r = probe.expectMsgClass(30.seconds, classOf[FullRecords[String, String]])
+      val r = probe.expectMsgClass(30.seconds, classOf[KeyValuesWithOffsets[String, String]])
       log.info("Received {} records", r.records.count())
       cnt += r.records.count()
       // Thread.sleep(5000)

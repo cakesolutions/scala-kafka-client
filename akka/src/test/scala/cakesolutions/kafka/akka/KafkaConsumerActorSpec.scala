@@ -1,7 +1,7 @@
 package cakesolutions.kafka.akka
 
 import akka.actor.ActorSystem
-import cakesolutions.kafka.akka.KafkaConsumerActor.{Unsubscribe, Confirm, Records, Subscribe}
+import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe, Unsubscribe}
 import cakesolutions.kafka.testkit.TestUtils
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.{Config, ConfigFactory}
@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 
 object KafkaConsumerActorSpec {
   def kafkaProducer(kafkaHost: String, kafkaPort: Int): KafkaProducer[String, String] =
-    KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = kafkaHost + ":" + kafkaPort)
+    KafkaProducer(KafkaProducer.Conf(new StringSerializer(), new StringSerializer(), bootstrapServers = kafkaHost + ":" + kafkaPort))
 
   def actorConf(topic: String): KafkaConsumerActor.Conf = {
     KafkaConsumerActor.Conf(List(topic))
@@ -85,7 +85,7 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends KafkaIntSpec(system) {
           val consumer = system.actorOf(KafkaConsumerActor.props(consumerConfig, actorConf, testActor))
           consumer ! Subscribe()
 
-          val rs = expectMsgClass(30.seconds, classOf[FullRecords[String, String]])
+          val rs = expectMsgClass(30.seconds, classOf[KeyValuesWithOffsets[String, String]])
           consumer ! Confirm(rs.offsets)
           expectNoMsg(5.seconds)
 
@@ -105,7 +105,7 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends KafkaIntSpec(system) {
     val consumer = system.actorOf(KafkaConsumerActor.props(configuredActor(topic), new StringDeserializer(), new StringDeserializer(), testActor))
     consumer ! Subscribe()
 
-    val rs = expectMsgClass(30.seconds, classOf[FullRecords[String, String]])
+    val rs = expectMsgClass(30.seconds, classOf[KeyValuesWithOffsets[String, String]])
     consumer ! Confirm(rs.offsets)
     expectNoMsg(5.seconds)
 

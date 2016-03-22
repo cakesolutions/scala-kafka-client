@@ -78,10 +78,10 @@ object KafkaConsumerActor {
                                     keyDeserializer: Deserializer[K],
                                     valueDeserializer: Deserializer[V],
                                     nextActor: ActorRef): Props = {
-    Props(
-      new KafkaConsumerActor[K, V](KafkaConsumer.Conf[K, V](conf, keyDeserializer, valueDeserializer),
+    props(
+      KafkaConsumer.Conf[K, V](conf, keyDeserializer, valueDeserializer),
         KafkaConsumerActor.Conf(conf),
-        nextActor))
+        nextActor)
   }
 
   /**
@@ -101,20 +101,22 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
   import PollScheduling.Poll
   import context.become
 
+  type Records = KeyValuesWithOffsets[K, V]
+
   private val consumer = KafkaConsumer[K, V](consumerConf)
   private val trackPartitions = TrackPartitions(consumer)
   private val isTimeoutUsed = actorConf.unconfirmedTimeout.toMillis > 0
 
   // Receive states
   private sealed trait HasUnconfirmedRecords {
-    val unconfirmed: FullRecords[K, V]
+    val unconfirmed: Records
     def isCurrentOffset(offsets: Offsets): Boolean = unconfirmed.offsets == offsets
   }
 
-  private case class Unconfirmed(unconfirmed: FullRecords[K, V], deliveryTime: LocalDateTime = LocalDateTime.now())
+  private case class Unconfirmed(unconfirmed: Records, deliveryTime: LocalDateTime = LocalDateTime.now())
     extends HasUnconfirmedRecords
 
-  private case class Buffered(unconfirmed: FullRecords[K, V], deliveryTime: LocalDateTime = LocalDateTime.now(), buffered: FullRecords[K, V])
+  private case class Buffered(unconfirmed: Records, deliveryTime: LocalDateTime = LocalDateTime.now(), buffered: Records)
     extends HasUnconfirmedRecords
 
   override def receive = unsubscribed
@@ -227,12 +229,12 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
     * @param timeout - specify a blocking poll timeout.  Default 0 for non blocking poll.
     * @return
     */
-  private def pollKafka(timeout: Int = 0): Option[FullRecords[K, V]] = {
+  private def pollKafka(timeout: Int = 0): Option[Records] = {
     log.debug("Poll Kafka for {} milliseconds", timeout)
     Try(consumer.poll(timeout)) match {
       case Success(rs) if rs.count() > 0 =>
         log.debug("Records Received!")
-        Some(FullRecords(currentConsumerOffsets, rs))
+        Some(KeyValuesWithOffsets(currentConsumerOffsets, rs))
       case Success(rs) =>
         None
       case Failure(_: WakeupException) =>
