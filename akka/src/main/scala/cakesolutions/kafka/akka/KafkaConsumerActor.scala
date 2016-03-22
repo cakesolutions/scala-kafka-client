@@ -6,7 +6,7 @@ import java.time.temporal.ChronoUnit
 import akka.actor._
 import cakesolutions.kafka.KafkaConsumer
 import com.typesafe.config.Config
-import org.apache.kafka.clients.consumer.{ConsumerRecords, OffsetAndMetadata}
+import org.apache.kafka.clients.consumer.{CommitFailedException, ConsumerRecords, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.serialization.Deserializer
@@ -344,7 +344,12 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
 
   private def commitOffsets(offsets: Offsets): Unit = {
     log.info("Committing offsets. {}", offsets)
-    consumer.commitSync(offsets.toCommitMap)
+    try {
+      consumer.commitSync(offsets.toCommitMap)
+    } catch {
+      case e:CommitFailedException =>
+        log.error("Failed to commit offsets, probably due to a rebalance while processing messages: {}", e.getMessage)
+    }
   }
 
   override def unhandled(message: Any): Unit = {
