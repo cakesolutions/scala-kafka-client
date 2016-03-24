@@ -250,7 +250,6 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
 
       pollKafka() match {
         case Some(records) =>
-          nextActor ! records
           log.debug("To Buffer Full state")
           become(bufferFull(Buffered(state.unconfirmed, state.deliveryTime, records)))
           schedulePoll()
