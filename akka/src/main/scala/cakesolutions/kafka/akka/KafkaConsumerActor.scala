@@ -168,6 +168,18 @@ object KafkaConsumerActor {
   }
 }
 
+/**
+  * A client interacts with a KafkaConsumerActor via the Actor Messages: Subscribe(), and Unsubscribe.  It receives batches of messages
+  * from Kafka for all subscribed partitions to the supplied 'nextActor' ActorRef of type `Records[K, V]` (where K and V are the Deserializer types).
+  * Aside from providing the required Kafka Client and Actor configuration on initialization, that's all thats needed when everything is working.
+  * For cases where there is Kafka or configuration issues, the Actor's supervisor strategy is applied.
+  *
+  * @param consumerConf KafkaConsumer.Conf configuration for the Consumer
+  * @param actorConf KafkaConsumerActor.Conf configuration specific to this actor
+  * @param nextActor
+  * @tparam K KeyDeserializer Type
+  * @tparam V ValueDeserializer Type
+  */
 class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Conf[K, V], actorConf: KafkaConsumerActor.Conf, nextActor: ActorRef)
   extends Actor with ActorLogging with PollScheduling {
 
@@ -176,6 +188,8 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
   import context.become
 
   private val consumer = KafkaConsumer[K, V](consumerConf)
+
+  // Handles partition reassignments in the KafkaClient
   private val trackPartitions = TrackPartitions(consumer)
   private val isTimeoutUsed = actorConf.unconfirmedTimeout.toMillis > 0
 
@@ -268,15 +282,18 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
       pollImmediate(200)
   }
 
-  // Buffered message and unconfirmed message
+  // Buffered message and unconfirmed message with the client.  No need to poll until its confirmed, or timed out.
   def bufferFull(state: Buffered): Receive = unconfirmedCommonReceive(state) orElse {
     case Poll(correlation, _) if isCurrentPoll(correlation) =>
+
+      // Id an confirmation timeout is set and has expired, the message is redelivered
       if (isConfirmationTimeout(state.deliveryTime)) {
         nextActor ! state.unconfirmed
       }
       log.debug(s"Buffer is full. Not gonna poll.")
       schedulePoll()
 
+      // The next message can be sent immediately from the buffer.  A poll to Kafka for new messages for the buffer also happens immediately.
     case Confirm(offsets, commit) if state.isCurrentOffset(offsets) =>
       log.info(s"Records confirmed")
       if (commit) commitOffsets(offsets)
@@ -286,13 +303,10 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
       pollImmediate()
   }
 
+  // The client is usually misusing the Consumer if incorrect Confirm offsets are provided
   private def unconfirmedCommonReceive(state: HasUnconfirmedRecords): Receive = unsubscribeReceive orElse {
     case Confirm(offsets, _) if !state.isCurrentOffset(offsets) =>
-      log.info("Received confirmation for unexpected offsets: {}", offsets)
-  }
-
-  override def preStart() ={
-    log.info("Inside the preStart method of KafkaConsumerActor")
+      log.warning("Received confirmation for unexpected offsets: {}", offsets)
   }
 
   override def postStop(): Unit = {
@@ -343,12 +357,7 @@ class KafkaConsumerActor[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Con
 
   private def commitOffsets(offsets: Offsets): Unit = {
     log.info("Committing offsets. {}", offsets)
-    try {
-      consumer.commitSync(offsets.toCommitMap)
-    } catch {
-      case e:CommitFailedException =>
-        log.error("Failed to commit offsets, probably due to a rebalance while processing messages: {}", e.getMessage)
-    }
+    consumer.commitSync(offsets.toCommitMap)
   }
 
   override def unhandled(message: Any): Unit = {

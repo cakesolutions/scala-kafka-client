@@ -3,14 +3,17 @@ package cakesolutions.kafka
 import cakesolutions.kafka.KafkaConsumer.Conf
 import cakesolutions.kafka.testkit.TestUtils
 import com.typesafe.config.ConfigFactory
-import org.apache.kafka.clients.consumer.OffsetResetStrategy
-import org.apache.kafka.common.serialization.{StringSerializer, StringDeserializer}
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
 
-class KafkaConsumerIntSpec extends FlatSpecLike
+/**
+  * Ad hoc performance test for validating consumer performance.  Pass environment variable KAFKA with contact point for
+  * Kafka server e.g. -DKAFKA=127.0.0.1:9092
+  */
+class KafkaConsumerPerfSpec extends FlatSpecLike
   with Matchers
   with BeforeAndAfterAll {
 
@@ -26,7 +29,7 @@ class KafkaConsumerIntSpec extends FlatSpecLike
       new StringDeserializer)
   )
 
-  "Kafka Consumer" should "perform" in {
+  "Kafka Consumer with single partition topic" should "perform" in {
     val topic = TestUtils.randomString(5)
     val producer = KafkaProducer[String, String](config.getConfig("producer"))
 
