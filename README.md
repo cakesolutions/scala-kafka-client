@@ -149,7 +149,7 @@ done with a Key and Value deserializer with all other consumer properties suppli
     group.id = "test"
     enable.auto.commit = false
     auto.offset.reset = "earliest"
-    consumer.topics = ["topic1"]
+    topics = ["topic1"]
 
     //KafkaConsumerActor config
     schedule.interval = 3000 milliseconds
@@ -203,14 +203,14 @@ import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records}
 class ReceiverActor extends Actor {
 
   override def receive:Receive = {
-    case records:Records[_, _] =>
+    case r:Records[_, _] =>
       
       //Type safe cast of records to correct serialisation type
-      records.cast[String, String] match {
+      r.cast[String, String] match {
         case Some(records) =>
-          processRecords(r.records)
+          processRecords(records.records)
           sender() ! Confirm(r.offsets)
-        case None => log.warning(Received wrong Kafka records type!)
+        case None => log.warning("Received wrong Kafka records type!")
       }
   }
 ```

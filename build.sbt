@@ -44,9 +44,14 @@ lazy val commonSettings = Seq(
 lazy val kafkaTestkit = project.in(file("testkit"))
   .settings(commonSettings: _*)
 
-lazy val scalaKafkaClient = project.in(file("client")).dependsOn(kafkaTestkit % "test")
-  .configs(IntegrationTest extend(Test)).settings(commonSettings: _*)
+lazy val scalaKafkaClient = project.in(file("client")).
+  dependsOn(kafkaTestkit % "test").
+  configs(IntegrationTest extend(Test)).
+  settings(commonSettings: _*)
 
-lazy val scalaKafkaClientAkka = project.in(file("akka")).dependsOn(scalaKafkaClient).dependsOn(kafkaTestkit % "test")
-  .settings(commonSettings: _*)
+lazy val scalaKafkaClientAkka = project.in(file("akka")).
+  dependsOn(scalaKafkaClient).
+  dependsOn(kafkaTestkit % "test").
+  configs(IntegrationTest extend(Test)).
+  settings(commonSettings: _*)
 

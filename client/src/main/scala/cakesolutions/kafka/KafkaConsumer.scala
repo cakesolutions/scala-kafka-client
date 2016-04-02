@@ -57,7 +57,7 @@ object KafkaConsumer {
       * @return True if configured to Auto Commit Mode.
       */
     def isAutoCommitMode: Boolean = {
-      props.get(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG).getOrElse("").toString.equals("true")
+      props.getOrElse(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "").toString.equals("true")
     }
 
     /**
