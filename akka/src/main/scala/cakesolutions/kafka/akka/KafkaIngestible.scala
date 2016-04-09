@@ -1,6 +1,8 @@
 package cakesolutions.kafka.akka
 
+import cakesolutions.kafka.KafkaProducerRecord
 import org.apache.kafka.clients.producer.ProducerRecord
+
 import scala.reflect.runtime.universe.TypeTag
 import scala.reflect.runtime.universe.typeTag
 
@@ -10,7 +12,7 @@ object KafkaIngestible {
     values: Seq[Value],
     response: Option[Any]): KafkaIngestible[Nothing, Value] = {
 
-    val records = values.map(value => new ProducerRecord(topic, value))
+    val records = values.map(value => KafkaProducerRecord(topic, value))
     KafkaIngestible[Nothing, Value](records, response)
   }
 
@@ -20,7 +22,7 @@ object KafkaIngestible {
     values: Seq[Value],
     response: Option[Any]): KafkaIngestible[Key, Value] = {
 
-    val records = values.map(value => new ProducerRecord(topic, key, value))
+    val records = values.map(value => KafkaProducerRecord(topic, key, value))
     KafkaIngestible(records, response)
   }
 
@@ -29,7 +31,7 @@ object KafkaIngestible {
     response: Option[Any]): KafkaIngestible[Nothing, Value] = {
 
     val records = valuesWithTopic.map {
-      case (topic, value) => new ProducerRecord(topic, value)
+      case (topic, value) => KafkaProducerRecord(topic, value)
     }
     KafkaIngestible[Nothing, Value](records, response)
   }
@@ -40,7 +42,7 @@ object KafkaIngestible {
     response: Option[Any]): KafkaIngestible[Key, Value] = {
 
     val records = keyValues.map {
-      case (key, value) => new ProducerRecord(topic, key, value)
+      case (key, value) => KafkaProducerRecord(topic, key, value)
     }
     KafkaIngestible(records, response)
   }
@@ -68,7 +70,7 @@ object KafkaIngestible {
     response: Option[Any]): KafkaIngestible[Key, Value] = {
 
     val records = keyValuesWithTopic.map {
-      case (topic, key, value) => new ProducerRecord(topic, key, value)
+      case (topic, key, value) => KafkaProducerRecord(topic, key, value)
     }
     KafkaIngestible(records, response)
   }

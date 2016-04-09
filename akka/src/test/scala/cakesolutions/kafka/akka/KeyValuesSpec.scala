@@ -4,7 +4,7 @@ import org.scalatest.{FlatSpecLike, Inside, Matchers}
 
 class KeyValuesSpec extends FlatSpecLike with Matchers with Inside {
 
-  val knownInput: KeyValues[String, Int] = KeyValues("foo", Seq(1, 2, 3))
+  val knownInput: KeyValues[String, Int] = KeyValues(Some("foo"), Seq(1, 2, 3))
   val partiallyKnownInput: KeyValues[_, _] = knownInput
   val anyInput: Any = knownInput
 

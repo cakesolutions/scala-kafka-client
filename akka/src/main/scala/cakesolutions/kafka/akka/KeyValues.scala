@@ -1,5 +1,6 @@
 package cakesolutions.kafka.akka
 
+import cakesolutions.kafka.KafkaProducerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.producer.ProducerRecord
 
@@ -7,19 +8,21 @@ import scala.collection.JavaConversions._
 import scala.reflect.runtime.universe.{TypeTag, typeTag}
 
 object KeyValues {
+  type Pair[Key, Value] = (Option[Key], Value)
+
   /**
     * Create key-value pairs where all the values share the same key.
     *
     * @param key the key that the values share
     * @param values sequence of values
     */
-  def apply[Key: TypeTag, Value: TypeTag](key: Key, values: Seq[Value]): KeyValues[Key, Value] =
+  def apply[Key: TypeTag, Value: TypeTag](key: Option[Key], values: Seq[Value]): KeyValues[Key, Value] =
     apply(values.map(key -> _))
 
   /**
     * Create key-value pairs from a sequence of pairs.
     */
-  def apply[Key: TypeTag, Value: TypeTag](keyValues: Seq[(Key, Value)]): KeyValues[Key, Value] =
+  def apply[Key: TypeTag, Value: TypeTag](keyValues: Seq[Pair[Key, Value]]): KeyValues[Key, Value] =
     PlainKeyValues(keyValues)
 
   /**
@@ -34,8 +37,8 @@ object KeyValues {
     * Example:
     * {{{
     * val ext = KeyValues.extractor[String, Int]
-    * val kvs1: Any = KeyValues("foo", Seq(1, 2, 3))  // KeyValues[String, Int]
-    * val kvs2: Any = KeyValues(9, Seq("asdf"))       // KeyValues[Int, String]
+    * val kvs1: Any = KeyValues(Some("foo"), Seq(1, 2, 3))  // KeyValues[String, Int]
+    * val kvs2: Any = KeyValues(Some(9), Seq("asdf"))       // KeyValues[Int, String]
     *
     * kvs1 match {
     *   case ext(kvs) => println(kvs == kvs1) // `kvs` has type KeyValues[String, Int] here
@@ -77,6 +80,8 @@ object KeyValues {
   * Produced by [[KafkaConsumerActor]] and consumed by [[KafkaProducerActor]].
   */
 sealed abstract class KeyValues[Key: TypeTag, Value: TypeTag] {
+  type Pair = KeyValues.Pair[Key, Value]
+
   val keyTag: TypeTag[Key] = typeTag[Key]
   val valueTag: TypeTag[Value] = typeTag[Value]
 
@@ -118,7 +123,7 @@ sealed abstract class KeyValues[Key: TypeTag, Value: TypeTag] {
     * @return a sequence of Kafka [[ProducerRecord]]s
     */
   def toProducerRecords(topic: String): Seq[ProducerRecord[Key, Value]] =
-    keyValues.map { case (k, v) => new ProducerRecord(topic, k, v) }
+    keyValues.map { case (k, v) => KafkaProducerRecord(topic, k, v) }
 
   /**
     * Convert values from key-value pairs to Kafka [[ProducerRecord]].
@@ -127,12 +132,12 @@ sealed abstract class KeyValues[Key: TypeTag, Value: TypeTag] {
     * @return a sequence of Kafka [[ProducerRecord]]s
     */
   def valuesToProducerRecords(topic: String): Seq[ProducerRecord[Nothing, Value]] =
-    keyValues.map { case (_, v) => new ProducerRecord(topic, v) }
+    keyValues.map { case (_, v) => KafkaProducerRecord(topic, v) }
 
   /**
     * All the keys-value pairs in a sequence.
     */
-  def keyValues: Seq[(Key, Value)]
+  def keyValues: Seq[Pair]
 }
 
 /**
@@ -142,7 +147,7 @@ sealed abstract class KeyValues[Key: TypeTag, Value: TypeTag] {
   *
   * @param keyValues a sequence of key-value pairs
   */
-case class PlainKeyValues[Key: TypeTag, Value: TypeTag](keyValues: Seq[(Key, Value)]) extends KeyValues[Key, Value]
+case class PlainKeyValues[Key: TypeTag, Value: TypeTag](keyValues: Seq[KeyValues.Pair[Key, Value]]) extends KeyValues[Key, Value]
 
 /**
   * A collection of key-value pairs produced by [[KafkaConsumerActor]].
@@ -156,12 +161,14 @@ case class KafkaConsumerKeyValues[Key: TypeTag, Value: TypeTag](records: Consume
     */
   lazy val recordsList = records.toList
 
-  override def keyValues: Seq[(Key, Value)] = recordsList.map(r => (r.key(), r.value()))
+  override def keyValues: Seq[Pair] = recordsList.map(r => (Some(r.key()), r.value()))
 
   override def values: Seq[Value] = recordsList.map(_.value())
 }
 
 object KeyValuesWithOffsets {
+  import KeyValues.Pair
+
   /**
     * Create key-value pairs where all the values share the same key.
     *
@@ -169,13 +176,13 @@ object KeyValuesWithOffsets {
     * @param key the key that the values share
     * @param values sequence of values
     */
-  def apply[Key: TypeTag, Value: TypeTag](offsets: Offsets, key: Key, values: Seq[Value]): KeyValuesWithOffsets[Key, Value] =
+  def apply[Key: TypeTag, Value: TypeTag](offsets: Offsets, key: Option[Key], values: Seq[Value]): KeyValuesWithOffsets[Key, Value] =
     apply(offsets, KeyValues(key, values))
 
   /**
     * Create key-value pairs from a sequence of pairs along with given offsets.
     */
-  def apply[Key: TypeTag, Value: TypeTag](offsets: Offsets, keyValues: Seq[(Key, Value)]): KeyValuesWithOffsets[Key, Value] =
+  def apply[Key: TypeTag, Value: TypeTag](offsets: Offsets, keyValues: Seq[Pair[Key, Value]]): KeyValuesWithOffsets[Key, Value] =
     apply(offsets, KeyValues(keyValues))
 
   /**
