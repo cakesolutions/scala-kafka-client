@@ -22,7 +22,7 @@ To include, add the following resolver to the build.sbt
 
  scala-kafka-client | Kafka Java Driver
  ------------------ | -----------------
- 0.5 | 0.9.0.1
+ 0.5.x | 0.9.0.1
  0.4  | 0.9.0.0
 
 ## Scala Kafka Client
@@ -30,7 +30,7 @@ The scala-kafka-client is a minimal Scala wrapper around the Java client API, pr
 
 ### Resolve
 
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.5.0"
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.5.1"
     
 ### Producer
 
@@ -117,7 +117,7 @@ can be useful when developing [Reactive](http://www.reactivemanifesto.org/) appl
 ### Resolve
 
     // Latest release:
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.5.0"
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.5.1"
 
 ### Motivation
 This module provides a configurable KafkaConsumerActor which utilises Akka to provide an asynchronous and non-blocking Kafka consumer,
@@ -149,7 +149,7 @@ done with a Key and Value deserializer with all other consumer properties suppli
     group.id = "test"
     enable.auto.commit = false
     auto.offset.reset = "earliest"
-    consumer.topics = ["topic1"]
+    topics = ["topic1"]
 
     //KafkaConsumerActor config
     schedule.interval = 3000 milliseconds
@@ -203,14 +203,14 @@ import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records}
 class ReceiverActor extends Actor {
 
   override def receive:Receive = {
-    case records:Records[_, _] =>
+    case r:Records[_, _] =>
       
       //Type safe cast of records to correct serialisation type
-      records.cast[String, String] match {
+      r.cast[String, String] match {
         case Some(records) =>
-          processRecords(r.records)
+          processRecords(records.records)
           sender() ! Confirm(r.offsets)
-        case None => log.warning(Received wrong Kafka records type!)
+        case None => log.warning("Received wrong Kafka records type!")
       }
   }
 ```
@@ -280,7 +280,7 @@ depends on a running Kafka Server.  Helps the setup of an in-process Kafka and Z
 ### Resolve
 
     //For kafka integration test support:
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-tesktkit" % "0.5.0" % "test"
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-tesktkit" % "0.5.1" % "test"
 
 ## License
     
