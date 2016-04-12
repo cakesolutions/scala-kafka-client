@@ -48,7 +48,7 @@ object KafkaConsumerActor {
       * Configuration for KafkaConsumerActor from Config
       */
     def apply(config: Config): Conf = {
-      val topics = config.getStringList("consumer.topics")
+      val topics = config.getStringList("topics")
 
       val scheduleInterval = durationFromConfig(config, "schedule.interval")
       val unconfirmedTimeout = durationFromConfig(config, "unconfirmed.timeout")
