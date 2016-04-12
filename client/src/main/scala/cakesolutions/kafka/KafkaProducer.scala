@@ -50,20 +50,12 @@ class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) {
 
   def send(record: ProducerRecord[K, V]): Future[RecordMetadata] = {
     val promise = Promise[RecordMetadata]()
-    logSend(record)
     producer.send(record, producerCallback(promise))
     promise.future
   }
 
   def sendWithCallback(record: ProducerRecord[K, V])(callback: Try[RecordMetadata] => Unit): Unit = {
-    logSend(record)
     producer.send(record, producerCallback(callback))
-  }
-
-  private def logSend(record: ProducerRecord[K, V]): Unit = {
-    val key = Option(record.key()).map(_.toString).getOrElse("null")
-    log.info("Sending message to topic=[{}], key=[{}], value=[{}]",
-      record.topic(), key, record.value().toString)
   }
 
   def flush(): Unit = {
