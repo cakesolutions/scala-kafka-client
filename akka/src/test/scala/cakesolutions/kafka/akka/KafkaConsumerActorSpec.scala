@@ -21,11 +21,11 @@ object KafkaConsumerActorSpec {
   }
 }
 
-class KafkaConsumerActorSpec(system: ActorSystem) extends KafkaIntSpec(system) {
+class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_) {
 
   import KafkaConsumerActorSpec._
 
-  def this() = this(ActorSystem("MySpec"))
+  def this() = this(ActorSystem("KafkaConsumerActorSpec"))
 
   val log = LoggerFactory.getLogger(getClass)
 

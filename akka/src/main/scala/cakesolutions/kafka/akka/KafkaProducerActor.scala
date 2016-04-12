@@ -57,10 +57,17 @@ protected class KafkaProducerActor[K, V](
   override def receive: Receive = matcher.andThen(handleResult)
 
   private def handleResult(result: ProducerRecordMatcher.Result[K, V]): Unit = {
+    log.debug("Received a batch. Writing to Kafka.")
     val s = sender()
     sendMany(result.records).onComplete {
-      case Success(_) => result.response.foreach(s ! _)
-      case Failure(err) => logSendError(err)
+      case Success(_) =>
+        log.debug("Wrote batch to Kafka.")
+        result.response.foreach { response =>
+          log.debug("Sending a response back.")
+          s ! response
+        }
+      case Failure(err) =>
+        logSendError(err)
     }
   }
 
@@ -72,6 +79,16 @@ protected class KafkaProducerActor[K, V](
   private def send(record: Record) = {
     log.debug("Sending message to Kafka topic {} with key {}: {}", record.topic, record.key, record.value)
     producer.send(record)
+  }
+
+  override def postStop(): Unit = {
+    log.info("KafkaProducerActor stopping")
+    producer.close()
+  }
+
+  override def unhandled(message: Any): Unit = {
+    super.unhandled(message)
+    log.warning("Unknown message: {}", message)
   }
 }
 

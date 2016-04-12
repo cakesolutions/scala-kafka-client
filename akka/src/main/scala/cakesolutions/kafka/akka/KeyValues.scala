@@ -135,6 +135,11 @@ sealed abstract class KeyValues[Key: TypeTag, Value: TypeTag] {
     keyValues.map { case (_, v) => KafkaProducerRecord(topic, v) }
 
   /**
+    * Number of key-value pairs
+    */
+  def size: Int = keyValues.size
+
+  /**
     * All the keys-value pairs in a sequence.
     */
   def keyValues: Seq[Pair]
@@ -164,6 +169,8 @@ case class KafkaConsumerKeyValues[Key: TypeTag, Value: TypeTag](records: Consume
   override def keyValues: Seq[Pair] = recordsList.map(r => (Some(r.key()), r.value()))
 
   override def values: Seq[Value] = recordsList.map(_.value())
+
+  override def size: Int = records.count()
 }
 
 object KeyValuesWithOffsets {

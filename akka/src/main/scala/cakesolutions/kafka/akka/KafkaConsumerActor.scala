@@ -6,9 +6,6 @@ import java.time.temporal.ChronoUnit
 import akka.actor._
 import cakesolutions.kafka.KafkaConsumer
 import com.typesafe.config.Config
-import org.apache.kafka.common.errors.WakeupException
-import org.apache.kafka.clients.consumer.{ConsumerRecords, OffsetAndMetadata}
-import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.Deserializer
 
 import scala.collection.JavaConversions._
@@ -291,7 +288,7 @@ protected class KafkaConsumerActor[K: TypeTag, V: TypeTag](
   }
 
   override def postStop(): Unit = {
-    log.info("KafkaConsumerActor stopping ")
+    log.info("KafkaConsumerActor stopping")
     close()
   }
 
