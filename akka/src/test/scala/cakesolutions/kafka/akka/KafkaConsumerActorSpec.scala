@@ -53,7 +53,7 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends KafkaIntSpec(system) {
   def actorConfFromConfig(topic: String): KafkaConsumerActor.Conf =
     KafkaConsumerActor.Conf(ConfigFactory.parseString(
       s"""
-         | consumer.topics = ["$topic"]
+         | topics = ["$topic"]
          | schedule.interval = 3000 milliseconds
          | unconfirmed.timeout = 3000 milliseconds
          | buffer.size = 8
@@ -77,7 +77,7 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends KafkaIntSpec(system) {
          | group.id = "${TestUtils.randomString(5)}"
          | enable.auto.commit = false
          | auto.offset.reset = "earliest"
-         | consumer.topics = ["$topic"]
+         | topics = ["$topic"]
          | schedule.interval = 3000 milliseconds
          | unconfirmed.timeout = 3000 milliseconds
          | buffer.size = 8

@@ -22,6 +22,7 @@ To include, add the following resolver to the build.sbt
 
  scala-kafka-client | Kafka Java Driver
  ------------------ | -----------------
+ 0.6.x | 0.9.0.1
  0.5.x | 0.9.0.1
  0.4  | 0.9.0.0
 
@@ -30,7 +31,7 @@ The scala-kafka-client is a minimal Scala wrapper around the Java client API, pr
 
 ### Resolve
 
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.5.1"
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.6.0"
     
 ### Producer
 
@@ -117,7 +118,7 @@ can be useful when developing [Reactive](http://www.reactivemanifesto.org/) appl
 ### Resolve
 
     // Latest release:
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.5.1"
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.6.0"
 
 ### Motivation
 This module provides a configurable KafkaConsumerActor which utilises Akka to provide an asynchronous and non-blocking Kafka consumer,
@@ -280,7 +281,7 @@ depends on a running Kafka Server.  Helps the setup of an in-process Kafka and Z
 ### Resolve
 
     //For kafka integration test support:
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-tesktkit" % "0.5.1" % "test"
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-tesktkit" % "0.6.0" % "test"
 
 ## License
     
