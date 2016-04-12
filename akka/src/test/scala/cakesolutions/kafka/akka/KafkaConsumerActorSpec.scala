@@ -16,7 +16,8 @@ object KafkaConsumerActorSpec {
     KafkaProducer(KafkaProducer.Conf(new StringSerializer(), new StringSerializer(), bootstrapServers = kafkaHost + ":" + kafkaPort))
 
   def actorConf(topic: String): KafkaConsumerActor.Conf = {
-    KafkaConsumerActor.Conf(List(topic))
+    import Retry._
+    KafkaConsumerActor.Conf(List(topic), retryStrategy = Strategy(Interval.Linear(1.seconds), Logic.FiniteTimes(10)))
   }
 }
 
@@ -56,6 +57,16 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends KafkaIntSpec(system) {
          | schedule.interval = 3000 milliseconds
          | unconfirmed.timeout = 3000 milliseconds
          | buffer.size = 8
+         | retryStrategy {
+         |   interval {
+         |     type = "linear"
+         |     duration = 1000
+         |   }
+         |   logic {
+         |     type = finiteTimes
+         |     retryCount = 10
+         |   }
+         | }
         """.stripMargin)
     )
 
@@ -70,6 +81,16 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends KafkaIntSpec(system) {
          | schedule.interval = 3000 milliseconds
          | unconfirmed.timeout = 3000 milliseconds
          | buffer.size = 8
+         | retryStrategy {
+         |   interval {
+         |     type = "linear"
+         |     duration = 1000
+         |   }
+         |   logic {
+         |     type = finiteTimes
+         |     retryCount = 10
+         |   }
+         | }
         """.stripMargin)
   }
 

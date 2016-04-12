@@ -26,6 +26,18 @@ case class Offsets(offsetsMap: Map[TopicPartition, Long]) extends AnyVal {
   def toCommitMap: Map[TopicPartition, OffsetAndMetadata] =
     offsetsMap.mapValues(offset => new OffsetAndMetadata(offset))
 
+  def keepOnly(tps: Set[TopicPartition]): Offsets =
+    copy(offsetsMap.filter { case (t, _) => tps(t) })
+
+  def remove(tps: Set[TopicPartition]): Offsets =
+    copy(offsetsMap -- tps)
+
+  def isEmpty: Boolean = offsetsMap.isEmpty
+
+  def nonEmpty: Boolean = offsetsMap.nonEmpty
+
+  def topicPartitions: Set[TopicPartition] = offsetsMap.keySet
+
   override def toString: String =
     offsetsMap
       .map { case (t, o) => s"$t: $o" }
