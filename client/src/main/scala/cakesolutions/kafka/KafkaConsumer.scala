@@ -38,6 +38,7 @@ object KafkaConsumer {
 
   /**
     * Configuration object for the KafkaConsumer.  Key and Value deserialisers are provided explicitly.
+    *
     * @param props Map of KafkaConsumer Properties.  Usually created via the Object helpers.
     * @tparam K Key Deserializer type
     * @tparam V Value Deserializer type
@@ -48,6 +49,7 @@ object KafkaConsumer {
 
     /**
       * With additional config defined in supplied Typesafe config.  Supplied config overrides existing properties
+      *
       * @param config Typesafe Config
       */
     def withConf(config: Config): Conf[K, V] = {
@@ -71,6 +73,7 @@ object KafkaConsumer {
 
   /**
     * Create a Java KafkaConsumer client with config provided in Conf class.
+    *
     * @param conf Configuration for the consumer
     * @tparam K Key Serialiser type
     * @tparam V Value Serialiser type
