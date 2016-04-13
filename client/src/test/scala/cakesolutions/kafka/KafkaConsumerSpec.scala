@@ -46,7 +46,7 @@ class KafkaConsumerSpec extends KafkaTestSpec {
     val topic = TestUtils.randomString(5)
     log.info(s"Using topic [$topic] and kafka port [$kafkaPort]")
 
-    val producer = KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = "localhost:" + kafkaPort)
+    val producer = KafkaProducer(KafkaProducer.Conf(new StringSerializer(), new StringSerializer(), bootstrapServers = "localhost:" + kafkaPort))
     val consumer = KafkaConsumer(directConfig)
     consumer.subscribe(List(topic))
 
@@ -69,7 +69,7 @@ class KafkaConsumerSpec extends KafkaTestSpec {
     val topic = TestUtils.randomString(5)
     log.info(s"!!Using topic [$topic] and kafka port [$kafkaPort]")
 
-    val producer = KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = "localhost:" + kafkaPort)
+    val producer = KafkaProducer(KafkaProducer.Conf(new StringSerializer(), new StringSerializer(), bootstrapServers = "localhost:" + kafkaPort))
     val consumer = KafkaConsumer(typesafeConfig)
 
     log.info("Kafka producer connecting on port: [{}]", kafkaPort)
@@ -88,7 +88,7 @@ class KafkaConsumerSpec extends KafkaTestSpec {
   "KafkaConsumer with earliest/latest config" should "receive all/no messages already on topic" in {
     val topic = TestUtils.randomString(5)
 
-    val producer = KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = "localhost:" + kafkaPort)
+    val producer = KafkaProducer(KafkaProducer.Conf(new StringSerializer(), new StringSerializer(), bootstrapServers = "localhost:" + kafkaPort))
     producer.send(KafkaProducerRecord(topic, Some("key"), "value"))
     producer.send(KafkaProducerRecord(topic, Some("key"), "value2"))
     producer.flush()

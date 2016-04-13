@@ -6,8 +6,6 @@ import java.time.temporal.ChronoUnit
 import akka.actor._
 import cakesolutions.kafka.KafkaConsumer
 import com.typesafe.config.Config
-import org.apache.kafka.clients.consumer.{ConsumerRecords, OffsetAndMetadata}
-import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.Deserializer
 
 import scala.collection.JavaConversions._
@@ -38,76 +36,6 @@ object KafkaConsumerActor {
     * Actor API - Unsubscribe from Kafka.
     */
   case object Unsubscribe
-
-  /**
-    * Map of partitions to partition offsets.
-    */
-  case class Offsets(offsetsMap: Map[TopicPartition, Long]) extends AnyVal {
-    def get(topic: TopicPartition): Option[Long] = offsetsMap.get(topic)
-
-    def forAllOffsets(that: Offsets)(f: (Long, Long) => Boolean): Boolean =
-      offsetsMap.forall {
-        case (topic, offset) => that.get(topic).forall(f(offset, _))
-      }
-
-    def toCommitMap: Map[TopicPartition, OffsetAndMetadata] =
-      offsetsMap.mapValues(offset => new OffsetAndMetadata(offset))
-
-    def keepOnly(tps: Set[TopicPartition]): Offsets =
-      copy(offsetsMap.filter { case (t, _) => tps(t) })
-
-    def remove(tps: Set[TopicPartition]): Offsets =
-      copy(offsetsMap -- tps)
-
-    def isEmpty: Boolean = offsetsMap.isEmpty
-
-    def nonEmpty: Boolean = offsetsMap.nonEmpty
-
-    def topicPartitions: Set[TopicPartition] = offsetsMap.keySet
-
-    override def toString: String =
-      offsetsMap
-        .map { case (t, o) => s"$t: $o" }
-        .mkString("Offsets(", ", ", ")")
-  }
-
-  /**
-    * Records consumed from Kafka with the offsets related to the records.
-    * Offsets will contain all the partition offsets assigned to the client after the records were pulled from Kafka.
-    */
-  case class Records[K: TypeTag, V: TypeTag](offsets: Offsets, records: ConsumerRecords[K, V]) {
-    val keyTag = typeTag[K]
-    val valueTag = typeTag[V]
-
-    /**
-      * Compare given types to record types.
-      * Useful for regaining generic type information in runtime when it has been lost (e.g. in actor communication).
-      *
-      * @tparam K1 the key type to compare to
-      * @tparam V2 the value type to compare to
-      * @return true when given types match objects type parameters, and false otherwise
-      */
-    def hasType[K1: TypeTag, V2: TypeTag]: Boolean =
-      typeTag[K1].tpe <:< keyTag.tpe &&
-        typeTag[V2].tpe <:< valueTag.tpe
-
-    /**
-      * Attempt to cast record keys and values to given types.
-      * Useful for regaining generic type information in runtime when it has been lost (e.g. in actor communication).
-      *
-      * @tparam K1 the key type to cast to
-      * @tparam V2 the value type to cast to
-      * @return the same records in casted form when casting is possible, and otherwise [[None]]
-      */
-    def cast[K1: TypeTag, V2: TypeTag]: Option[Records[K1, V2]] =
-      if (hasType[K1, V2]) Some(this.asInstanceOf[Records[K1, V2]])
-      else None
-
-    /**
-      * Get all the values as a single sequence.
-      */
-    def values: Seq[V] = records.toList.map(_.value())
-  }
 
   object Conf {
 
@@ -165,10 +93,10 @@ object KafkaConsumerActor {
                                     keyDeserializer: Deserializer[K],
                                     valueDeserializer: Deserializer[V],
                                     nextActor: ActorRef): Props = {
-    Props(
-      new KafkaConsumerActor[K, V](KafkaConsumer.Conf[K, V](conf, keyDeserializer, valueDeserializer),
+    props(
+      KafkaConsumer.Conf[K, V](conf, keyDeserializer, valueDeserializer),
         KafkaConsumerActor.Conf(conf),
-        nextActor))
+        nextActor)
   }
 
   /**
@@ -203,6 +131,8 @@ protected class KafkaConsumerActor[K: TypeTag, V: TypeTag](
   import PollScheduling.Poll
   import context.become
 
+  type Records = KeyValuesWithOffsets[K, V]
+
   private var consumer = KafkaConsumer[K, V](consumerConf)
 
   // Handles partition reassignments in the KafkaClient
@@ -212,15 +142,15 @@ protected class KafkaConsumerActor[K: TypeTag, V: TypeTag](
 
   // Receive states
   private sealed trait HasUnconfirmedRecords {
-    val unconfirmed: Records[K, V]
+    val unconfirmed: Records
 
     def isCurrentOffset(offsets: Offsets): Boolean = unconfirmed.offsets == offsets
   }
 
-  private case class Unconfirmed(unconfirmed: Records[K, V], deliveryTime: LocalDateTime = LocalDateTime.now())
+  private case class Unconfirmed(unconfirmed: Records, deliveryTime: LocalDateTime = LocalDateTime.now())
     extends HasUnconfirmedRecords
 
-  private case class Buffered(unconfirmed: Records[K, V], deliveryTime: LocalDateTime = LocalDateTime.now(), buffered: Records[K, V])
+  private case class Buffered(unconfirmed: Records, deliveryTime: LocalDateTime = LocalDateTime.now(), buffered: Records)
     extends HasUnconfirmedRecords
 
   override def receive = unsubscribed
@@ -290,7 +220,7 @@ protected class KafkaConsumerActor[K: TypeTag, V: TypeTag](
 
   // Unconfirmed message with client, buffer empty
   def unconfirmed(state: Unconfirmed): Receive = unconfirmedCommonReceive(state) orElse {
-    case Poll(correlation, _) if isCurrentPoll(correlation) =>
+    case poll: Poll if isCurrentPoll(poll) =>
       if (isConfirmationTimeout(state.deliveryTime)) {
         sendRecords(state.unconfirmed)
       }
@@ -317,7 +247,7 @@ protected class KafkaConsumerActor[K: TypeTag, V: TypeTag](
 
   // Buffered message and unconfirmed message with the client.  No need to poll until its confirmed, or timed out.
   def bufferFull(state: Buffered): Receive = unconfirmedCommonReceive(state) orElse {
-    case Poll(correlation, _) if isCurrentPoll(correlation) =>
+    case poll: Poll if isCurrentPoll(poll) =>
 
       // Id an confirmation timeout is set and has expired, the message is redelivered
       if (isConfirmationTimeout(state.deliveryTime)) {
@@ -327,7 +257,7 @@ protected class KafkaConsumerActor[K: TypeTag, V: TypeTag](
       log.debug(s"Buffer is full. Not gonna poll.")
       schedulePoll()
 
-      // The next message can be sent immediately from the buffer.  A poll to Kafka for new messages for the buffer also happens immediately.
+    // The next message can be sent immediately from the buffer.  A poll to Kafka for new messages for the buffer also happens immediately.
     case Confirm(offsets, commit) if state.isCurrentOffset(offsets) =>
       log.info(s"Records confirmed")
       if (commit) commitOffsets(offsets)
@@ -347,7 +277,7 @@ protected class KafkaConsumerActor[K: TypeTag, V: TypeTag](
     evaluateUntilFinished(actorConf.retryStrategy, recover)(effect)
   }
 
-  private def sendRecords(records: Records[K, V]): Unit = {
+  private def sendRecords(records: Records): Unit = {
     nextActor ! records
   }
 
@@ -358,7 +288,7 @@ protected class KafkaConsumerActor[K: TypeTag, V: TypeTag](
   }
 
   override def postStop(): Unit = {
-    log.info("KafkaConsumerActor stopping ")
+    log.info("KafkaConsumerActor stopping")
     close()
   }
 
@@ -368,12 +298,12 @@ protected class KafkaConsumerActor[K: TypeTag, V: TypeTag](
     * @param timeout - specify a blocking poll timeout.  Default 0 for non blocking poll.
     * @return
     */
-  private def pollKafka(timeout: Int = 0)(cb: Option[Records[K, V]] => Unit): Unit =
+  private def pollKafka(timeout: Int = 0)(cb: Option[Records] => Unit): Unit =
     tryWithConsumer(currentConsumerOffsets) {
       log.debug("Poll Kafka for {} milliseconds", timeout)
       val rs = consumer.poll(timeout)
       if (rs.count() > 0)
-        cb(Some(Records(currentConsumerOffsets, rs)))
+        cb(Some(KeyValuesWithOffsets(currentConsumerOffsets, rs)))
       else
         cb(None)
     }

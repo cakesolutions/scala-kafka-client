@@ -3,11 +3,11 @@ package cakesolutions.kafka.akka
 import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.TestActor.AutoPilot
 import akka.testkit.{ImplicitSender, TestActor, TestKit, TestProbe}
-import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Records, Subscribe, Unsubscribe}
+import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe, Unsubscribe}
 import cakesolutions.kafka.testkit.TestUtils
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.ConfigFactory
-import org.apache.kafka.common.serialization.StringDeserializer
+import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
@@ -56,7 +56,8 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
     val topic = TestUtils.randomString(5)
     val totalMessages = 100000
 
-    val producer = KafkaProducer[String, String](config.getConfig("producer"))
+    val producerConf = KafkaProducer.Conf(config.getConfig("producer"), new StringSerializer, new StringSerializer)
+    val producer = KafkaProducer[String, String](producerConf)
     val pilot = new ReceiverPilot(totalMessages)
     val receiver = TestProbe()
     receiver.setAutoPilot(pilot)
@@ -75,7 +76,7 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
       log.info("Total Time millis : {}", totalTime)
       log.info("Messages per sec  : {}", messagesPerSec)
 
-      totalTime should be < 4000L
+      totalTime should be < 7000L
 
       consumer ! Unsubscribe
       producer.close()
@@ -95,13 +96,15 @@ class ReceiverPilot(expectedMessages: Long) extends TestActor.AutoPilot {
 
   def future = finished.future
 
+  val matcher = KeyValuesWithOffsets.extractor[String, String]
+
   override def run(sender: ActorRef, msg: Any): AutoPilot = {
     if (total == 0)
       start = System.currentTimeMillis()
 
-    matchRecords(msg) match {
+    matcher.unapply(msg) match {
       case Some(r) =>
-        total += r.records.count()
+        total += r.keyValues.size
         sender ! Confirm(r.offsets)
         if (total >= expectedMessages) {
           val totalTime = System.currentTimeMillis() - start
@@ -116,10 +119,5 @@ class ReceiverPilot(expectedMessages: Long) extends TestActor.AutoPilot {
         log.warn("Received unknown messages!")
         TestActor.KeepRunning
     }
-  }
-
-  private def matchRecords(a: Any): Option[Records[String, String]] = a match {
-    case records: Records[_, _] => records.cast[String, String]
-    case _ => None
   }
 }

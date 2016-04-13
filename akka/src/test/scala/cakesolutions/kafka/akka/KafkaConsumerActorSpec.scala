@@ -1,7 +1,7 @@
 package cakesolutions.kafka.akka
 
 import akka.actor.ActorSystem
-import cakesolutions.kafka.akka.KafkaConsumerActor.{Unsubscribe, Confirm, Records, Subscribe}
+import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe, Unsubscribe}
 import cakesolutions.kafka.testkit.TestUtils
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.{Config, ConfigFactory}
@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 
 object KafkaConsumerActorSpec {
   def kafkaProducer(kafkaHost: String, kafkaPort: Int): KafkaProducer[String, String] =
-    KafkaProducer(new StringSerializer(), new StringSerializer(), bootstrapServers = kafkaHost + ":" + kafkaPort)
+    KafkaProducer(KafkaProducer.Conf(new StringSerializer(), new StringSerializer(), bootstrapServers = kafkaHost + ":" + kafkaPort))
 
   def actorConf(topic: String): KafkaConsumerActor.Conf = {
     import Retry._
@@ -21,11 +21,11 @@ object KafkaConsumerActorSpec {
   }
 }
 
-class KafkaConsumerActorSpec(system: ActorSystem) extends KafkaIntSpec(system) {
+class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_) {
 
   import KafkaConsumerActorSpec._
 
-  def this() = this(ActorSystem("MySpec"))
+  def this() = this(ActorSystem("KafkaConsumerActorSpec"))
 
   val log = LoggerFactory.getLogger(getClass)
 
@@ -106,7 +106,7 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends KafkaIntSpec(system) {
           val consumer = system.actorOf(KafkaConsumerActor.props(consumerConfig, actorConf, testActor))
           consumer ! Subscribe()
 
-          val rs = expectMsgClass(30.seconds, classOf[Records[String, String]])
+          val rs = expectMsgClass(30.seconds, classOf[KeyValuesWithOffsets[String, String]])
           consumer ! Confirm(rs.offsets)
           expectNoMsg(5.seconds)
 
@@ -126,7 +126,7 @@ class KafkaConsumerActorSpec(system: ActorSystem) extends KafkaIntSpec(system) {
     val consumer = system.actorOf(KafkaConsumerActor.props(configuredActor(topic), new StringDeserializer(), new StringDeserializer(), testActor))
     consumer ! Subscribe()
 
-    val rs = expectMsgClass(30.seconds, classOf[Records[String, String]])
+    val rs = expectMsgClass(30.seconds, classOf[KeyValuesWithOffsets[String, String]])
     consumer ! Confirm(rs.offsets)
     expectNoMsg(5.seconds)
 

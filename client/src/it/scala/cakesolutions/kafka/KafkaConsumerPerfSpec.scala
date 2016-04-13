@@ -3,7 +3,7 @@ package cakesolutions.kafka
 import cakesolutions.kafka.KafkaConsumer.Conf
 import cakesolutions.kafka.testkit.TestUtils
 import com.typesafe.config.ConfigFactory
-import org.apache.kafka.common.serialization.StringDeserializer
+import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.slf4j.LoggerFactory
 
@@ -31,7 +31,8 @@ class KafkaConsumerPerfSpec extends FlatSpecLike
 
   "Kafka Consumer with single partition topic" should "perform" in {
     val topic = TestUtils.randomString(5)
-    val producer = KafkaProducer[String, String](config.getConfig("producer"))
+    val producerConf = KafkaProducer.Conf(config.getConfig("producer"), new StringSerializer, new StringSerializer)
+    val producer = KafkaProducer[String, String](producerConf)
 
     1 to 100000 foreach { n =>
       producer.send(KafkaProducerRecord(topic, None, msg1k))
@@ -53,8 +54,11 @@ class KafkaConsumerPerfSpec extends FlatSpecLike
     }
 
     val totalTime = System.currentTimeMillis() - start
-    log.info("Total Time: {}", totalTime)
-    log.info("Msg per sec: {}", 100000 / totalTime * 100 )
+    val messagesPerSec = 100000 / totalTime * 100
+    log.info("Total Time millis : {}", totalTime)
+    log.info("Messages per sec  : {}", messagesPerSec)
+
+    totalTime should be < 4000L
 
     consumer.close()
     producer.close()
