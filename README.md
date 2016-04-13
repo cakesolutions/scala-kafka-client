@@ -34,8 +34,88 @@ The scala-kafka-client is a minimal Scala wrapper around the Java client API, pr
     libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.6.0"
     
 ### Producer
+The Java [KafkaProducer](https://kafka.apache.org/090/javadoc/index.html?org/apache/kafka/clients/producer/KafkaProducer.html) is typically setup by creating a Java Properties with required producer configuration.
+The Scala wrapper provides some convenience functions for creating the producer configuration either directly in code, via Typesafe config or a combination of both.
 
-TODO
+When delivering messages to the Java KafkaProducer via one of the `send()` methods, confirmation of successful message delivery is provided by resolving a `java.util.concurrent.Future` plus an option to provide a `org.apache.kafka.clients.producer.Callback`.
+The Scala KafkaProducer wrapper provides alternative methods of obtaining the delivery result via one of two methods:
+
+```
+// Asynchronously send a record to a topic, providing a scala.concurrent.Future containing the result of the operation.
+def send(record: ProducerRecord[K, V]): Future[RecordMetadata]
+```
+
+```
+// Asynchronously send a record to a topic and invoke the provided function callback when the send has been acknowledged.
+def sendWithCallback(record: ProducerRecord[K, V])(callback: Try[RecordMetadata] => Unit): Unit
+```
+
+#### Direct Configuration
+The `cakesolutions.kafka.KafkaProducer.Conf` case class models the configuration required for the KafkaProducer and can be constructed and passed to the
+`cakesolutions.kafka.KafkaProducer` factory method to produce a configured ```KafkaProducer```.  Key and Value Serializers are also required as documented in the Kafka client docs.
+
+```
+import cakesolutions.kafka.KafkaProducer
+import cakesolutions.kafka.KafkaProducer.Conf
+
+// Create a org.apache.kafka.clients.producer.KafkaProducer
+val producer = KafkaProducer(
+    Conf(new StringSerializer(), new StringSerializer(), bootstrapServers = "localhost:9092")
+)
+```
+
+The Conf configuration class provides additional properties with defaults:
+
+```
+import cakesolutions.kafka.KafkaProducer.Conf
+
+Conf(new StringSerializer(), new StringSerializer()
+  bootstrapServers = "localhost:9092",
+  acks = "all",
+  retries = 0,
+  batchSize = 16834,
+  lingerMs = 1,
+  bufferMemory = 33554432
+)
+```
+
+#### Typesafe Configuration
+The configuration for the KafkaProducer can also specified in a [Typesafe Config](https://github.com/typesafehub/config) file:  
+Pass a Typesafe Config to cakesolutions.kafka.KafkaProducer.Conf:
+
+```
+application.conf:
+{
+   bootstrap.servers = "localhost:9092"
+}
+
+import cakesolutions.kafka.KafkaProducer
+import cakesolutions.kafka.KafkaProducer.Conf
+
+val conf = ConfigFactory.load
+
+// Create a org.apache.kafka.clients.producer.KafkaProducer from properties defined in a Typesafe Config file
+val producer = KafkaProducer(
+  Conf(conf, new StringSerializer(), new StringSerializer())
+)
+```
+
+#### Additional Config Options
+A combination of static properties and Typesafe config properties is also an option.  The Typesafe config properties will override Conf parameters:
+
+```
+import cakesolutions.kafka.KafkaProducer
+import cakesolutions.kafka.KafkaProducer.Conf
+
+val conf = ConfigFactory.parseString(
+  s"""
+    | bootstrap.servers = "localhost:9092"
+  """.stripMargin)
+
+val producer = KafkaProducer(
+  Conf(new StringSerializer(), new StringSerializer(), acks = "all").withConf(conf)
+)
+```
 
 ### Consumer
 The [KafkaConsumer](https://kafka.apache.org/090/javadoc/index.html?org/apache/kafka/clients/consumer/KafkaConsumer.html) is typically setup by creating a Java Properties with required consumer configuration.
@@ -52,7 +132,7 @@ import cakesolutions.kafka.KafkaConsumer.Conf
 
 // Create a org.apache.kafka.clients.consumer.KafkaConsumer
 val consumer = KafkaConsumer(
-    Conf(new StringDeserializer(), new StringDeserializer(), bootstrapServers = "localhost:8082")
+    Conf(new StringDeserializer(), new StringDeserializer(), bootstrapServers = "localhost:9092")
 )
 ```
 
@@ -79,7 +159,7 @@ Pass a Typesafe Config to cakesolutions.kafka.KafkaConsumer.Conf:
 ```
 application.conf:
 {
-   bootstrap.servers = "localhost:8082"
+   bootstrap.servers = "localhost:9092"
 }
 
 import cakesolutions.kafka.KafkaConsumer
@@ -102,7 +182,7 @@ import cakesolutions.kafka.KafkaConsumer.Conf
 
 val conf = ConfigFactory.parseString(
   s"""
-    | bootstrap.servers = "localhost:8082",
+    | bootstrap.servers = "localhost:9092",
     | group.id = "group1"
   """.stripMargin)
 
