@@ -4,6 +4,7 @@ lazy val commonSettings = Seq(
   publishMavenStyle := true,
   bintrayOrganization := Some("simonsouter"),
   bintrayPackageLabels := Seq("scala", "kafka"),
+  autoAPIMappings := true,
 
   //  publishTo :=
   //TODO publish snapshots to OSS
@@ -55,3 +56,7 @@ lazy val scalaKafkaClientAkka = project.in(file("akka")).
   configs(IntegrationTest extend(Test)).
   settings(commonSettings: _*)
 
+lazy val root = project.in(file(".")).
+  settings(commonSettings: _*).
+  settings(unidocSettings: _*).
+  aggregate(scalaKafkaClient, scalaKafkaClientAkka, kafkaTestkit)
