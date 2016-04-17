@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
 
-protected object TrackPartitions {
+private object TrackPartitions {
   private val log = LoggerFactory.getLogger(getClass)
 
   def apply(consumer: KafkaConsumer[_, _]): TrackPartitions = new TrackPartitions(consumer)
@@ -17,7 +17,7 @@ protected object TrackPartitions {
 /**
  * Not thread safe. Can be used with Kafka consumer 0.9 API.
  */
-protected class TrackPartitions(consumer: KafkaConsumer[_, _]) extends ConsumerRebalanceListener {
+private class TrackPartitions(consumer: KafkaConsumer[_, _]) extends ConsumerRebalanceListener {
   import TrackPartitions.log
 
   private var _offsets = Map[TopicPartition, Long]()

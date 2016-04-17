@@ -9,7 +9,7 @@ import scala.collection.mutable
 /**
   * Extensions added to Typesafe [[Config]] class.
   */
-object TypesafeConfigExtensions {
+private object TypesafeConfigExtensions {
 
   implicit class RichConfig(val config: Config) extends AnyVal {
 

@@ -121,7 +121,7 @@ object KafkaConsumerActor {
   * @tparam K KeyDeserializer Type
   * @tparam V ValueDeserializer Type
   */
-protected class KafkaConsumerActor[K: TypeTag, V: TypeTag](
+private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
   consumerConf: KafkaConsumer.Conf[K, V],
   actorConf: KafkaConsumerActor.Conf,
   nextActor: ActorRef)

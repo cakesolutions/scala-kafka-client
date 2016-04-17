@@ -39,7 +39,7 @@ object KafkaProducerActor {
   }
 }
 
-protected class KafkaProducerActor[K, V](
+private class KafkaProducerActor[K, V](
   producerConf: KafkaProducer.Conf[K, V],
   actorConf: KafkaProducerActor.Conf,
   matcher: ProducerRecordMatcher.Matcher[K, V])
