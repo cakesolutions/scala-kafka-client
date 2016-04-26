@@ -42,16 +42,13 @@ object KafkaConsumerActor {
     import scala.concurrent.duration.{MILLISECONDS => Millis}
 
     /**
-      * Configuration for KafkaConsumerActor from Config
+      * Configuration for KafkaConsumerActor from Config. Reasonable defaults are used for all undefined settings,
+      * except for topics, which if not defined by the given config will be the empty list, which is probably not what
+      * you want.
+      *
+      * @param config
       */
-    def apply(config: Config): Conf = {
-      val topics = config.getStringList("topics")
-
-      val scheduleInterval = durationFromConfig(config, "schedule.interval")
-      val unconfirmedTimeout = durationFromConfig(config, "unconfirmed.timeout")
-
-      apply(topics.toList, scheduleInterval, unconfirmedTimeout, Retry.Strategy(config.getConfig("retryStrategy")))
-    }
+    def apply(config: Config): Conf = Conf(topics = Nil).withConf(config)
 
     def durationFromConfig(config: Config, path: String) = Duration(config.getDuration(path, Millis), Millis)
   }
