@@ -42,13 +42,15 @@ object KafkaConsumerActor {
     import scala.concurrent.duration.{MILLISECONDS => Millis}
 
     /**
-      * Configuration for KafkaConsumerActor from Config. Reasonable defaults are used for all undefined settings,
-      * except for topics, which if not defined by the given config will be the empty list, which is probably not what
-      * you want.
+      * Configuration for KafkaConsumerActor from Config. The given config must define the topics list. Other settings
+      * are optional overrides.
       *
       * @param config
       */
-    def apply(config: Config): Conf = Conf(topics = Nil).withConf(config)
+    def apply(config: Config): Conf = {
+      require(config.hasPath("topics"), "config must define topics")
+      Conf(topics = Nil).withConf(config)
+    }
 
     def durationFromConfig(config: Config, path: String) = Duration(config.getDuration(path, Millis), Millis)
   }
