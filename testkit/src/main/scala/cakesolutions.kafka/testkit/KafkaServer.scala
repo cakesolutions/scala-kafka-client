@@ -79,11 +79,11 @@ class KafkaServer(val kafkaPort: Int = KafkaServer.choosePort(),
 
   def startup() = {
     kafkaServer.startup()
-    log.info(s"Started kafka on port [${kafkaPort}]")
+    log.info(s"Started kafka on port [$kafkaPort]")
   }
 
   def close() = {
-    log.info(s"Stopping kafka on port [${kafkaPort}")
+    log.info(s"Stopping kafka on port [$kafkaPort]")
     kafkaServer.shutdown()
     zkServer.stop()
     Try(TestUtils.deleteFile(logDir)).failed.foreach(_.printStackTrace)

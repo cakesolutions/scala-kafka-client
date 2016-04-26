@@ -54,7 +54,7 @@ class KafkaConsumerPerfSpec extends FlatSpecLike
     }
 
     val totalTime = System.currentTimeMillis() - start
-    val messagesPerSec = 100000 / totalTime * 100
+    val messagesPerSec = 100000 / totalTime * 1000
     log.info("Total Time millis : {}", totalTime)
     log.info("Messages per sec  : {}", messagesPerSec)
 

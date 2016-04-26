@@ -111,7 +111,7 @@ class ConsumerProducerIntSpec extends KafkaIntSpec {
       consumer.subscribe(List(topic))
 
       val count = (1 to 30).map { _ =>
-        consumer.poll(1000).count()
+        consumer.poll(1000).count
       }.sum
       consumer.close()
       count

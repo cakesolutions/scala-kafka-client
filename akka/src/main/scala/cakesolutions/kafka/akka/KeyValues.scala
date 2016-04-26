@@ -184,19 +184,19 @@ object KeyValuesWithOffsets {
     * @param values sequence of values
     */
   def apply[Key: TypeTag, Value: TypeTag](offsets: Offsets, key: Option[Key], values: Seq[Value]): KeyValuesWithOffsets[Key, Value] =
-    apply(offsets, KeyValues(key, values))
+    KeyValuesWithOffsets(offsets, KeyValues(key, values))
 
   /**
     * Create key-value pairs from a sequence of pairs along with given offsets.
     */
   def apply[Key: TypeTag, Value: TypeTag](offsets: Offsets, keyValues: Seq[Pair[Key, Value]]): KeyValuesWithOffsets[Key, Value] =
-    apply(offsets, KeyValues(keyValues))
+    KeyValuesWithOffsets(offsets, KeyValues(keyValues))
 
   /**
     * Create key-value pairs from [[ConsumerRecords]] along with given offsets.
     */
   def apply[Key: TypeTag, Value: TypeTag](offsets: Offsets, records: ConsumerRecords[Key, Value]): KeyValuesWithOffsets[Key, Value] =
-    apply(offsets, KeyValues(records))
+    KeyValuesWithOffsets(offsets, KeyValues(records))
 
   /**
     * Create an extractor for pattern matching any value with a specific [[KeyValuesWithOffsets]] type.

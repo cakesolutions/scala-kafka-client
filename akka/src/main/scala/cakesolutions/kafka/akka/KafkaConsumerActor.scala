@@ -10,7 +10,7 @@ import org.apache.kafka.common.serialization.Deserializer
 
 import scala.collection.JavaConversions._
 import scala.concurrent.duration._
-import scala.reflect.runtime.universe.{TypeTag, typeTag}
+import scala.reflect.runtime.universe.TypeTag
 
 object KafkaConsumerActor {
 
@@ -111,8 +111,8 @@ object KafkaConsumerActor {
 /**
   * A client interacts with a KafkaConsumerActor via the Actor Messages: Subscribe(), and Unsubscribe.  It receives batches of messages
   * from Kafka for all subscribed partitions to the supplied 'nextActor' ActorRef of type `Records[K, V]` (where K and V are the Deserializer types).
-  * Aside from providing the required Kafka Client and Actor configuration on initialization, that's all thats needed when everything is working.
-  * For cases where there is Kafka or configuration issues, the Actor's supervisor strategy is applied.
+  * Aside from providing the required Kafka Client and Actor configuration on initialization, that's all that's needed when everything is working.
+  * For cases where there are Kafka or configuration issues, the Actor's supervisor strategy is applied.
   *
   * @param consumerConf KafkaConsumer.Conf configuration for the Consumer
   * @param actorConf KafkaConsumerActor.Conf configuration specific to this actor
@@ -195,6 +195,9 @@ protected class KafkaConsumerActor[K: TypeTag, V: TypeTag](
 
     case poll: Poll if !isCurrentPoll(poll) =>
       // Do nothing
+
+    // TODO: What about a poll that is current? The next one could have been placed in our mailbox after the
+    // unsubscribe and before we cancelled the scheduler
   }
 
   private def subscribe(offsets: Option[Offsets]): Unit = {
@@ -248,10 +251,9 @@ protected class KafkaConsumerActor[K: TypeTag, V: TypeTag](
   def bufferFull(state: Buffered): Receive = unconfirmedCommonReceive(state) orElse {
     case poll: Poll if isCurrentPoll(poll) =>
 
-      // Id an confirmation timeout is set and has expired, the message is redelivered
+      // If an confirmation timeout is set and has expired, the message is redelivered
       if (isConfirmationTimeout(state.deliveryTime)) {
-        val msg = state.unconfirmed
-        sendRecords(msg)
+        sendRecords(state.unconfirmed)
       }
       log.debug(s"Buffer is full. Not gonna poll.")
       schedulePoll()
