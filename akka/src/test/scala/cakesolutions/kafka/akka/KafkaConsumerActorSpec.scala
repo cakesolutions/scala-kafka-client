@@ -70,6 +70,13 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
         """.stripMargin)
     )
 
+  def actorConfFromMinimalConfig(topic: String): KafkaConsumerActor.Conf =
+    KafkaConsumerActor.Conf(ConfigFactory.parseString(
+      s"""
+         | topics = ["$topic"]
+        """.stripMargin)
+    )
+
   def configuredActor(topic: String): Config = {
     ConfigFactory.parseString(
       s"""
@@ -96,7 +103,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
 
   "KafkaConsumerActors with different configuration types" should "consume a message successfully" in {
 
-    (List(consumerConfFromConfig, consumerConf) zip List(actorConf(TestUtils.randomString(5)), actorConfFromConfig(TestUtils.randomString(5))))
+    (List(consumerConfFromConfig, consumerConf) zip List(actorConf(TestUtils.randomString(5)), actorConfFromConfig(TestUtils.randomString(5)), actorConfFromMinimalConfig(TestUtils.randomString(5))))
       .foreach {
         case (consumerConfig, actorConf) =>
           val producer = kafkaProducer("localhost", kafkaPort)
