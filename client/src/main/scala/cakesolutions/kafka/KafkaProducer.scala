@@ -62,6 +62,8 @@ object KafkaProducer {
     /**
       * Creates a Kafka producer configuration from a Typesafe config.
       *
+      * The configuration names and values must match the Kafka's `ProducerConfig` style.
+      *
       * @param config a Typesafe config to build configuration from
       * @param keySerializer serialiser for the key
       * @param valueSerializer serialiser for the value
@@ -76,11 +78,11 @@ object KafkaProducer {
   /**
     * Configuration object for the Kafka producer.
     *
-    * The config is compatible with Kafka's ProducerConfig.
+    * The config is compatible with Kafka's `ProducerConfig`.
     * All the key-value properties are specified in the given map, except the serializers.
     * The key and value serialiser instances are provided explicitly to ensure type-safety.
     *
-    * @param props map of ProducerConfig properties
+    * @param props map of `ProducerConfig` properties
     * @tparam K key serializer type
     * @tparam V value serializer type
     */

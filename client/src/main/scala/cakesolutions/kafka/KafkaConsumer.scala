@@ -62,6 +62,8 @@ object KafkaConsumer {
     /**
       * Creates a Kafka consumer configuration from a Typesafe config.
       *
+      * The configuration names and values must match the Kafka's `ConsumerConfig` style.
+      *
       * @param config a Typesafe config to build configuration from
       * @param keyDeserializer deserialiser for the key
       * @param valueDeserializer deserialiser for the value
