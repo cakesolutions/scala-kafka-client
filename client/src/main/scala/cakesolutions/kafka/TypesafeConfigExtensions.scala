@@ -7,14 +7,14 @@ import scala.collection.immutable._
 import scala.collection.mutable
 
 /**
-  * Extensions added to Typesafe [[Config]] class.
+  * Extensions added to Typesafe config class.
   */
 private object TypesafeConfigExtensions {
 
   implicit class RichConfig(val config: Config) extends AnyVal {
 
     /**
-      * Convert Typesafe [[Config]] to [[Properties]].
+      * Convert Typesafe config to Java `Properties`.
       */
     def toProperties: Properties = {
       val props = new Properties()
@@ -23,7 +23,7 @@ private object TypesafeConfigExtensions {
     }
 
     /**
-      * Convert Typesafe [[Config]] to a [[Map]].
+      * Convert Typesafe config to a Scala map.
       */
     def toPropertyMap: Map[String, AnyRef] = {
       val map = mutable.Map[String, AnyRef]()

@@ -26,7 +26,7 @@ object KeyValues {
     PlainKeyValues(keyValues)
 
   /**
-    * Create key-value pairs from [[ConsumerRecords]].
+    * Create key-value pairs from `ConsumerRecords`.
     */
   def apply[Key: TypeTag, Value: TypeTag](records: ConsumerRecords[Key, Value]): KeyValues[Key, Value] =
     KafkaConsumerKeyValues(records)
@@ -55,7 +55,7 @@ object KeyValues {
     *
     * @tparam Key the type of the key to match in the extractor
     * @tparam Value the type of the value to match in the extractor
-    * @return an extractor for given [[Key]] and [[Value]]
+    * @return an extractor for given key and value types
     */
   def extractor[Key: TypeTag, Value: TypeTag]: Extractor[Key, Value] = new Extractor[Key, Value]
 
@@ -117,19 +117,19 @@ sealed abstract class KeyValues[Key: TypeTag, Value: TypeTag] {
   def values: Seq[Value] = keyValues.map(_._2)
 
   /**
-    * Convert key-value pairs to Kafka [[ProducerRecord]].
+    * Convert key-value pairs to Kafka `ProducerRecord`.
     *
     * @param topic the Kafka topic to use for the records
-    * @return a sequence of Kafka [[ProducerRecord]]s
+    * @return a sequence of Kafka `ProducerRecord`s
     */
   def toProducerRecords(topic: String): Seq[ProducerRecord[Key, Value]] =
     keyValues.map { case (k, v) => KafkaProducerRecord(topic, k, v) }
 
   /**
-    * Convert values from key-value pairs to Kafka [[ProducerRecord]].
+    * Convert values from key-value pairs to Kafka `ProducerRecord`.
     *
     * @param topic the Kafka topic to use for the records
-    * @return a sequence of Kafka [[ProducerRecord]]s
+    * @return a sequence of Kafka `ProducerRecord`s
     */
   def valuesToProducerRecords(topic: String): Seq[ProducerRecord[Nothing, Value]] =
     keyValues.map { case (_, v) => KafkaProducerRecord(topic, v) }
@@ -157,7 +157,7 @@ case class PlainKeyValues[Key: TypeTag, Value: TypeTag](keyValues: Seq[KeyValues
 /**
   * A collection of key-value pairs produced by [[KafkaConsumerActor]].
   *
-  * @param records [[ConsumerRecords]] produced by [[KafkaConsumerActor]]
+  * @param records `ConsumerRecords` produced by [[KafkaConsumerActor]]
   */
 case class KafkaConsumerKeyValues[Key: TypeTag, Value: TypeTag](records: ConsumerRecords[Key, Value]) extends KeyValues[Key, Value] {
 
@@ -193,7 +193,7 @@ object KeyValuesWithOffsets {
     apply(offsets, KeyValues(keyValues))
 
   /**
-    * Create key-value pairs from [[ConsumerRecords]] along with given offsets.
+    * Create key-value pairs from `ConsumerRecords` along with given offsets.
     */
   def apply[Key: TypeTag, Value: TypeTag](offsets: Offsets, records: ConsumerRecords[Key, Value]): KeyValuesWithOffsets[Key, Value] =
     apply(offsets, KeyValues(records))
@@ -224,7 +224,7 @@ object KeyValuesWithOffsets {
     *
     * @tparam Key the type of the key to match in the extractor
     * @tparam Value the type of the value to match in the extractor
-    * @return an extractor for given [[Key]] and [[Value]]
+    * @return an extractor for given key and value types
     */
   def extractor[Key: TypeTag, Value: TypeTag]: Extractor[Key, Value] = new Extractor[Key, Value]
 

@@ -12,20 +12,39 @@ import scala.collection.JavaConversions._
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe.{TypeTag, typeTag}
 
+/**
+  * An actor that wraps [[KafkaConsumerActor]].
+  *
+  * The actor pulls batches of messages from Kafka for all subscribed partitions,
+  * and forwards them to the supplied Akka actor reference in [[KeyValuesWithOffsets]] format.
+  *
+  * Before the actor continues pulling more data from Kafka,
+  * the receiver of the data must confirm the batches by sending back a [[KafkaConsumerActor.Confirm]] message
+  * that contains the offsets from the received batch.
+  * This mechanism allows the receiver to control the maximum rate of messages it will receive.
+  * By including the received offsets in the confirmation message,
+  * we avoid accidentally confirming batches that have not been fully processed yet.
+  *
+  * Actor's Kafka subscriptions can be controlled via the Actor Messages:
+  * [[KafkaConsumerActor.Subscribe]] and [[KafkaConsumerActor.Unsubscribe]].
+  *
+  * For cases where there is Kafka or configuration issues, the Actor's supervisor strategy is applied.
+  */
 object KafkaConsumerActor {
 
   /**
     * Actor API - Initiate consumption from Kafka or reset an already started stream.
     *
-    * @param offsets Consumption starts from specified offsets or kafka default, depending on (auto.offset.reset) setting.
+    * @param offsets Consumption starts from specified offsets or kafka default, depending on `auto.offset.reset` setting.
     */
   case class Subscribe(offsets: Option[Offsets] = None)
 
   /**
     * Actor API - Confirm receipt of previous records.
+    *
     * The message should provide the offsets that are to be confirmed.
     * If the offsets don't match the offsets that were last sent, the confirmation is ignored.
-    * Offsets can be committed to Kafka using optional [[commit]] flag.
+    * Offsets can be committed to Kafka using optional commit flag.
     *
     * @param offsets the offsets that are to be confirmed
     * @param commit  true to commit offsets
@@ -37,12 +56,15 @@ object KafkaConsumerActor {
     */
   case object Unsubscribe
 
+  /**
+    * Utilities for creating configurations for the [[KafkaConsumerActor]].
+    */
   object Conf {
 
     import scala.concurrent.duration.{MILLISECONDS => Millis}
 
     /**
-      * Configuration for KafkaConsumerActor from Config
+      * Create configuration for [[KafkaConsumerActor]] from Typesafe config.
       */
     def apply(config: Config): Conf = {
       val topics = config.getStringList("topics")
@@ -57,12 +79,12 @@ object KafkaConsumerActor {
   }
 
   /**
-    * Configuration for KafkaConsumerActor
+    * Configuration for [[KafkaConsumerActor]].
     *
     * @param topics             List of topics to subscribe to.
     * @param scheduleInterval   Poll Latency.
-    * @param unconfirmedTimeout Seconds before unconfirmed messages is considered for redelivery.  To disable message redelivery
-    *                           provide a duration of 0.
+    * @param unconfirmedTimeout Seconds before unconfirmed messages is considered for redelivery.
+    *                           To disable message redelivery provide a duration of 0.
     * @param retryStrategy      Strategy to follow on Kafka driver failures. Default: infinitely on one second intervals
     */
   case class Conf(topics: List[String],
@@ -71,10 +93,8 @@ object KafkaConsumerActor {
                   retryStrategy: Retry.Strategy = Retry.Strategy(Retry.Interval.Linear(1.second), Retry.Logic.Infinite)) {
 
     /**
-      * New Conf with values from supplied Typesafe config overriden
-      *
-      * @param config
-      * @return
+      * Extend the config with additional Typesafe config.
+      * The supplied config overrides existing properties.
       */
     def withConf(config: Config): Conf = {
       this.copy(
@@ -87,7 +107,14 @@ object KafkaConsumerActor {
   }
 
   /**
-    * KafkaConsumer config and the consumer actors config all contained in a Typesafe Config.
+    * Create Akka `Props` for [[KafkaConsumerActor]] from a Typesafe config.
+    *
+    * @param conf Typesafe config containing all the [[KafkaConsumer.Conf]] and [[KafkaConsumerActor.Conf]] related configurations.
+    * @param keyDeserializer deserializer for the key
+    * @param valueDeserializer deserializer for the value
+    * @param nextActor the actor where all the consumed messages will be sent to
+    * @tparam K key deserialiser type
+    * @tparam V value deserialiser type
     */
   def props[K: TypeTag, V: TypeTag](conf: Config,
                                     keyDeserializer: Deserializer[K],
@@ -96,11 +123,18 @@ object KafkaConsumerActor {
     props(
       KafkaConsumer.Conf[K, V](conf, keyDeserializer, valueDeserializer),
         KafkaConsumerActor.Conf(conf),
-        nextActor)
+        nextActor
+    )
   }
 
   /**
-    * Construct with configured KafkaConsumer and Actor configurations.
+    * Create Akka `Props` for [[KafkaConsumerActor]]
+    *
+    * @param consumerConf configurations for the [[KafkaConsumer]]
+    * @param actorConf configurations for the [[KafkaConsumerActor]]
+    * @param nextActor the actor where all the consumed messages will be sent to
+    * @tparam K key deserialiser type
+    * @tparam V value deserialiser type
     */
   def props[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Conf[K, V],
                                     actorConf: KafkaConsumerActor.Conf,
@@ -109,18 +143,6 @@ object KafkaConsumerActor {
   }
 }
 
-/**
-  * A client interacts with a KafkaConsumerActor via the Actor Messages: Subscribe(), and Unsubscribe.  It receives batches of messages
-  * from Kafka for all subscribed partitions to the supplied 'nextActor' ActorRef of type `Records[K, V]` (where K and V are the Deserializer types).
-  * Aside from providing the required Kafka Client and Actor configuration on initialization, that's all thats needed when everything is working.
-  * For cases where there is Kafka or configuration issues, the Actor's supervisor strategy is applied.
-  *
-  * @param consumerConf KafkaConsumer.Conf configuration for the Consumer
-  * @param actorConf KafkaConsumerActor.Conf configuration specific to this actor
-  * @param nextActor the actor the batches are sent to
-  * @tparam K KeyDeserializer Type
-  * @tparam V ValueDeserializer Type
-  */
 private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
   consumerConf: KafkaConsumer.Conf[K, V],
   actorConf: KafkaConsumerActor.Conf,

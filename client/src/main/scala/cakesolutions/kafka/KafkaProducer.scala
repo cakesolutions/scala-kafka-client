@@ -60,7 +60,7 @@ object KafkaProducer {
     }
 
     /**
-      * Creates a Kafka producer configuration from a Typesafe [[Config]].
+      * Creates a Kafka producer configuration from a Typesafe config.
       *
       * @param config a Typesafe config to build configuration from
       * @param keySerializer serialiser for the key
@@ -76,11 +76,11 @@ object KafkaProducer {
   /**
     * Configuration object for the Kafka producer.
     *
-    * The config is compatible with Kafka's [[ProducerConfig]].
-    * All the key-value properties are specified in the given [[Map]], except the serializers.
+    * The config is compatible with Kafka's ProducerConfig.
+    * All the key-value properties are specified in the given map, except the serializers.
     * The key and value serialiser instances are provided explicitly to ensure type-safety.
     *
-    * @param props map of [[ProducerConfig]] properties
+    * @param props map of ProducerConfig properties
     * @tparam K key serializer type
     * @tparam V value serializer type
     */
@@ -89,10 +89,8 @@ object KafkaProducer {
                         valueSerializer: Serializer[V]) {
 
     /**
-      * Extend the config with additional Typesafe [[Config]].
+      * Extend the config with additional Typesafe config.
       * The supplied config overrides existing properties.
-      *
-      * @param config Typesafe Config
       */
     def withConf(config: Config): Conf[K, V] = {
       copy(props = props ++ config.toPropertyMap)
@@ -119,7 +117,7 @@ object KafkaProducer {
   }
 
   /**
-    * Create [[KafkaProducer]] from a given Java KafkaProducer object.
+    * Create [[KafkaProducer]] from a given Java `KafkaProducer` object.
     *
     * @param producer Java `KafkaProducer` object
     * @tparam K type of the key that the producer accepts
@@ -131,8 +129,9 @@ object KafkaProducer {
 }
 
 /**
-  * Wraps the Java [[http://kafka.apache.org/090/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html KafkaProducer]]
-  * providing send operations that indicate the result of the operation with either a Scala [[Future]] or a Function callback.
+  * Wraps the Java `KafkaProducer`
+  * providing send operations that indicate the result of the operation with either
+  * a Scala `Future` or a Function callback.
   *
   * @param producer the underlying Java `KafkaProducer`
   * @tparam K type of the key that the producer accepts
@@ -141,10 +140,10 @@ object KafkaProducer {
 class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) {
 
   /**
-    * Asynchronously send a record to a topic, providing a [[Future]] to contain the result of the operation.
+    * Asynchronously send a record to a topic, providing a `Future` to contain the result of the operation.
     *
-    * @param record [[ProducerRecord]] to sent
-    * @return the results of the sent records as a [[Future]]
+    * @param record `ProducerRecord` to sent
+    * @return the results of the sent records as a `Future`
     */
   def send(record: ProducerRecord[K, V]): Future[RecordMetadata] = {
     val promise = Promise[RecordMetadata]()
@@ -155,7 +154,7 @@ class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) {
   /**
     * Asynchronously send a record to a topic and invoke the provided callback when the send has been acknowledged.
     *
-    * @param record [[ProducerRecord]] to sent
+    * @param record `ProducerRecord` to sent
     * @param callback callback that is called when the send has been acknowledged
     */
   def sendWithCallback(record: ProducerRecord[K, V])(callback: Try[RecordMetadata] => Unit): Unit = {

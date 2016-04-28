@@ -60,7 +60,7 @@ object KafkaConsumer {
     }
 
     /**
-      * Creates a Kafka consumer configuration from a Typesafe [[Config]].
+      * Creates a Kafka consumer configuration from a Typesafe config.
       *
       * @param config a Typesafe config to build configuration from
       * @param keyDeserializer deserialiser for the key
@@ -76,11 +76,11 @@ object KafkaConsumer {
   /**
     * Configuration object for the Kafka consumer.
     *
-    * The config is compatible with Kafka's [[ConsumerConfig]].
-    * All the key-value properties are specified in the given [[Map]], except the deserializers.
+    * The config is compatible with Kafka's `ConsumerConfig`.
+    * All the key-value properties are specified in the given map, except the deserializers.
     * The key and value deserialiser instances are provided explicitly to ensure type-safety.
     *
-    * @param props map of [[ConsumerConfig]] Properties
+    * @param props map of `ConsumerConfig` Properties
     * @tparam K key deserializer type
     * @tparam V value deserializer type
     */
@@ -89,10 +89,8 @@ object KafkaConsumer {
                         valueDeserializer: Deserializer[V]) {
 
     /**
-      * Extend the config with additional Typesafe [[Config]].
+      * Extend the config with additional Typesafe config.
       * The supplied config overrides existing properties.
-      *
-      * @param config Typesafe Config
       */
     def withConf(config: Config): Conf[K, V] =
       copy(props = props ++ config.toPropertyMap)

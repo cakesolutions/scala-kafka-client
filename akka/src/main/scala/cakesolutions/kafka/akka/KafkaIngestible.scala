@@ -80,7 +80,7 @@ object KafkaIngestible {
     *
     * @tparam Key the type of the key to match in the extractor
     * @tparam Value the type of the value to match in the extractor
-    * @return an extractor for given [[Key]] and [[Value]]
+    * @return an extractor for given key and value types
     */
   def extractor[Key: TypeTag, Value: TypeTag]: Extractor[Key, Value] = new Extractor[Key, Value]
 

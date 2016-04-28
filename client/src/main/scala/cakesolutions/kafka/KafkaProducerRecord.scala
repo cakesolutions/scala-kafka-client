@@ -3,7 +3,7 @@ package cakesolutions.kafka
 import org.apache.kafka.clients.producer.ProducerRecord
 
 /**
-  * Helper functions for creating Kafka's [[ProducerRecord]]s.
+  * Helper functions for creating Kafka's `ProducerRecord`s.
   *
   * The producer records hold the data that is to be written to Kafka.
   * The producer records are compatible with Kafka's own `KafkaProducer` and the [[KafkaProducer]] in this library.
