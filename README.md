@@ -49,7 +49,7 @@ depends on a running Kafka Server.  Helps the setup of an in-process Kafka and Z
     //For kafka integration test support:
     libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-tesktkit" % "0.6.0" % "test"
 
-## Artefact Resolution
+## Artifact Resolution
 To include, add the following resolver to the build.sbt
 
     resolvers += Resolver.bintrayRepo("simonsouter", "maven")
