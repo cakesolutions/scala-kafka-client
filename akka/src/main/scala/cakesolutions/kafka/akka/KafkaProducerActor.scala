@@ -3,12 +3,12 @@ package cakesolutions.kafka.akka
 import akka.actor._
 import cakesolutions.kafka.KafkaProducer
 import com.typesafe.config.Config
-import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 import org.apache.kafka.common.serialization.Serializer
 
 import scala.concurrent.Future
 import scala.reflect.runtime.universe.TypeTag
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 object KafkaProducerActor {
   import ProducerRecordMatcher.Matcher
@@ -76,7 +76,7 @@ protected class KafkaProducerActor[K, V](
 
   private def sendMany(records: Records) = Future.sequence(records.map(send))
 
-  private def send(record: Record) = {
+  private def send(record: Record): Future[RecordMetadata] = {
     log.debug("Sending message to Kafka topic {} with key {}: {}", record.topic, record.key, record.value)
     producer.send(record)
   }
