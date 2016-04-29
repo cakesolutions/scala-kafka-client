@@ -5,18 +5,14 @@ This project comprises a few helper modules for operating the [Kafka Java Client
 ## Status
 These modules are production ready, actively maintained and are used in a large scale production system.
 
-## Modules
-
-The following modules are provided:
-
-### Scala Kafka Client
+## Scala Kafka Client
 
 A minimal Scala wrapper over the official Apache Kafka Java client library, providing some helpers for convenient configuration the client and usage from Scala.
 
-#### Documentation
+### Documentation
 [Wiki](https://github.com/cakesolutions/scala-kafka-client/wiki/Scala-Kafka-Client)
 
-#### Version Compatibility
+### Version Compatibility
 
  scala-kafka-client | Kafka Java Driver
  ------------------ | -----------------
@@ -24,7 +20,7 @@ A minimal Scala wrapper over the official Apache Kafka Java client library, prov
  0.5.x | 0.9.0.1
  0.4  | 0.9.0.0
 
-#### Resolve
+### Resolve
 
     libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.6.0"
 
@@ -33,27 +29,27 @@ A minimal Scala wrapper over the official Apache Kafka Java client library, prov
 This module provides a configurable asynchronous and non-blocking Kafka Consumer and Producer Actor implementations to support high performance, parallel custom stream
 processing with message delivery guarantees.
 
-#### Documentation
+### Documentation
 [Wiki](https://github.com/cakesolutions/scala-kafka-client/wiki/Akka-Kafka-Client)
 
-#### Resolve
+### Resolve
 
     libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.6.0"
 
-### TestKit
+## TestKit
  
-The scala-kafka-client-tesktkit module provides some tools to support integration testing for client service code that
+The TesktKit module provides some tools to support integration testing for client service code that
 depends on a running Kafka Server.  Helps the setup of an in-process Kafka and Zookeeper server. 
 
-#### Documentation
+### Documentation
 [Wiki](https://github.com/cakesolutions/scala-kafka-client/wiki/Testkit)
 
-#### Resolve
+### Resolve
 
     //For kafka integration test support:
     libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-tesktkit" % "0.6.0" % "test"
 
-### Latest release
+## Artefact Resolution
 To include, add the following resolver to the build.sbt
 
     resolvers += Resolver.bintrayRepo("simonsouter", "maven")
