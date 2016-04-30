@@ -3,7 +3,7 @@
 This project comprises a few helper modules for operating the [Kafka Java Client Driver](https://kafka.apache.org/090/javadoc/index.html) in a Scala codebase.
 
 * [Scala Kafka Client](#scala-kafka-client)
-* [Scala Kafka Client - Akka Integration](#scala-kafka-client-akka-integration)
+* [Scala Kafka Client - Akka Integration](#scala-kafka-client---akka-integration)
 * [TestKit](#testkit)
 
 ## Status
@@ -54,7 +54,7 @@ The TesktKit module provides some tools to support integration testing of client
 depends on a running Kafka Server.  Helps the setup of an in-process Kafka and Zookeeper server. 
 
 ### Documentation
-[Wiki](https://github.com/cakesolutions/scala-kafka-client/wiki/Testkit)
+[TestKit User Guide](https://github.com/cakesolutions/scala-kafka-client/wiki/Testkit)
 
 ### Resolve
 
