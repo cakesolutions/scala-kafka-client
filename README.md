@@ -16,7 +16,7 @@ To resolve any of the modules, add the following resolver to the build.sbt:
 
 ## Scala Kafka Client
 
-A thin Scala wrapper over the official (Apache Kafka Java Driver)[http://kafka.apache.org/documentation.html#api].
+A thin Scala wrapper over the official [Apache Kafka Java Driver](http://kafka.apache.org/documentation.html#api).
 This module is useful for integrating with Kafka for message consumption/delivery, but provides some helpers for convenient 
 configuration of the driver and usage from Scala.  Minimal 3rd party dependencies are added in addition to the Kafka client.
 
@@ -38,7 +38,7 @@ For configuration and usage, see the Wiki: [Scala Kafka Client Guide](https://gi
 ## Scala Kafka Client - Akka Integration
 
 This module provides a configurable asynchronous and non-blocking Kafka Consumer and Producer Actor implementations to support high performance, parallel custom stream
-processing in an Akka application.  These components are specifically intended for use cases where high performance, scalable message processing is required with specific
+processing in an Akka application.  These components are specifically intended for use cases where high performance and scalable message processing is required with specific
 concern for message delivery guarantees and resilience.
 
 ### Documentation
