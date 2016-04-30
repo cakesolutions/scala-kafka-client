@@ -5,12 +5,19 @@ This project comprises a few helper modules for operating the [Kafka Java Client
 ## Status
 These modules are production ready, actively maintained and are used in a large scale production system.
 
+## Artifact Resolution
+To resolve any of the modules, add the following resolver to the build.sbt:
+
+    resolvers += Resolver.bintrayRepo("simonsouter", "maven")
+
 ## Scala Kafka Client
 
-A minimal Scala wrapper over the official Apache Kafka Java client library, providing some helpers for convenient configuration the client and usage from Scala.
+A thin Scala wrapper over the official (Apache Kafka Java Driver)[http://kafka.apache.org/documentation.html#api].
+This module is useful for integrating with Kafka for message consumption/delivery, but provides some helpers for convenient 
+configuration of the driver and usage from Scala.  Minimal 3rd party dependencies are added in addition to the Kafka client.
 
 ### Documentation
-[Wiki](https://github.com/cakesolutions/scala-kafka-client/wiki/Scala-Kafka-Client)
+For configuration and usage, see the Wiki: [Scala Kafka Client Guide](https://github.com/cakesolutions/scala-kafka-client/wiki/Scala-Kafka-Client)
 
 ### Version Compatibility
 
@@ -27,10 +34,11 @@ A minimal Scala wrapper over the official Apache Kafka Java client library, prov
 ## Scala Kafka Client - Akka Integration
 
 This module provides a configurable asynchronous and non-blocking Kafka Consumer and Producer Actor implementations to support high performance, parallel custom stream
-processing with message delivery guarantees.
+processing in an Akka application.  These components are specifically intended for use cases where high performance, scalable message processing is required with specific
+concern for message delivery guarantees and resilience.
 
 ### Documentation
-[Wiki](https://github.com/cakesolutions/scala-kafka-client/wiki/Akka-Kafka-Client)
+[Kafka Client - Akka Integration](https://github.com/cakesolutions/scala-kafka-client/wiki/Akka-Kafka-Client)
 
 ### Resolve
 
@@ -38,7 +46,7 @@ processing with message delivery guarantees.
 
 ## TestKit
  
-The TesktKit module provides some tools to support integration testing for client service code that
+The TesktKit module provides some tools to support integration testing of client service code that
 depends on a running Kafka Server.  Helps the setup of an in-process Kafka and Zookeeper server. 
 
 ### Documentation
@@ -48,11 +56,6 @@ depends on a running Kafka Server.  Helps the setup of an in-process Kafka and Z
 
     //For kafka integration test support:
     libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-tesktkit" % "0.6.0" % "test"
-
-## Artifact Resolution
-To include, add the following resolver to the build.sbt
-
-    resolvers += Resolver.bintrayRepo("simonsouter", "maven")
 
 ## License
     
