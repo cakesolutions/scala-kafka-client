@@ -26,7 +26,7 @@ object KeyValues {
     PlainKeyValues(keyValues)
 
   /**
-    * Create key-value pairs from `ConsumerRecords`.
+    * Create key-value pairs from Kafka client's `ConsumerRecords`.
     */
   def apply[Key: TypeTag, Value: TypeTag](records: ConsumerRecords[Key, Value]): KeyValues[Key, Value] =
     KafkaConsumerKeyValues(records)
@@ -57,20 +57,40 @@ object KeyValues {
     * @tparam Value the type of the value to match in the extractor
     * @return an extractor for given key and value types
     */
-  def extractor[Key: TypeTag, Value: TypeTag]: Extractor[Key, Value] = new Extractor[Key, Value]
-
-  /**
-    * Extractor for pattern matching any value with a specific [[KeyValues]] type.
-    *
-    * @see [[KeyValues]].[[extractor]] for more details on how to use this extractor
-    * @tparam Key the type of the key to match in the extractor
-    * @tparam Value the type of the value to match in the extractor
-    */
-  class Extractor[Key: TypeTag, Value: TypeTag] {
-    def unapply(a: Any): Option[KeyValues[Key, Value]] = a match {
+  def extractor[Key: TypeTag, Value: TypeTag]: Extractor[Any, KeyValues[Key, Value]] =
+    Extractor {
       case kvs: KeyValues[_, _] => kvs.cast[Key, Value]
       case _ => None
     }
+
+  /**
+    * A collection of key-value pairs created from any sequence.
+    *
+    * Used for producing [[KafkaProducerActor]] compatible records in the user code.
+    *
+    * @param pairs a sequence of key-value pairs
+    */
+  case class PlainKeyValues[Key: TypeTag, Value: TypeTag](pairs: Seq[KeyValues.Pair[Key, Value]])
+    extends KeyValues[Key, Value]
+
+  /**
+    * A collection of key-value pairs produced by [[KafkaConsumerActor]].
+    *
+    * @param records `ConsumerRecords` produced by [[KafkaConsumerActor]]
+    */
+  case class KafkaConsumerKeyValues[Key: TypeTag, Value: TypeTag](records: ConsumerRecords[Key, Value])
+    extends KeyValues[Key, Value] {
+
+    /**
+      * All the records from [[records]] in a list.
+      */
+    lazy val recordsList = records.toList
+
+    override def pairs: Seq[Pair] = recordsList.map(r => (Some(r.key()), r.value()))
+
+    override def values: Seq[Value] = recordsList.map(_.value())
+
+    override def size: Int = records.count()
   }
 }
 
@@ -114,7 +134,7 @@ sealed abstract class KeyValues[Key: TypeTag, Value: TypeTag] {
   /**
     * All the values without the keys.
     */
-  def values: Seq[Value] = keyValues.map(_._2)
+  def values: Seq[Value] = pairs.map(_._2)
 
   /**
     * Convert key-value pairs to Kafka `ProducerRecord`.
@@ -123,7 +143,7 @@ sealed abstract class KeyValues[Key: TypeTag, Value: TypeTag] {
     * @return a sequence of Kafka `ProducerRecord`s
     */
   def toProducerRecords(topic: String): Seq[ProducerRecord[Key, Value]] =
-    keyValues.map { case (k, v) => KafkaProducerRecord(topic, k, v) }
+    pairs.map { case (k, v) => KafkaProducerRecord(topic, k, v) }
 
   /**
     * Convert values from key-value pairs to Kafka `ProducerRecord`.
@@ -132,45 +152,17 @@ sealed abstract class KeyValues[Key: TypeTag, Value: TypeTag] {
     * @return a sequence of Kafka `ProducerRecord`s
     */
   def valuesToProducerRecords(topic: String): Seq[ProducerRecord[Nothing, Value]] =
-    keyValues.map { case (_, v) => KafkaProducerRecord(topic, v) }
+    pairs.map { case (_, v) => KafkaProducerRecord(topic, v) }
 
   /**
     * Number of key-value pairs
     */
-  def size: Int = keyValues.size
+  def size: Int = pairs.size
 
   /**
     * All the keys-value pairs in a sequence.
     */
-  def keyValues: Seq[Pair]
-}
-
-/**
-  * A collection of key-value pairs created from any sequence.
-  *
-  * Used for producing [[KafkaProducerActor]] compatible records in the user code.
-  *
-  * @param keyValues a sequence of key-value pairs
-  */
-case class PlainKeyValues[Key: TypeTag, Value: TypeTag](keyValues: Seq[KeyValues.Pair[Key, Value]]) extends KeyValues[Key, Value]
-
-/**
-  * A collection of key-value pairs produced by [[KafkaConsumerActor]].
-  *
-  * @param records `ConsumerRecords` produced by [[KafkaConsumerActor]]
-  */
-case class KafkaConsumerKeyValues[Key: TypeTag, Value: TypeTag](records: ConsumerRecords[Key, Value]) extends KeyValues[Key, Value] {
-
-  /**
-    * All the records from [[records]] in a list.
-    */
-  lazy val recordsList = records.toList
-
-  override def keyValues: Seq[Pair] = recordsList.map(r => (Some(r.key()), r.value()))
-
-  override def values: Seq[Value] = recordsList.map(_.value())
-
-  override def size: Int = records.count()
+  def pairs: Seq[Pair]
 }
 
 object KeyValuesWithOffsets {
@@ -226,23 +218,13 @@ object KeyValuesWithOffsets {
     * @tparam Value the type of the value to match in the extractor
     * @return an extractor for given key and value types
     */
-  def extractor[Key: TypeTag, Value: TypeTag]: Extractor[Key, Value] = new Extractor[Key, Value]
-
-  /**
-    * Extractor for pattern matching any value with a specific [[KeyValuesWithOffsets]] type.
-    *
-    * @see [[KeyValuesWithOffsets]].[[extractor]] for more details on how to use this extractor
-    * @tparam Key the type of the key to match in the extractor
-    * @tparam Value the type of the value to match in the extractor
-    */
-  class Extractor[Key: TypeTag, Value: TypeTag] {
-    def unapply(a: Any): Option[KeyValuesWithOffsets[Key, Value]] = a match {
+  def extractor[Key: TypeTag, Value: TypeTag]: Extractor[Any, KeyValuesWithOffsets[Key, Value]] =
+    Extractor {
       case rs: KeyValuesWithOffsets[_, _] =>
         rs.keyValues.cast[Key, Value]
           .map(kvs => KeyValuesWithOffsets(rs.offsets, kvs))
       case _ => None
     }
-  }
 }
 
 /**
