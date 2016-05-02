@@ -13,18 +13,50 @@ import scala.util.{Failure, Success, Try}
 /**
   * An actor that wraps [[KafkaProducer]].
   *
-  * The actor takes incoming (batches of) Kafka messages, writes them to Kafka,
+  * The actor takes incoming (batches of) Kafka records, writes them to Kafka,
   * and responds to sender once the messages have been written.
   *
   * [[KafkaProducerActor]] is not tied to any specific topic,
   * but it's message serializers have to be specified before it's used.
   *
-  * The types of messages that [[KafkaProducerActor]] consumes is controlled by a [[ProducerRecordMatcher]].
+  * The types of messages that [[KafkaProducerActor]] consumes is controlled by a [[KafkaProducerActor.Matcher]].
   * By default, the actor accepts all [[KafkaIngestible]] messages which have key and value types
   * matching the producer actor's type parameters.
   */
 object KafkaProducerActor {
-  import ProducerRecordMatcher.Matcher
+
+  /**
+    * Kafka writable records received from [[Matcher]].
+    *
+    * @param records the records that are to be written to Kafka
+    * @param response optional message that is to be sent back to the sender after messages have been written to Kafka
+    * @tparam K Kafka message key type
+    * @tparam V Kafka message value type
+    */
+  case class MatcherResult[K, V](records: Iterable[ProducerRecord[K, V]], response: Option[Any])
+
+  /**
+    * A partial function that extracts producer records from messages sent to [[KafkaProducerActor]].
+    *
+    * @tparam K Kafka message key type
+    * @tparam V Kafka message value type
+    */
+  type Matcher[K, V] = PartialFunction[Any, MatcherResult[K, V]]
+
+  /**
+    * The default [[Matcher]] that is used for extracting Kafka records from incoming messages.
+    * Accepts all [[KafkaIngestible]] messages which have matching key and value types.
+    *
+    * @tparam K Kafka message key type
+    * @tparam V Kafka message value type
+    */
+  def defaultMatcher[K: TypeTag, V: TypeTag]: Matcher[K, V] = {
+    val extractor = KafkaIngestible.extractor[K, V]
+
+    {
+      case extractor(ingestible) => MatcherResult(ingestible.records, ingestible.response)
+    }
+  }
 
   /**
     * Create Akka `Props` for [[KafkaProducerActor]].
@@ -34,7 +66,7 @@ object KafkaProducerActor {
     * @tparam V valu serializer type
     */
   def props[K: TypeTag, V: TypeTag](producerConf: KafkaProducer.Conf[K, V]): Props = {
-    val matcher = ProducerRecordMatcher.defaultMatcher[K, V]
+    val matcher = defaultMatcher[K, V]
     propsWithMatcher(producerConf, matcher)
   }
 
@@ -52,7 +84,7 @@ object KafkaProducerActor {
   }
 
   /**
-    * Create Akka `Props` for [[KafkaProducerActor]] with a custom [[ProducerRecordMatcher]].
+    * Create Akka `Props` for [[KafkaProducerActor]] with a custom [[Matcher]].
     *
     * @param producerConf configurations for the [[KafkaProducer]]
     * @param matcher custom matcher for mapping incoming messages to Kafka writable messages
@@ -63,7 +95,7 @@ object KafkaProducerActor {
     Props(new KafkaProducerActor(producerConf, matcher))
 
   /**
-    * Create Akka `Props` for [[KafkaProducerActor]] from a Typesafe config with a custom [[ProducerRecordMatcher]].
+    * Create Akka `Props` for [[KafkaProducerActor]] from a Typesafe config with a custom [[Matcher]].
     *
     * @param conf configurations for the [[KafkaProducer]]
     * @param keySerializer serializer for the key
@@ -79,10 +111,11 @@ object KafkaProducerActor {
 
 private class KafkaProducerActor[K, V](
   producerConf: KafkaProducer.Conf[K, V],
-  matcher: ProducerRecordMatcher.Matcher[K, V])
+  matcher: KafkaProducerActor.Matcher[K, V])
   extends Actor with ActorLogging {
 
   import context.dispatcher
+  import KafkaProducerActor.MatcherResult
 
   type Record = ProducerRecord[K, V]
   type Records = Iterable[Record]
@@ -93,7 +126,7 @@ private class KafkaProducerActor[K, V](
 
   override def receive: Receive = matcher.andThen(handleResult)
 
-  private def handleResult(result: ProducerRecordMatcher.Result[K, V]): Unit = {
+  private def handleResult(result: MatcherResult[K, V]): Unit = {
     log.debug("Received a batch. Writing to Kafka.")
     val s = sender()
     sendMany(result.records).onComplete {
