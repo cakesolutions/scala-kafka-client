@@ -10,38 +10,75 @@ import scala.concurrent.Future
 import scala.reflect.runtime.universe.TypeTag
 import scala.util.{Failure, Success, Try}
 
+/**
+  * An actor that wraps [[KafkaProducer]].
+  *
+  * The actor takes incoming (batches of) Kafka messages, writes them to Kafka,
+  * and responds to sender once the messages have been written.
+  *
+  * [[KafkaProducerActor]] is not tied to any specific topic,
+  * but it's message serializers have to be specified before it's used.
+  *
+  * The types of messages that [[KafkaProducerActor]] consumes is controlled by a [[ProducerRecordMatcher]].
+  * By default, the actor accepts all [[KafkaIngestible]] messages which have key and value types
+  * matching the producer actor's type parameters.
+  */
 object KafkaProducerActor {
   import ProducerRecordMatcher.Matcher
 
-  object Conf {
-    def apply(config: Config): Conf = {
-      val commit = config.getBoolean("producer.commit")
-      apply(commit)
-    }
+  /**
+    * Create Akka `Props` for [[KafkaProducerActor]].
+    *
+    * @param producerConf configurations for the [[KafkaProducer]]
+    * @tparam K key serializer type
+    * @tparam V valu serializer type
+    */
+  def props[K: TypeTag, V: TypeTag](producerConf: KafkaProducer.Conf[K, V]): Props = {
+    val matcher = ProducerRecordMatcher.defaultMatcher[K, V]
+    propsWithMatcher(producerConf, matcher)
   }
 
-  case class Conf(commitToConsumer: Boolean)
-
-  def props[K: TypeTag, V: TypeTag](producerConf: KafkaProducer.Conf[K, V], actorConf: Conf): Props = {
-    val matcher = ProducerRecordMatcher.defaultMatcher[K, V](actorConf.commitToConsumer)
-    propsWithMatcher(producerConf, actorConf, matcher)
-  }
-
+  /**
+    * Create Akka `Props` for [[KafkaProducerActor]] from a Typesafe config.
+    *
+    * @param conf configurations for the [[KafkaProducer]]
+    * @param keySerializer serializer for the key
+    * @param valueSerializer serializer for the value
+    * @tparam K key serializer type
+    * @tparam V value serializer type
+    */
   def props[K: TypeTag, V: TypeTag](conf: Config, keySerializer: Serializer[K], valueSerializer: Serializer[V]): Props = {
-    props(KafkaProducer.Conf(conf, keySerializer, valueSerializer), Conf(conf))
+    props(KafkaProducer.Conf(conf, keySerializer, valueSerializer))
   }
 
-  def propsWithMatcher[K, V](producerConf: KafkaProducer.Conf[K, V], actorConf: Conf, matcher: Matcher[K, V]): Props =
-    Props(new KafkaProducerActor(producerConf, actorConf, matcher))
+  /**
+    * Create Akka `Props` for [[KafkaProducerActor]] with a custom [[ProducerRecordMatcher]].
+    *
+    * @param producerConf configurations for the [[KafkaProducer]]
+    * @param matcher custom matcher for mapping incoming messages to Kafka writable messages
+    * @tparam K key serializer type
+    * @tparam V value serializer type
+    */
+  def propsWithMatcher[K, V](producerConf: KafkaProducer.Conf[K, V], matcher: Matcher[K, V]): Props =
+    Props(new KafkaProducerActor(producerConf, matcher))
 
+  /**
+    * Create Akka `Props` for [[KafkaProducerActor]] from a Typesafe config with a custom [[ProducerRecordMatcher]].
+    *
+    * @param conf configurations for the [[KafkaProducer]]
+    * @param keySerializer serializer for the key
+    * @param valueSerializer serializer for the value
+    * @param matcher custom matcher for mapping incoming messages to Kafka writable messages
+    * @tparam K key serializer type
+    * @tparam V value serializer type
+    */
   def propsWithMatcher[K, V](conf: Config, keySerializer: Serializer[K], valueSerializer: Serializer[V], matcher: Matcher[K, V]): Props = {
-    propsWithMatcher(KafkaProducer.Conf(conf, keySerializer, valueSerializer), Conf(conf), matcher)
+    propsWithMatcher(KafkaProducer.Conf(conf, keySerializer, valueSerializer), matcher)
   }
 }
 
 private class KafkaProducerActor[K, V](
   producerConf: KafkaProducer.Conf[K, V],
-  actorConf: KafkaProducerActor.Conf,
   matcher: ProducerRecordMatcher.Matcher[K, V])
   extends Actor with ActorLogging {
 

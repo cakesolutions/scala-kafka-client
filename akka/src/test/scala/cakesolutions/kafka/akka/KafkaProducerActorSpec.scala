@@ -27,12 +27,11 @@ class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
 
   val serializer = new StringSerializer
   val producerConf = KafkaProducer.Conf(serializer, serializer, bootstrapServers = s"localhost:$kafkaPort")
-  val producerActorConf = KafkaProducerActor.Conf(commitToConsumer = false)
 
   "KafkaProducerActor" should "write given batch to Kafka" in {
     val topic = "sometopic"
     val probe = TestProbe()
-    val producer = system.actorOf(KafkaProducerActor.props(producerConf, producerActorConf))
+    val producer = system.actorOf(KafkaProducerActor.props(producerConf))
     val batch: Seq[ProducerRecord[String, String]] = Seq(
       KafkaProducerRecord(topic, "foo"),
       KafkaProducerRecord(topic, "key", "value"),

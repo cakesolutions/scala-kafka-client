@@ -9,16 +9,11 @@ object ProducerRecordMatcher {
 
   type Matcher[K, V] = PartialFunction[Any, Result[K, V]]
 
-  def defaultMatcher[K: TypeTag, V: TypeTag](commitToConsumer: Boolean): Matcher[K, V] = {
-    def convertResponse(any: Any): Any = any match {
-      case offsets: Offsets => KafkaConsumerActor.Confirm(offsets, commit = commitToConsumer)
-      case a => a
-    }
-
+  def defaultMatcher[K: TypeTag, V: TypeTag]: Matcher[K, V] = {
     val extractor = KafkaIngestible.extractor[K, V]
 
     {
-      case extractor(ingestible) => Result(ingestible.records, ingestible.response.map(convertResponse))
+      case extractor(ingestible) => Result(ingestible.records, ingestible.response)
     }
   }
 }

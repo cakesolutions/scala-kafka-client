@@ -67,8 +67,12 @@ object KafkaConsumerActor {
       * Create configuration for [[KafkaConsumerActor]] from Typesafe config.
       *
       * The given config must define the topics list. Other settings are optional overrides.
+      * Expected configuration values:
       *
-      * @param config
+      *  - topics: a list of topics to subscribe to
+      *  - schedule.interval: poll latency
+      *  - unconfirmed.timeout: Seconds before unconfirmed messages is considered for redelivery. To disable message redelivery provide a duration of 0.
+      *  - retryStrategy: Strategy to follow on Kafka driver failures. Default: infinitely on one second intervals
       */
     def apply(config: Config): Conf = {
       require(config.hasPath("topics"), "config must define topics")
@@ -128,7 +132,7 @@ object KafkaConsumerActor {
   }
 
   /**
-    * Create Akka `Props` for [[KafkaConsumerActor]]
+    * Create Akka `Props` for [[KafkaConsumerActor]].
     *
     * @param consumerConf configurations for the [[KafkaConsumer]]
     * @param actorConf configurations for the [[KafkaConsumerActor]]
