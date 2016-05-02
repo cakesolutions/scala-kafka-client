@@ -10,13 +10,13 @@ import org.apache.kafka.common.serialization.Deserializer
 
 import scala.collection.JavaConversions._
 import scala.concurrent.duration._
-import scala.reflect.runtime.universe.{TypeTag, typeTag}
+import scala.reflect.runtime.universe.TypeTag
 
 /**
   * An actor that wraps [[KafkaConsumerActor]].
   *
   * The actor pulls batches of messages from Kafka for all subscribed partitions,
-  * and forwards them to the supplied Akka actor reference in [[KeyValuesWithOffsets]] format.
+  * and forwards them to the supplied Akka actor reference in [[ConsumerRecords]] format.
   *
   * Before the actor continues pulling more data from Kafka,
   * the receiver of the data must confirm the batches by sending back a [[KafkaConsumerActor.Confirm]] message
@@ -157,7 +157,7 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
   import PollScheduling.Poll
   import context.become
 
-  type Records = KeyValuesWithOffsets[K, V]
+  type Records = ConsumerRecords[K, V]
 
   private var consumer = KafkaConsumer[K, V](consumerConf)
 
@@ -329,7 +329,7 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
       log.debug("Poll Kafka for {} milliseconds", timeout)
       val rs = consumer.poll(timeout)
       if (rs.count() > 0)
-        cb(Some(KeyValuesWithOffsets(currentConsumerOffsets, rs)))
+        cb(Some(ConsumerRecords(currentConsumerOffsets, rs)))
       else
         cb(None)
     }

@@ -36,7 +36,7 @@ class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
       KafkaProducerRecord(topic, "foo"),
       KafkaProducerRecord(topic, "key", "value"),
       KafkaProducerRecord(topic, "bar"))
-    val message = KafkaIngestible(batch, Some('response))
+    val message = ProducerRecords(batch, Some('response))
 
     probe.send(producer, message)
 

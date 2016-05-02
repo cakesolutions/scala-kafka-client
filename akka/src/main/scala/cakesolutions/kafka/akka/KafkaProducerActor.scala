@@ -20,7 +20,7 @@ import scala.util.{Failure, Success, Try}
   * but it's message serializers have to be specified before it's used.
   *
   * The types of messages that [[KafkaProducerActor]] consumes is controlled by a [[KafkaProducerActor.Matcher]].
-  * By default, the actor accepts all [[KafkaIngestible]] messages which have key and value types
+  * By default, the actor accepts all [[ProducerRecords]] messages which have key and value types
   * matching the producer actor's type parameters.
   */
 object KafkaProducerActor {
@@ -45,13 +45,13 @@ object KafkaProducerActor {
 
   /**
     * The default [[Matcher]] that is used for extracting Kafka records from incoming messages.
-    * Accepts all [[KafkaIngestible]] messages which have matching key and value types.
+    * Accepts all [[ProducerRecords]] messages which have matching key and value types.
     *
     * @tparam K Kafka message key type
     * @tparam V Kafka message value type
     */
   def defaultMatcher[K: TypeTag, V: TypeTag]: Matcher[K, V] = {
-    val extractor = KafkaIngestible.extractor[K, V]
+    val extractor = ProducerRecords.extractor[K, V]
 
     {
       case extractor(ingestible) => MatcherResult(ingestible.records, ingestible.response)
