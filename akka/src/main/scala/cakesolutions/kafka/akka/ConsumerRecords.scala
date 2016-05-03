@@ -17,18 +17,35 @@ object ConsumerRecords {
 
   /**
     * Create consumer records for a single partition from values only.
+    *
+    * This constructor function is not used by the library.
+    * It's useful for generating data for testing purposes in cases where you don't want to involve the [[KafkaConsumerActor]].
+    *
+    * The offsets will contain only one partition.
+    * The partition offset will be set according to the size of the given sequence.
     */
   def fromValues[Key >: Null : TypeTag, Value: TypeTag](partition: Partition, values: Seq[Value]): ConsumerRecords[Key, Value] =
     fromPairs(partition, values.map(None -> _))
 
   /**
     * Create consumer records for a single partition from key-value pairs.
+    *
+    * This constructor function is not used by the library.
+    * It's useful for generating data for testing purposes in cases where you don't want to involve the [[KafkaConsumerActor]].
+    *
+    * The offsets will contain only one partition.
+    * The partition offset will be set according to size of the given sequence.
     */
   def fromPairs[Key >: Null : TypeTag, Value: TypeTag](partition: Partition, pairs: Seq[Pair[Key, Value]]): ConsumerRecords[Key, Value] =
     fromMap(Map(partition -> pairs))
 
   /**
     * Create consumer records from a map of partitions and key-value pairs.
+    *
+    * This constructor function is not used by the library.
+    * It's useful for generating data for testing purposes in cases where you don't want to involve the [[KafkaConsumerActor]].
+    *
+    * The partition offsets will be set according to the number of messages in a partition.
     */
   def fromMap[Key >: Null : TypeTag, Value: TypeTag](values: Map[Partition, Seq[Pair[Key, Value]]]): ConsumerRecords[Key, Value] = {
     def createConsumerRecords(topic: String, partition: Int, pairs: Seq[Pair[Key, Value]]) =

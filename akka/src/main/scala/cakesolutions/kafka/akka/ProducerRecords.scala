@@ -124,7 +124,7 @@ object ProducerRecords {
     */
   def extractor[Key: TypeTag, Value: TypeTag]: Extractor[Any, ProducerRecords[Key, Value]] =
     Extractor {
-      case ingestible: ProducerRecords[_, _] => ingestible.cast[Key, Value]
+      case producerRecords: ProducerRecords[_, _] => producerRecords.cast[Key, Value]
       case _ => None
     }
 }
