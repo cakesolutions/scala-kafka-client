@@ -2,13 +2,14 @@ package cakesolutions.kafka.akka
 
 import org.scalatest.{FlatSpecLike, Inside, Matchers}
 
-class KeyValuesSpec extends FlatSpecLike with Matchers with Inside {
+class ConsumerRecordsSpec extends FlatSpecLike with Matchers with Inside {
 
-  val knownInput: KeyValues[String, Int] = KeyValues(Some("foo"), Seq(1, 2, 3))
-  val partiallyKnownInput: KeyValues[_, _] = knownInput
+  val partition = ("sometopic", 0)
+  val knownInput: ConsumerRecords[String, Int] = ConsumerRecords.fromPairs(partition, Seq(Some("foo") -> 1))
+  val partiallyKnownInput: ConsumerRecords[_, _] = knownInput
   val anyInput: Any = knownInput
 
-  "KeyValues" should "match types correctly" in {
+  "ConsumerRecords" should "match types correctly" in {
     partiallyKnownInput.hasType[String, Int] shouldEqual true
     partiallyKnownInput.hasType[Int, String] shouldEqual false
   }
@@ -22,8 +23,8 @@ class KeyValuesSpec extends FlatSpecLike with Matchers with Inside {
   }
 
   it should "extract values correctly" in {
-    val correctExt = KeyValues.extractor[String, Int]
-    val incorrectExt = KeyValues.extractor[Int, String]
+    val correctExt = ConsumerRecords.extractor[String, Int]
+    val incorrectExt = ConsumerRecords.extractor[Int, String]
 
     anyInput should not matchPattern {
       case incorrectExt(_) =>

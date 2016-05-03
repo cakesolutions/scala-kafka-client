@@ -84,11 +84,11 @@ object Retry {
   }
 }
 
-object ActorWithInternalRetry {
+private object ActorWithInternalRetry {
   case object CooldownDone
 }
 
-trait ActorWithInternalRetry extends Actor with Stash {
+private trait ActorWithInternalRetry extends Actor with Stash {
 
   import ActorWithInternalRetry._
   import Retry._

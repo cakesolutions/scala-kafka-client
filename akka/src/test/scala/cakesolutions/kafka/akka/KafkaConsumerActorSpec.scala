@@ -113,7 +113,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
           val consumer = system.actorOf(KafkaConsumerActor.props(consumerConfig, actorConf, testActor))
           consumer ! Subscribe()
 
-          val rs = expectMsgClass(30.seconds, classOf[KeyValuesWithOffsets[String, String]])
+          val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
           consumer ! Confirm(rs.offsets)
           expectNoMsg(5.seconds)
 
@@ -133,7 +133,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     val consumer = system.actorOf(KafkaConsumerActor.props(configuredActor(topic), new StringDeserializer(), new StringDeserializer(), testActor))
     consumer ! Subscribe()
 
-    val rs = expectMsgClass(30.seconds, classOf[KeyValuesWithOffsets[String, String]])
+    val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
     consumer ! Confirm(rs.offsets)
     expectNoMsg(5.seconds)
 

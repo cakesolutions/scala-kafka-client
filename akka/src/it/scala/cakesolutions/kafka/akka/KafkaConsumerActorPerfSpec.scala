@@ -96,7 +96,7 @@ class ReceiverPilot(expectedMessages: Long) extends TestActor.AutoPilot {
 
   def future = finished.future
 
-  val matcher = KeyValuesWithOffsets.extractor[String, String]
+  val matcher = ConsumerRecords.extractor[String, String]
 
   override def run(sender: ActorRef, msg: Any): AutoPilot = {
     if (total == 0)
@@ -104,7 +104,7 @@ class ReceiverPilot(expectedMessages: Long) extends TestActor.AutoPilot {
 
     matcher.unapply(msg) match {
       case Some(r) =>
-        total += r.keyValues.size
+        total += r.size
         sender ! Confirm(r.offsets)
         if (total >= expectedMessages) {
           val totalTime = System.currentTimeMillis() - start
