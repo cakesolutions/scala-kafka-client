@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 import scala.reflect.runtime.universe.TypeTag
 
 /**
-  * An actor that wraps [[KafkaConsumerActor]].
+  * An actor that wraps [[KafkaConsumer]].
   *
   * The actor pulls batches of messages from Kafka for all subscribed partitions,
   * and forwards them to the supplied Akka actor reference in [[ConsumerRecords]] format.

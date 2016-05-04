@@ -103,7 +103,7 @@ object ConsumerRecords {
 }
 
 /**
-  * Records consumed from Kafka by [[KafkaProducerActor]].
+  * Records consumed from Kafka by [[KafkaConsumerActor]].
   *
   * @param offsets the last offsets of all the subscribed partitions after consuming the records from Kafka
   * @param records the records consumed from Kafka
