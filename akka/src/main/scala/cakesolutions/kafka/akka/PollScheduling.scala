@@ -4,7 +4,7 @@ import akka.actor.{ActorLogging, Actor, Cancellable}
 
 import scala.concurrent.duration.FiniteDuration
 
-protected object PollScheduling {
+private object PollScheduling {
 
   /**
     * Internal poll trigger
@@ -17,7 +17,7 @@ protected object PollScheduling {
   final case class Poll(correlationId: Long, timeout: Int = 0)
 }
 
-protected trait PollScheduling extends ActorLogging {
+private trait PollScheduling extends ActorLogging {
   self: Actor =>
 
   import PollScheduling._

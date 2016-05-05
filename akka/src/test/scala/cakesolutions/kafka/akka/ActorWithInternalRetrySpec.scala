@@ -87,7 +87,7 @@ class SampleRetrySupervisor(nextActor: ActorRef) extends Actor {
   }
 }
 
-class SampleRetryActor extends ActorWithInternalRetry {
+private class SampleRetryActor extends ActorWithInternalRetry {
 
   // state that makes `doStuff` fail. recovery attempts to "correct" the state.
   private var failTimes: Int = 0
