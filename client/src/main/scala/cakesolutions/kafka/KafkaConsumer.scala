@@ -25,15 +25,15 @@ object KafkaConsumer {
       *
       * @param keyDeserializer deserializer for the key
       * @param valueDeserializer deserializer for the value
-      * @param bootstrapServers a list of host/port pairs to use for establishing the initial connection to Kafka cluster
+      * @param bootstrapServers a list of host/port pairs to use for establishing the initial connection to the Kafka cluster
       * @param groupId a unique string that identifies the consumer group this consumer belongs to
-      * @param enableAutoCommit if true the consumer's offset will be periodically committed in the background
+      * @param enableAutoCommit if true the consumer's offsets will be periodically committed in the background
       * @param autoCommitInterval the frequency in milliseconds that the consumer offsets are auto-committed to Kafka when auto commit is enabled
       * @param sessionTimeoutMs the timeout used to detect failures when using Kafka's group management facilities
       * @param maxPartitionFetchBytes the maximum amount of data per-partition the server will return
       * @param autoOffsetReset what to do when there is no initial offset in Kafka or if the current offset does not exist any more on the server
       * @tparam K key deserialiser type
-      * @tparam V Value deserialiser type
+      * @tparam V value deserialiser type
       * @return consumer configuration consisting of all the given values
       */
     def apply[K, V](keyDeserializer: Deserializer[K],

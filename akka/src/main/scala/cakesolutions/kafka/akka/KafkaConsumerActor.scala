@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 import scala.reflect.runtime.universe.TypeTag
 
 /**
-  * An actor that wraps [[KafkaConsumerActor]].
+  * An actor that wraps [[KafkaConsumer]].
   *
   * The actor pulls batches of messages from Kafka for all subscribed partitions,
   * and forwards them to the supplied Akka actor reference in [[ConsumerRecords]] format.
@@ -116,18 +116,18 @@ object KafkaConsumerActor {
     * @param conf Typesafe config containing all the [[KafkaConsumer.Conf]] and [[KafkaConsumerActor.Conf]] related configurations.
     * @param keyDeserializer deserializer for the key
     * @param valueDeserializer deserializer for the value
-    * @param nextActor the actor where all the consumed messages will be sent to
+    * @param downstreamActor the actor where all the consumed messages will be sent to
     * @tparam K key deserialiser type
     * @tparam V value deserialiser type
     */
   def props[K: TypeTag, V: TypeTag](conf: Config,
                                     keyDeserializer: Deserializer[K],
                                     valueDeserializer: Deserializer[V],
-                                    nextActor: ActorRef): Props = {
+                                    downstreamActor: ActorRef): Props = {
     props(
       KafkaConsumer.Conf[K, V](conf, keyDeserializer, valueDeserializer),
         KafkaConsumerActor.Conf(conf),
-        nextActor
+        downstreamActor
     )
   }
 
@@ -136,21 +136,21 @@ object KafkaConsumerActor {
     *
     * @param consumerConf configurations for the [[KafkaConsumer]]
     * @param actorConf configurations for the [[KafkaConsumerActor]]
-    * @param nextActor the actor where all the consumed messages will be sent to
+    * @param downstreamActor the actor where all the consumed messages will be sent to
     * @tparam K key deserialiser type
     * @tparam V value deserialiser type
     */
   def props[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Conf[K, V],
                                     actorConf: KafkaConsumerActor.Conf,
-                                    nextActor: ActorRef): Props = {
-    Props(new KafkaConsumerActor[K, V](consumerConf, actorConf, nextActor))
+                                    downstreamActor: ActorRef): Props = {
+    Props(new KafkaConsumerActor[K, V](consumerConf, actorConf, downstreamActor))
   }
 }
 
 private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
   consumerConf: KafkaConsumer.Conf[K, V],
   actorConf: KafkaConsumerActor.Conf,
-  nextActor: ActorRef)
+  downstreamActor: ActorRef)
   extends ActorWithInternalRetry with ActorLogging with PollScheduling {
 
   import KafkaConsumerActor._
@@ -306,7 +306,7 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
   }
 
   private def sendRecords(records: Records): Unit = {
-    nextActor ! records
+    downstreamActor ! records
   }
 
   // The client is usually misusing the Consumer if incorrect Confirm offsets are provided

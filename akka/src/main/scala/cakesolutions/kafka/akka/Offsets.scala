@@ -18,7 +18,7 @@ object Offsets {
   * Map of partitions to partition offsets.
   *
   * [[KafkaConsumerActor]] sends [[Offsets]] along with a batch of data related to the offsets.
-  * The offsets in this case represent the point at which the Kafka consumer reached after consuming the batch.
+  * The offsets in this case represent the point the Kafka consumer reached after consuming the batch.
   * Because the offsets are unique to the consumed batch,
   * the offsets are also used as a confirmation key for confirming that the batch has been fully processed.
   */
@@ -57,12 +57,12 @@ case class Offsets(offsetsMap: Map[TopicPartition, Long]) extends AnyVal {
     copy(offsetsMap -- tps)
 
   /**
-    * Does the offsets contain any offset information.
+    * Whether there are no offsets.
     */
   def isEmpty: Boolean = offsetsMap.isEmpty
 
   /**
-    * Does the offsets contain at least one offset information.
+    * Whether there are any offsets.
     */
   def nonEmpty: Boolean = offsetsMap.nonEmpty
 
@@ -87,4 +87,3 @@ trait HasOffsets {
     */
   val offsets: Offsets
 }
-
