@@ -220,11 +220,9 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
       become(ready)
       pollImmediate(delayedPollTimeout)
 
-    case poll: Poll if !isCurrentPoll(poll) =>
+    case _: Poll =>
       // Do nothing
 
-    // TODO: What about a poll that is current? The next one could have been placed in our mailbox after the
-    // unsubscribe and before we cancelled the scheduler
   }
 
   private def subscribe(offsets: Option[Offsets]): Unit = {
