@@ -25,8 +25,8 @@ lazy val commonSettings = Seq(
   publishArtifact in Test := false,
 
   pomExtra := <scm>
-    <url>git@github.com:simonsouter/scala-kafka-client.git</url>
-    <connection>scm:git:git@github.com:simonsouter/scala-kafka-client.git</connection>
+    <url>git@github.com:cakesolutions/scala-kafka-client.git</url>
+    <connection>scm:git:git@github.com:cakesolutions/scala-kafka-client.git</connection>
   </scm>
     <developers>
       <developer>

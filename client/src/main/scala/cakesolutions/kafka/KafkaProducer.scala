@@ -72,7 +72,7 @@ object KafkaProducer {
       * @return consumer configuration
       */
     def apply[K, V](config: Config, keySerializer: Serializer[K], valueSerializer: Serializer[V]): Conf[K, V] =
-      apply(config.toPropertyMap, keySerializer, valueSerializer)
+      Conf(config.toPropertyMap, keySerializer, valueSerializer)
   }
 
   /**
@@ -115,7 +115,7 @@ object KafkaProducer {
     * @return Kafka producer instance
     */
   def apply[K, V](conf: Conf[K, V]): KafkaProducer[K, V] = {
-    KafkaProducer(new JKafkaProducer[K, V](conf.props, conf.keySerializer, conf.valueSerializer))
+    apply(new JKafkaProducer[K, V](conf.props, conf.keySerializer, conf.valueSerializer))
   }
 
   /**

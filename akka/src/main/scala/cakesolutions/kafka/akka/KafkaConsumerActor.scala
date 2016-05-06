@@ -222,6 +222,9 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
 
     case poll: Poll if !isCurrentPoll(poll) =>
       // Do nothing
+
+    // TODO: What about a poll that is current? The next one could have been placed in our mailbox after the
+    // unsubscribe and before we cancelled the scheduler
   }
 
   private def subscribe(offsets: Option[Offsets]): Unit = {
@@ -275,10 +278,9 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
   def bufferFull(state: Buffered): Receive = unconfirmedCommonReceive(state) orElse {
     case poll: Poll if isCurrentPoll(poll) =>
 
-      // Id an confirmation timeout is set and has expired, the message is redelivered
+      // If an confirmation timeout is set and has expired, the message is redelivered
       if (isConfirmationTimeout(state.deliveryTime)) {
-        val msg = state.unconfirmed
-        sendRecords(msg)
+        sendRecords(state.unconfirmed)
       }
       log.debug(s"Buffer is full. Not gonna poll.")
       schedulePoll()
