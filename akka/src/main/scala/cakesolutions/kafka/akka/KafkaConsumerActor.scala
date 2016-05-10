@@ -265,7 +265,7 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
       }
 
     case Confirm(offsets, commit) if state.isCurrentOffset(offsets) =>
-      log.info(s"Records confirmed")
+      log.debug("Records confirmed")
       if (commit) commitOffsets(offsets)
       log.debug("To Ready state")
       become(ready)
@@ -287,7 +287,7 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
 
     // The next message can be sent immediately from the buffer.  A poll to Kafka for new messages for the buffer also happens immediately.
     case Confirm(offsets, commit) if state.isCurrentOffset(offsets) =>
-      log.info(s"Records confirmed")
+      log.debug("Records confirmed")
       if (commit) commitOffsets(offsets)
       sendRecords(state.buffered)
       log.debug("To unconfirmed state")
@@ -355,7 +355,7 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
     deliveryTime.plus(actorConf.unconfirmedTimeout.toMillis, ChronoUnit.MILLIS)
 
   private def commitOffsets(offsets: Offsets): Unit = {
-    log.info("Committing offsets. {}", offsets)
+    log.debug("Committing offsets. {}", offsets)
 
     val currentOffsets = currentConsumerOffsets
     val currentPartitions = currentOffsets.topicPartitions
