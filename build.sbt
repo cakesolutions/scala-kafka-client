@@ -61,4 +61,7 @@ lazy val scalaKafkaClientAkka = project.in(file("akka")).
 lazy val root = project.in(file(".")).
   settings(commonSettings: _*).
   settings(unidocSettings: _*).
+  settings(publishArtifact := false).
+  settings(publish := {}).
+  settings(publishLocal := {}).
   aggregate(scalaKafkaClient, scalaKafkaClientAkka, kafkaTestkit)
