@@ -101,7 +101,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
         """.stripMargin)
   }
 
-  "KafkaConsumerActors with different configuration types" should "consume a message successfully" in {
+  "KafkaConsumerActors with different configuration types" should "each consume a message successfully" in {
 
     (List(consumerConfFromConfig, consumerConf) zip List(actorConf(TestUtils.randomString(5)), actorConfFromConfig(TestUtils.randomString(5)), actorConfFromMinimalConfig(TestUtils.randomString(5))))
       .foreach {
@@ -140,8 +140,4 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     consumer ! Unsubscribe
     producer.close()
   }
-
-  //TODO changing actor config settings - timeout etc
-
-  //TODO test message pattern
 }

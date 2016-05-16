@@ -13,15 +13,14 @@ import scala.util.{Failure, Success}
 /**
   * An actor that wraps [[KafkaProducer]].
   *
-  * The actor takes incoming (batches of) Kafka records, writes them to Kafka,
-  * and replies to sender once the messages have been written.
+  * The actor takes incoming (batches of) Kafka records, writes them to Kafka, and optionally replies to the sender
+  * once the message are confirmed to be written to Kafka.  The optional response message can be used to facilitate a
+  * commit to an upstream source, for example.
   *
-  * [[KafkaProducerActor]] is not tied to any specific topic,
-  * but its message serializers have to be specified before it's used.
+  * [[KafkaProducerActor]] is not tied to any specific topic, but its message serializers have to be specified before it's used.
   *
   * The types of messages that [[KafkaProducerActor]] consumes is controlled by a [[KafkaProducerActor.Matcher]].
-  * By default, the actor accepts all [[ProducerRecords]] messages which have key and value types
-  * matching the producer actor's type parameters.
+  * By default, the actor accepts all [[ProducerRecords]] messages which have key and value types matching the producer actor's type parameters.
   */
 object KafkaProducerActor {
 
@@ -109,13 +108,11 @@ object KafkaProducerActor {
   }
 }
 
-private class KafkaProducerActor[K, V](
-  producerConf: KafkaProducer.Conf[K, V],
-  matcher: KafkaProducerActor.Matcher[K, V])
+private class KafkaProducerActor[K, V](producerConf: KafkaProducer.Conf[K, V], matcher: KafkaProducerActor.Matcher[K, V])
   extends Actor with ActorLogging {
 
-  import context.dispatcher
   import KafkaProducerActor.MatcherResult
+  import context.dispatcher
 
   type Record = ProducerRecord[K, V]
   type Records = Iterable[Record]

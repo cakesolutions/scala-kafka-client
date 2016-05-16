@@ -28,7 +28,7 @@ class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
   val serializer = new StringSerializer
   val producerConf = KafkaProducer.Conf(serializer, serializer, bootstrapServers = s"localhost:$kafkaPort")
 
-  "KafkaProducerActor" should "write given batch to Kafka" in {
+  "KafkaProducerActor" should "write a given batch to Kafka" in {
     val topic = "sometopic"
     val probe = TestProbe()
     val producer = system.actorOf(KafkaProducerActor.props(producerConf))
@@ -41,6 +41,29 @@ class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     probe.send(producer, message)
 
     probe.expectMsg('response)
+
+    val results = consumeFromTopic(topic, 3, 10000)
+
+    results(0) shouldEqual (None, "foo")
+    results(1) shouldEqual (Some("key"), "value")
+    results(2) shouldEqual (None, "bar")
+  }
+
+  "KafkaProducerActor" should "write a given batch to Kafka, requiring no response" in {
+    import scala.concurrent.duration._
+
+    val topic = "sometopic"
+    val probe = TestProbe()
+    val producer = system.actorOf(KafkaProducerActor.props(producerConf))
+    val batch: Seq[ProducerRecord[String, String]] = Seq(
+      KafkaProducerRecord(topic, "foo"),
+      KafkaProducerRecord(topic, "key", "value"),
+      KafkaProducerRecord(topic, "bar"))
+    val message = ProducerRecords(batch)
+
+    probe.send(producer, message)
+
+    probe.expectNoMsg(3.seconds)
 
     val results = consumeFromTopic(topic, 3, 10000)
 

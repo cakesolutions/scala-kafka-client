@@ -19,7 +19,7 @@ import scala.concurrent.Promise
   * Ad hoc performance test for validating async consumer performance.  Pass environment variable KAFKA with contact point for
   * Kafka server e.g. -DKAFKA=127.0.0.1:9092
   */
-class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
+class KafkaE2EActorPerfSpec(system_ : ActorSystem)
   extends TestKit(system_)
     with ImplicitSender
     with FlatSpecLike
@@ -48,27 +48,33 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
     )
   }
 
-  def actorConf(topic: String): KafkaConsumerActor.Conf = {
+  def consumerActorConf(topic: String): KafkaConsumerActor.Conf = {
     KafkaConsumerActor.Conf(List(topic)).withConf(config.getConfig("consumer"))
   }
 
-  "KafkaConsumerActor with single partition topic" should "perform" in {
-    val topic = TestUtils.randomString(5)
+  val producerConf = KafkaProducer.Conf(config.getConfig("producer"), new StringSerializer, new StringSerializer)
+
+  "KafkaConsumerActor to KafkaProducer with async commit" should "perform" in {
+    val sourceTopic = TestUtils.randomString(5)
+    val targetTopic = TestUtils.randomString(5)
     val totalMessages = 100000
 
-    val producerConf = KafkaProducer.Conf(config.getConfig("producer"), new StringSerializer, new StringSerializer)
-    val producer = KafkaProducer[String, String](producerConf)
-    val pilot = new ReceiverPilot(totalMessages)
+    //For loading the source topic with test data
+    val testProducer = KafkaProducer[String, String](producerConf)
+
+    val producer = system.actorOf(KafkaProducerActor.props(producerConf))
+
+    val pilot = new PipelinePilot(producer, targetTopic, totalMessages)
     val receiver = TestProbe()
     receiver.setAutoPilot(pilot)
 
-    val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, actorConf(topic), receiver.ref))
+    val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, consumerActorConf(sourceTopic), receiver.ref))
 
     1 to totalMessages foreach { n =>
-      producer.send(KafkaProducerRecord(topic, None, msg1k))
+      testProducer.send(KafkaProducerRecord(sourceTopic, None, msg1k))
     }
-    producer.flush()
-    log.info("Delivered {} messages to topic {}", totalMessages, topic)
+    testProducer.flush()
+    log.info("Delivered {} messages to topic {}", totalMessages, sourceTopic)
 
     consumer ! Subscribe()
 
@@ -79,13 +85,13 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
       totalTime should be < 7000L
 
       consumer ! Unsubscribe
-      producer.close()
+      testProducer.close()
       log.info("Done")
     }
   }
 }
 
-class ReceiverPilot(expectedMessages: Long) extends TestActor.AutoPilot {
+class PipelinePilot(producer: ActorRef, targetTopic: String, expectedMessages: Long) extends TestActor.AutoPilot {
 
   private val log = LoggerFactory.getLogger(getClass)
 
@@ -99,13 +105,18 @@ class ReceiverPilot(expectedMessages: Long) extends TestActor.AutoPilot {
   val matcher = ConsumerRecords.extractor[String, String]
 
   override def run(sender: ActorRef, msg: Any): AutoPilot = {
+
     if (total == 0)
       start = System.currentTimeMillis()
 
     matcher.unapply(msg) match {
       case Some(r) =>
         total += r.size
-        sender ! Confirm(r.offsets)
+
+        producer.!(
+          ProducerRecords(r.toProducerRecords(targetTopic), Some(Confirm(r.offsets, commit = true)))
+        )(sender)
+
         if (total >= expectedMessages) {
           val totalTime = System.currentTimeMillis() - start
           val messagesPerSec = expectedMessages / totalTime * 1000
