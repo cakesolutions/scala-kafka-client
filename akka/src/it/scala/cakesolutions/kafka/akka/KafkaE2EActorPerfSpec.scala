@@ -119,7 +119,7 @@ class PipelinePilot(producer: ActorRef, targetTopic: String, expectedMessages: L
 
         if (total >= expectedMessages) {
           val totalTime = System.currentTimeMillis() - start
-          val messagesPerSec = expectedMessages / totalTime * 100
+          val messagesPerSec = expectedMessages / totalTime * 1000
           finished.success((totalTime, messagesPerSec))
           TestActor.NoAutoPilot
         } else {
