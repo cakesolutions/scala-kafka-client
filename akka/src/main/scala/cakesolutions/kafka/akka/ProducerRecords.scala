@@ -137,7 +137,7 @@ object ProducerRecords {
   */
 case class ProducerRecords[Key: TypeTag, Value: TypeTag](
   records: Iterable[ProducerRecord[Key, Value]],
-  response: Option[Any]) {
+  response: Option[Any] = None) {
 
   val keyTag: TypeTag[Key] = typeTag[Key]
   val valueTag: TypeTag[Value] = typeTag[Value]
