@@ -12,7 +12,7 @@ These modules are production ready, actively maintained and are used in a large 
 ## Artifact Resolution
 To resolve any of the modules, add the following resolver to the build.sbt:
 
-    resolvers += Resolver.bintrayRepo("simonsouter", "maven")
+    resolvers += Resolver.bintrayRepo("cakesolutions", "maven")
 
 ## Scala Kafka Client
 
@@ -27,13 +27,14 @@ For configuration and usage, see the Wiki: [Scala Kafka Client Guide](https://gi
 
  scala-kafka-client | Kafka Java Driver
  ------------------ | -----------------
+ 0.7.x | 0.9.0.1
  0.6.x | 0.9.0.1
  0.5.x | 0.9.0.1
  0.4  | 0.9.0.0
 
 ### Resolve
 
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.6.0"
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.7.0"
 
 ## Scala Kafka Client - Akka Integration
 
@@ -46,7 +47,7 @@ concern for message delivery guarantees and resilience.
 
 ### Resolve
 
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.6.0"
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.7.0"
 
 ## TestKit
  
@@ -59,7 +60,7 @@ depends on a running Kafka Server.  Helps the setup of an in-process Kafka and Z
 ### Resolve
 
     //For kafka integration test support:
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-tesktkit" % "0.6.0" % "test"
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-tesktkit" % "0.7.0" % "test"
 
 ## License
     
