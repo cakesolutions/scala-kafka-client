@@ -60,7 +60,7 @@ depends on a running Kafka Server.  Helps the setup of an in-process Kafka and Z
 ### Resolve
 
     //For kafka integration test support:
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-tesktkit" % "0.7.0" % "test"
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-testkit" % "0.7.0" % "test"
 
 ## License
     
