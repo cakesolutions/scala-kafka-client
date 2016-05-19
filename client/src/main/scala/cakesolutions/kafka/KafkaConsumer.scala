@@ -9,7 +9,7 @@ import scala.collection.JavaConversions._
 /**
   * Utilities for creating a Kafka consumer.
   *
-  * This companion object provides tools for creating Kafka consumers using helpful functions.
+  * This singleton object provides tools for creating Kafka consumers using helpful functions.
   * Unlike with [[KafkaProducer]], the consumer object is not wrapped in an object that provides a Scala-like API.
   */
 object KafkaConsumer {
