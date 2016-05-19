@@ -1,12 +1,12 @@
 # Scala support for Apache Kafka's Java client library 0.9.0.x
 
-![SKC](https://raw.githubusercontent.com/wiki/cakesolutions/scala-kafka-client/images/logo.png)
-
 This project comprises a few helper modules for operating the [Kafka Java Client Driver](https://kafka.apache.org/090/javadoc/index.html) in a Scala codebase.
 
 * [Scala Kafka Client](#scala-kafka-client)
 * [Scala Kafka Client - Akka Integration](#scala-kafka-client---akka-integration)
 * [TestKit](#testkit)
+
+<img src="https://raw.githubusercontent.com/wiki/cakesolutions/scala-kafka-client/images/logo.png" align="sck" height="250" width="300">
 
 ## Status
 These modules are production ready, actively maintained and are used in a large scale production system.
