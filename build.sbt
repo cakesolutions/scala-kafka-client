@@ -40,6 +40,7 @@ lazy val commonSettings = Seq(
         <url>https://github.com/jkpl</url>
       </developer>
     </developers>,
+  resolvers += "Apache Staging repo" at "https://repository.apache.org/content/groups/staging",
 
   licenses := ("MIT", url("http://opensource.org/licenses/MIT")) :: Nil
 )

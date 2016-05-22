@@ -1,4 +1,4 @@
-# Scala support for Apache Kafka's Java client library 0.9.0.x
+# Scala support for Apache Kafka's Java client library 0.9.0.x to 0.10.0.0
 
 This project comprises a few helper modules for operating the [Kafka Java Client Driver](https://kafka.apache.org/090/javadoc/index.html) in a Scala codebase.
 
@@ -29,6 +29,7 @@ For configuration and usage, see the Wiki: [Scala Kafka Client Guide](https://gi
 
  scala-kafka-client | Kafka Java Driver
  ------------------ | -----------------
+ 0.8.x | 0.10.0.0
  0.7.x | 0.9.0.1
  0.6.x | 0.9.0.1
  0.5.x | 0.9.0.1
