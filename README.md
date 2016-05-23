@@ -53,7 +53,7 @@ concern for message delivery guarantees and resilience.
 
 ## TestKit
  
-The TesktKit module provides some tools to support integration testing of client service code that
+The TestKit module provides some tools to support integration testing of client service code that
 depends on a running Kafka Server.  Helps the setup of an in-process Kafka and Zookeeper server. 
 
 ### Documentation
