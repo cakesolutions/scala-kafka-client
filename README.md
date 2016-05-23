@@ -46,7 +46,7 @@ processing in an Akka application.  These components are specifically intended f
 concern for message delivery guarantees and resilience.
 
 ### Documentation
-[Kafka Client - Akka Integration](https://github.com/cakesolutions/scala-kafka-client/wiki/Akka-Kafka-Client)
+[Kafka Client - Akka Integration](https://github.com/cakesolutions/scala-kafka-client/wiki/Akka-Integration)
 
 ### Resolve
 
