@@ -30,7 +30,7 @@ For configuration and usage, see the Wiki: [Scala Kafka Client Guide](https://gi
  scala-kafka-client | Kafka Java Driver
  ------------------ | -----------------
  0.8.0 | 0.10.0.0
- 0.7.0 | 0.9.0.1
+ 0.7.1 | 0.9.0.1
 
 ### Change log
 
