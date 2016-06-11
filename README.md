@@ -1,6 +1,6 @@
-# Scala support for Apache Kafka's Java client library 0.9.0.x to 0.10.0.0
+# Scala support for Apache Kafka's Java client library 0.9.0.x and 0.10.0.0
 
-This project comprises a few helper modules for operating the [Kafka Java Client Driver](https://kafka.apache.org/090/javadoc/index.html) in a Scala codebase.
+This project comprises a few helper modules for operating the [Kafka Java Client Driver](https://kafka.apache.org/0100/javadoc/index.html) in a Scala codebase.
 
 * [Scala Kafka Client](#scala-kafka-client)
 * [Scala Kafka Client - Akka Integration](#scala-kafka-client---akka-integration)
@@ -29,15 +29,21 @@ For configuration and usage, see the Wiki: [Scala Kafka Client Guide](https://gi
 
  scala-kafka-client | Kafka Java Driver
  ------------------ | -----------------
- 0.8.x | 0.10.0.0
- 0.7.x | 0.9.0.1
- 0.6.x | 0.9.0.1
- 0.5.x | 0.9.0.1
- 0.4  | 0.9.0.0
+ 0.8.0 | 0.10.0.0
+ 0.7.0 | 0.9.0.1
+
+### Change log
+
+#### 0.8.0 - 06/2016
+* Supports Kafka Client 0.10.0.0
+* Add max.poll.records config option to consumer
+
+#### 0.7.0 - 05/2016
+* Supports Kafka Client 0.9.0.1
 
 ### Resolve
 
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.7.0"
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.8.0"
 
 ## Scala Kafka Client - Akka Integration
 
@@ -50,7 +56,7 @@ concern for message delivery guarantees and resilience.
 
 ### Resolve
 
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.7.0"
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.8.0"
 
 ## TestKit
  
@@ -63,7 +69,7 @@ depends on a running Kafka Server.  Helps the setup of an in-process Kafka and Z
 ### Resolve
 
     //For kafka integration test support:
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-testkit" % "0.7.0" % "test"
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-testkit" % "0.8.0" % "test"
 
 ## License
     
