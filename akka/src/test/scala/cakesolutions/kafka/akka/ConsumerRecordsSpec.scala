@@ -10,13 +10,13 @@ class ConsumerRecordsSpec extends FlatSpecLike with Matchers with Inside {
   val anyInput: Any = knownInput
 
   "ConsumerRecords" should "match types correctly" in {
-    partiallyKnownInput.hasType[String, Int] shouldEqual true
-    partiallyKnownInput.hasType[Int, String] shouldEqual false
+    partiallyKnownInput.hasType[ConsumerRecords[String, Int]] shouldEqual true
+    partiallyKnownInput.hasType[ConsumerRecords[Int, String]] shouldEqual false
   }
 
   it should "cast to only correct types" in {
-    val success = partiallyKnownInput.cast[String, Int]
-    val failure = partiallyKnownInput.cast[Int, String]
+    val success = partiallyKnownInput.cast[ConsumerRecords[String, Int]]
+    val failure = partiallyKnownInput.cast[ConsumerRecords[Int, String]]
 
     success shouldEqual Some(knownInput)
     failure shouldEqual None
