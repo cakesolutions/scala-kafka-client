@@ -17,7 +17,7 @@ private object TrackPartitions {
 /**
  * Not thread safe. Can be used with Kafka consumer 0.9 API.
  */
-private class TrackPartitions(consumer: KafkaConsumer[_, _]) extends ConsumerRebalanceListener {
+private final class TrackPartitions(consumer: KafkaConsumer[_, _]) extends ConsumerRebalanceListener {
   import TrackPartitions.log
 
   private var _offsets = Map[TopicPartition, Long]()

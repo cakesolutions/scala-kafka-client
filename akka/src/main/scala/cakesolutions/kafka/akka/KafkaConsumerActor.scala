@@ -37,7 +37,7 @@ object KafkaConsumerActor {
     *
     * @param offsets Consumption starts from specified offsets or kafka default, depending on `auto.offset.reset` setting.
     */
-  case class Subscribe(offsets: Option[Offsets] = None)
+  final case class Subscribe(offsets: Option[Offsets] = None)
 
   /**
     * Actor API - Confirm receipt of previous records.
@@ -49,7 +49,7 @@ object KafkaConsumerActor {
     * @param offsets the offsets that are to be confirmed
     * @param commit  true to commit offsets
     */
-  case class Confirm(offsets: Offsets, commit: Boolean = false)
+  final case class Confirm(offsets: Offsets, commit: Boolean = false)
 
   /**
     * Actor API - Unsubscribe from Kafka.
@@ -91,7 +91,7 @@ object KafkaConsumerActor {
     *                           To disable message redelivery provide a duration of 0.
     * @param retryStrategy      Strategy to follow on Kafka driver failures. Default: infinitely on one second intervals
     */
-  case class Conf(topics: List[String],
+  final case class Conf(topics: List[String],
                   scheduleInterval: FiniteDuration = 1000.millis,
                   unconfirmedTimeout: FiniteDuration = 3.seconds,
                   retryStrategy: Retry.Strategy = Retry.Strategy(Retry.Interval.Linear(1.second), Retry.Logic.Infinite)) {
@@ -147,7 +147,7 @@ object KafkaConsumerActor {
   }
 }
 
-private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
+private final class KafkaConsumerActor[K: TypeTag, V: TypeTag](
   consumerConf: KafkaConsumer.Conf[K, V],
   actorConf: KafkaConsumerActor.Conf,
   downstreamActor: ActorRef)
@@ -173,10 +173,10 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
     def isCurrentOffset(offsets: Offsets): Boolean = unconfirmed.offsets == offsets
   }
 
-  private case class Unconfirmed(unconfirmed: Records, deliveryTime: LocalDateTime = LocalDateTime.now())
+  private final case class Unconfirmed(unconfirmed: Records, deliveryTime: LocalDateTime = LocalDateTime.now())
     extends HasUnconfirmedRecords
 
-  private case class Buffered(unconfirmed: Records, deliveryTime: LocalDateTime = LocalDateTime.now(), buffered: Records)
+  private final case class Buffered(unconfirmed: Records, deliveryTime: LocalDateTime = LocalDateTime.now(), buffered: Records)
     extends HasUnconfirmedRecords
 
   override def receive = unsubscribed
