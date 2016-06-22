@@ -1,5 +1,7 @@
 # Scala support for Apache Kafka's Java client library 0.9.0.x and 0.10.0.0
 
+[![Build status](https://travis-ci.org/cakesolutions/scala-kafka-client.svg?branch=master)](https://travis-ci.org/cakesolutions/scala-kafka-client)
+
 This project comprises a few helper modules for operating the [Kafka Java Client Driver](https://kafka.apache.org/0100/javadoc/index.html) in a Scala codebase.
 
 * [Scala Kafka Client](#scala-kafka-client)
@@ -19,7 +21,7 @@ To resolve any of the modules, add the following resolver to the build.sbt:
 ## Scala Kafka Client
 
 A thin Scala wrapper over the official [Apache Kafka Java Driver](http://kafka.apache.org/documentation.html#api).
-This module is useful for integrating with Kafka for message consumption/delivery, but provides some helpers for convenient 
+This module is useful for integrating with Kafka for message consumption/delivery, but provides some helpers for convenient
 configuration of the driver and usage from Scala.  Minimal 3rd party dependencies are added in addition to the Kafka client.
 
 ### Documentation
@@ -59,9 +61,9 @@ concern for message delivery guarantees and resilience.
     libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.8.0"
 
 ## TestKit
- 
+
 The TestKit module provides some tools to support integration testing of client service code that
-depends on a running Kafka Server.  Helps the setup of an in-process Kafka and Zookeeper server. 
+depends on a running Kafka Server.  Helps the setup of an in-process Kafka and Zookeeper server.
 
 ### Documentation
 [TestKit User Guide](https://github.com/cakesolutions/scala-kafka-client/wiki/Testkit)
@@ -72,7 +74,7 @@ depends on a running Kafka Server.  Helps the setup of an in-process Kafka and Z
     libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-testkit" % "0.8.0" % "test"
 
 ## License
-    
+
  Copyright 2016, Cake Solutions.
-    
+
  Licensed under the MIT License
