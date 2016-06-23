@@ -120,16 +120,17 @@ object KafkaConsumerActor {
     * @tparam K key deserialiser type
     * @tparam V value deserialiser type
     */
-  def props[K: TypeTag, V: TypeTag](conf: Config,
-                                    keyDeserializer: Deserializer[K],
-                                    valueDeserializer: Deserializer[V],
-                                    downstreamActor: ActorRef): Props = {
+  def props[K: TypeTag, V: TypeTag](
+    conf: Config,
+    keyDeserializer: Deserializer[K],
+    valueDeserializer: Deserializer[V],
+    downstreamActor: ActorRef
+  ): Props =
     props(
       KafkaConsumer.Conf[K, V](conf, keyDeserializer, valueDeserializer),
         KafkaConsumerActor.Conf(conf),
         downstreamActor
     )
-  }
 
   /**
     * Create Akka `Props` for [[KafkaConsumerActor]].
@@ -140,14 +141,93 @@ object KafkaConsumerActor {
     * @tparam K key deserialiser type
     * @tparam V value deserialiser type
     */
-  def props[K: TypeTag, V: TypeTag](consumerConf: KafkaConsumer.Conf[K, V],
-                                    actorConf: KafkaConsumerActor.Conf,
-                                    downstreamActor: ActorRef): Props = {
-    Props(new KafkaConsumerActor[K, V](consumerConf, actorConf, downstreamActor))
+  def props[K: TypeTag, V: TypeTag](
+    consumerConf: KafkaConsumer.Conf[K, V],
+    actorConf: KafkaConsumerActor.Conf,
+    downstreamActor: ActorRef
+  ): Props =
+    Props(new KafkaConsumerActorImpl[K, V](consumerConf, actorConf, downstreamActor))
+
+  /**
+    * Create a [[KafkaConsumerActor]] from a Typesafe config.
+    *
+    * @param conf Typesafe config containing all the [[KafkaConsumer.Conf]] and [[KafkaConsumerActor.Conf]] related configurations.
+    * @param keyDeserializer deserializer for the key
+    * @param valueDeserializer deserializer for the value
+    * @param downstreamActor the actor where all the consumed messages will be sent to
+    * @tparam K key deserialiser type
+    * @tparam V value deserialiser type
+    * @param as actor system to create the actor on
+    */
+  def apply[K: TypeTag, V: TypeTag](
+    conf: Config,
+    keyDeserializer: Deserializer[K],
+    valueDeserializer: Deserializer[V],
+    downstreamActor: ActorRef
+  )(implicit as: ActorSystem): KafkaConsumerActor = {
+    val p = props(conf, keyDeserializer, valueDeserializer, downstreamActor)
+    val ref = as.actorOf(p)
+    fromActorRef(ref)
   }
+
+  /**
+    * Create a [[KafkaConsumerActor]].
+    *
+    * @param consumerConf configurations for the [[KafkaConsumer]]
+    * @param actorConf configurations for the [[KafkaConsumerActor]]
+    * @param downstreamActor the actor where all the consumed messages will be sent to
+    * @tparam K key deserialiser type
+    * @tparam V value deserialiser type
+    * @param as actor system to create the actor on
+    */
+  def apply[K: TypeTag, V: TypeTag](
+    consumerConf: KafkaConsumer.Conf[K, V],
+    actorConf: KafkaConsumerActor.Conf,
+    downstreamActor: ActorRef
+  )(implicit as: ActorSystem): KafkaConsumerActor = {
+    val p = props(consumerConf, actorConf, downstreamActor)
+    val ref = as.actorOf(p)
+    fromActorRef(ref)
+  }
+
+  /**
+    * Create a [[KafkaConsumerActor]] wrapper from an existing ActorRef.
+    */
+  def fromActorRef(ref: ActorRef): KafkaConsumerActor = new KafkaConsumerActor(ref)
 }
 
-private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
+/**
+  * Classic, non-Akka API for interacting with [[KafkaConsumerActor]].
+  */
+class KafkaConsumerActor private (val ref: ActorRef) {
+  import KafkaConsumerActor.{Subscribe, Confirm, Unsubscribe}
+
+  /**
+    * Initiate consumption from Kafka or reset an already started stream.
+    *
+    * @param offsets Consumption starts from specified offsets or kafka default, depending on `auto.offset.reset` setting.
+    */
+  def subscribe(offsets: Option[Offsets] = None): Unit = ref ! Subscribe(offsets)
+
+  /**
+    * Unsubscribe from Kafka
+    */
+  def unsubscribe(): Unit = ref ! Unsubscribe
+
+  /**
+    * Confirm receipt of previous records.
+    *
+    * The message should provide the offsets that are to be confirmed.
+    * If the offsets don't match the offsets that were last sent, the confirmation is ignored.
+    * Offsets can be committed to Kafka using optional commit flag.
+    *
+    * @param offsets the offsets that are to be confirmed
+    * @param commit  true to commit offsets
+    */
+  def confirm(offsets: Offsets, commit: Boolean = false): Unit = ref ! Confirm(offsets, commit)
+}
+
+private class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   consumerConf: KafkaConsumer.Conf[K, V],
   actorConf: KafkaConsumerActor.Conf,
   downstreamActor: ActorRef)

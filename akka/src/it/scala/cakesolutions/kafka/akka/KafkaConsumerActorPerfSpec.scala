@@ -3,7 +3,7 @@ package cakesolutions.kafka.akka
 import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.TestActor.AutoPilot
 import akka.testkit.{ImplicitSender, TestActor, TestKit, TestProbe}
-import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe, Unsubscribe}
+import cakesolutions.kafka.akka.KafkaConsumerActor.Confirm
 import cakesolutions.kafka.testkit.TestUtils
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.ConfigFactory
@@ -62,7 +62,7 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
     val receiver = TestProbe()
     receiver.setAutoPilot(pilot)
 
-    val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, actorConf(topic), receiver.ref))
+    val consumer = KafkaConsumerActor(consumerConf, actorConf(topic), receiver.ref)
 
     1 to totalMessages foreach { n =>
       producer.send(KafkaProducerRecord(topic, None, msg1k))
@@ -70,7 +70,7 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
     producer.flush()
     log.info("Delivered {} messages to topic {}", totalMessages, topic)
 
-    consumer ! Subscribe()
+    consumer.subscribe()
 
     whenReady(pilot.future) { case (totalTime, messagesPerSec) =>
       log.info("Total Time millis : {}", totalTime)
@@ -78,7 +78,7 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
 
       totalTime should be < 7000L
 
-      consumer ! Unsubscribe
+      consumer.unsubscribe()
       producer.close()
       log.info("Done")
     }
