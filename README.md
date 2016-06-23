@@ -2,6 +2,8 @@
 
 [![Build status](https://travis-ci.org/cakesolutions/scala-kafka-client.svg?branch=master)](https://travis-ci.org/cakesolutions/scala-kafka-client)
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/345445a605544f36974d91982ee55193)](https://www.codacy.com/app/pallayr/scala-kafka-client/scala-kafka-client)
+
 This project comprises a few helper modules for operating the [Kafka Java Client Driver](https://kafka.apache.org/0100/javadoc/index.html) in a Scala codebase.
 
 * [Scala Kafka Client](#scala-kafka-client)
