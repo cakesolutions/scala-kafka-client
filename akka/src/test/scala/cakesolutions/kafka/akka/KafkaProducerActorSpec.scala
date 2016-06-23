@@ -80,10 +80,12 @@ class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     var collected = Vector.empty[(Option[String], String)]
     val start = System.currentTimeMillis()
 
-    while (total <= expectedNumOfMessages && System.currentTimeMillis() < start + timeout) {
-      val records = consumer.poll(100)
-      collected = collected ++ records.map(r => (Option(r.key()), r.value()))
-      total += records.count()
+    if (total <= expectedNumOfMessages && System.currentTimeMillis() < start + timeout) {
+      do {
+        val records = consumer.poll(100)
+        collected = collected ++ records.map(r => (Option(r.key()), r.value()))
+        total += records.count()
+      } while (total <= expectedNumOfMessages && System.currentTimeMillis() < start + timeout)
     }
 
     consumer.close()
