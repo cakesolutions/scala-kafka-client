@@ -161,5 +161,5 @@ private class KafkaProducerActor[K, V](producerConf: KafkaProducer.Conf[K, V], m
 
 class KafkaProducerInitFail(
   message: String = "Error occurred while initializing Kafka producer!",
-  cause: Throwable = null)
+  cause: Throwable = new Throwable)
   extends Exception(message, cause)
