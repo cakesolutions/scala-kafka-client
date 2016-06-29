@@ -32,7 +32,7 @@ object KafkaProducerActor {
     * @tparam K Kafka message key type
     * @tparam V Kafka message value type
     */
-  case class MatcherResult[K, V](records: Iterable[ProducerRecord[K, V]], response: Option[Any])
+  final case class MatcherResult[K, V](records: Iterable[ProducerRecord[K, V]], response: Option[Any])
 
   /**
     * A partial function that extracts producer records from messages sent to [[KafkaProducerActor]].
@@ -159,7 +159,7 @@ private class KafkaProducerActor[K, V](producerConf: KafkaProducer.Conf[K, V], m
   }
 }
 
-class KafkaProducerInitFail(
+final class KafkaProducerInitFail(
   message: String = "Error occurred while initializing Kafka producer!",
   cause: Throwable = null)
   extends Exception(message, cause)

@@ -15,7 +15,7 @@ trait Extractor[I, O] {
   * Helper functions for [[Extractor]].
   */
 object Extractor {
-  private class Ext[I, O](f: I => Option[O]) extends Extractor[I, O] {
+  private final class Ext[I, O](f: I => Option[O]) extends Extractor[I, O] {
     override def unapply(input: I): Option[O] = f(input)
   }
 

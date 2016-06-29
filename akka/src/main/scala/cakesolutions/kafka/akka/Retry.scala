@@ -22,7 +22,7 @@ object Retry {
         case t => sys.error(s"Unexpected interval type: $t")
       }
 
-    case class Linear(duration: FiniteDuration) extends Interval {
+    final case class Linear(duration: FiniteDuration) extends Interval {
       def next: Interval = this
     }
   }
@@ -45,7 +45,7 @@ object Retry {
       def isFinished: Boolean = false
     }
 
-    case class FiniteTimes(retryCount: Int) extends Logic {
+    final case class FiniteTimes(retryCount: Int) extends Logic {
       require(retryCount >= 0, "Retry count cannot be negative")
 
       def next: Logic = FiniteTimes(retryCount - 1)
@@ -61,7 +61,7 @@ object Retry {
       )
   }
 
-  case class Strategy(interval: Interval, retryLogic: Logic) {
+  final case class Strategy(interval: Interval, retryLogic: Logic) {
     def next: Strategy = Strategy(interval.next, retryLogic.next)
     def isFinished: Boolean = retryLogic.isFinished
     def evaluate[T](f: => T): Result[T] =
@@ -78,9 +78,9 @@ object Retry {
   sealed trait Result[+T]
 
   object Result {
-    case class Next(error: Throwable, strategy: Strategy) extends Result[Nothing]
-    case class Failure(error: Throwable) extends Result[Nothing]
-    case class Success[+T](value: T) extends Result[T]
+    final case class Next(error: Throwable, strategy: Strategy) extends Result[Nothing]
+    final case class Failure(error: Throwable) extends Result[Nothing]
+    final case class Success[+T](value: T) extends Result[T]
   }
 }
 

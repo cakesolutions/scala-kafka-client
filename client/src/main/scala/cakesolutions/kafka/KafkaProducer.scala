@@ -86,7 +86,7 @@ object KafkaProducer {
     * @tparam K key serializer type
     * @tparam V value serializer type
     */
-  case class Conf[K, V](props: Map[String, AnyRef],
+  final case class Conf[K, V](props: Map[String, AnyRef],
                         keySerializer: Serializer[K],
                         valueSerializer: Serializer[V]) {
 
@@ -139,7 +139,7 @@ object KafkaProducer {
   * @tparam K type of the key that the producer accepts
   * @tparam V type of the value that the producer accepts
   */
-class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) {
+final class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) {
 
   /**
     * Asynchronously send a record to a topic, providing a `Future` to contain the result of the operation.
