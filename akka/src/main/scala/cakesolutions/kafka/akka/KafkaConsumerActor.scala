@@ -157,16 +157,16 @@ object KafkaConsumerActor {
     * @param downstreamActor the actor where all the consumed messages will be sent to
     * @tparam K key deserialiser type
     * @tparam V value deserialiser type
-    * @param as actor system to create the actor on
+    * @param actorFactory the actor factory to create the actor with
     */
   def apply[K: TypeTag, V: TypeTag](
     conf: Config,
     keyDeserializer: Deserializer[K],
     valueDeserializer: Deserializer[V],
     downstreamActor: ActorRef
-  )(implicit as: ActorSystem): KafkaConsumerActor = {
+  )(implicit actorFactory: ActorRefFactory): KafkaConsumerActor = {
     val p = props(conf, keyDeserializer, valueDeserializer, downstreamActor)
-    val ref = as.actorOf(p)
+    val ref = actorFactory.actorOf(p)
     fromActorRef(ref)
   }
 
@@ -178,15 +178,15 @@ object KafkaConsumerActor {
     * @param downstreamActor the actor where all the consumed messages will be sent to
     * @tparam K key deserialiser type
     * @tparam V value deserialiser type
-    * @param as actor system to create the actor on
+    * @param actorFactory the actor factory to create the actor with
     */
   def apply[K: TypeTag, V: TypeTag](
     consumerConf: KafkaConsumer.Conf[K, V],
     actorConf: KafkaConsumerActor.Conf,
     downstreamActor: ActorRef
-  )(implicit as: ActorSystem): KafkaConsumerActor = {
+  )(implicit actorFactory: ActorRefFactory): KafkaConsumerActor = {
     val p = props(consumerConf, actorConf, downstreamActor)
-    val ref = as.actorOf(p)
+    val ref = actorFactory.actorOf(p)
     fromActorRef(ref)
   }
 
