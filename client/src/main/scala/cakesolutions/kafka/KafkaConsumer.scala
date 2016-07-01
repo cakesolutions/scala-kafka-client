@@ -89,7 +89,7 @@ object KafkaConsumer {
     * @tparam K key deserializer type
     * @tparam V value deserializer type
     */
-  case class Conf[K, V](props: Map[String, AnyRef],
+  final case class Conf[K, V](props: Map[String, AnyRef],
                         keyDeserializer: Deserializer[K],
                         valueDeserializer: Deserializer[V]) {
 
