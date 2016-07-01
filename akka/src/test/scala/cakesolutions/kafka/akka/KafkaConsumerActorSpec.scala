@@ -110,14 +110,14 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
           producer.send(KafkaProducerRecord(actorConf.topics.head, None, "value"))
           producer.flush()
 
-          val consumer = system.actorOf(KafkaConsumerActor.props(consumerConfig, actorConf, testActor))
-          consumer ! Subscribe()
+          val consumer = KafkaConsumerActor(consumerConfig, actorConf, testActor)
+          consumer.subscribe()
 
           val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
-          consumer ! Confirm(rs.offsets)
+          consumer.confirm(rs.offsets)
           expectNoMsg(5.seconds)
 
-          consumer ! Unsubscribe
+          consumer.unsubscribe()
           producer.close()
       }
   }
