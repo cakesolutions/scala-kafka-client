@@ -2,6 +2,7 @@ package cakesolutions.kafka.akka
 
 import java.util.{Collection => JCollection}
 
+import akka.actor.ActorRef
 import org.apache.kafka.clients.consumer.{ConsumerRebalanceListener, KafkaConsumer}
 import org.apache.kafka.common.TopicPartition
 import org.slf4j.LoggerFactory
@@ -11,30 +12,59 @@ import scala.collection.JavaConversions._
 private object TrackPartitions {
   private val log = LoggerFactory.getLogger(getClass)
 
-  def apply(consumer: KafkaConsumer[_, _]): TrackPartitions = new TrackPartitions(consumer)
+  def apply(consumer: KafkaConsumer[_, _], ref: ActorRef): TrackPartitions = new TrackPartitions(consumer, ref)
 }
 
 /**
- * Not thread safe. Can be used with Kafka consumer 0.9 API.
- */
-private class TrackPartitions(consumer: KafkaConsumer[_, _]) extends ConsumerRebalanceListener {
+  * Not thread safe. Can be used with Kafka consumer API version > 0.9.
+  */
+private class TrackPartitions(consumer: KafkaConsumer[_, _], ref: ActorRef) extends ConsumerRebalanceListener {
+
   import TrackPartitions.log
 
   private var _offsets = Map[TopicPartition, Long]()
 
-  def seek(next: Map[TopicPartition, Long]): Unit = {
-    log.info("Seeking to offsets: {}", next)
-    _offsets = next
+  private var _revoked = false
+
+  //  def seek(next: Map[TopicPartition, Long]): Unit = {
+  //    log.info("Seeking to offsets: {}", next)
+  //    _offsets = next
+  //  }
+
+  //TODO needed?
+  def clearOffsets(): Unit = Map[TopicPartition, Long]()
+
+  override def onPartitionsRevoked(partitions: JCollection[TopicPartition]): Unit = {
+    log.debug("!!!!!!onPartitionsRevoked1" + partitions.toString)
+
+    _revoked = true
+    // If partitions have been revoked, keep a record of our current position with them.
+    if (partitions.size() > 0) {
+      _offsets = partitions.map(partition => partition -> consumer.position(partition)).toMap
+    }
   }
 
-  def clearOffsets(): Unit = _offsets.clear()
+  def isRevoked = _revoked
 
-  override def onPartitionsRevoked(partitions: JCollection[TopicPartition]): Unit =
-    _offsets = partitions.map(partition => partition -> consumer.position(partition)).toMap
+  override def onPartitionsAssigned(partitions: JCollection[TopicPartition]): Unit = {
+    log.debug("!!!!!!onPartitionsAssigned" + partitions.toString)
+    log.debug(_offsets.size + ":" + _offsets.toString())
 
-  override def onPartitionsAssigned(partitions: JCollection[TopicPartition]): Unit =
-    for {
-      partition <- partitions
-      offset <- _offsets.get(partition)
-    } consumer.seek(partition, offset)
+    _revoked = false
+    // If all of our previous partition assignments are present in the new assignment, we can continue uninterupted by
+    // seeking to the required offsets.  If we have lost any partition assignments (i.e to another group member), we
+    // need to clear down the consumer actor state and proceed from the Kafka commit points.
+    val allExisting = _offsets.forall { case (partition, _) => partitions.contains(partition) }
+
+    if (!allExisting)
+      ref ! KafkaConsumerActor.Revoke
+    else
+      for {
+        partition <- partitions
+        offset <- _offsets.get(partition)
+      } {
+        log.info(s"Seek $partition, $offset")
+        consumer.seek(partition, offset)
+      }
+  }
 }

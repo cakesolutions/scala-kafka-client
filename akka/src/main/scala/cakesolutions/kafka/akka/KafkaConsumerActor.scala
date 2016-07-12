@@ -6,6 +6,8 @@ import java.time.temporal.ChronoUnit
 import akka.actor._
 import cakesolutions.kafka.KafkaConsumer
 import com.typesafe.config.Config
+import org.apache.kafka.clients.consumer.CommitFailedException
+import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.serialization.Deserializer
 
 import scala.collection.JavaConversions._
@@ -34,8 +36,11 @@ object KafkaConsumerActor {
 
   /**
     * Actor API - Initiate consumption from Kafka or reset an already started stream.
+    * If Offsets are provided, the client is configured in 'Manually Assigned Partition mode' and the position is seeked
+    * to the specified offset for each partition.  If no Offsets are provided the client is configured in 'Auto Partition mode'
+    * and the position is set based on commit position and `auto.offset.reset` setting (usually 'EARLIEST' to avoid message loss).
     *
-    * @param offsets Consumption starts from specified offsets or kafka default, depending on `auto.offset.reset` setting.
+    * @param offsets Consumption starts from specified offsets in Manual assigned partition mode, if provided.  Auto Partition Mode otherwise.
     */
   case class Subscribe(offsets: Option[Offsets] = None)
 
@@ -56,6 +61,10 @@ object KafkaConsumerActor {
     */
   case object Unsubscribe
 
+  protected[akka] case object Revoke
+
+  case class ConsumerException(offsets: Option[Offsets] = None) extends Exception
+
   /**
     * Utilities for creating configurations for the [[KafkaConsumerActor]].
     */
@@ -69,10 +78,10 @@ object KafkaConsumerActor {
       * The given config must define the topics list. Other settings are optional overrides.
       * Expected configuration values:
       *
-      *  - topics: a list of topics to subscribe to
-      *  - schedule.interval: poll latency
-      *  - unconfirmed.timeout: Seconds before unconfirmed messages is considered for redelivery. To disable message redelivery provide a duration of 0.
-      *  - retryStrategy: Strategy to follow on Kafka driver failures. Default: infinitely on one second intervals
+      * - topics: a list of topics to subscribe to
+      * - schedule.interval: poll latency
+      * - unconfirmed.timeout: Seconds before unconfirmed messages is considered for redelivery. To disable message redelivery provide a duration of 0.
+      * - retryStrategy: Strategy to follow on Kafka driver failures. Default: infinitely on one second intervals
       */
     def apply(config: Config): Conf = {
       require(config.hasPath("topics"), "config must define topics")
@@ -89,12 +98,10 @@ object KafkaConsumerActor {
     * @param scheduleInterval   Poll Latency.
     * @param unconfirmedTimeout Seconds before unconfirmed messages is considered for redelivery.
     *                           To disable message redelivery provide a duration of 0.
-    * @param retryStrategy      Strategy to follow on Kafka driver failures. Default: infinitely on one second intervals
     */
   case class Conf(topics: List[String],
                   scheduleInterval: FiniteDuration = 1000.millis,
-                  unconfirmedTimeout: FiniteDuration = 3.seconds,
-                  retryStrategy: Retry.Strategy = Retry.Strategy(Retry.Interval.Linear(1.second), Retry.Logic.Infinite)) {
+                  unconfirmedTimeout: FiniteDuration = 3.seconds) {
 
     /**
       * Extend the config with additional Typesafe config.
@@ -104,8 +111,7 @@ object KafkaConsumerActor {
       this.copy(
         topics = if (config.hasPath("topics")) config.getStringList("topics").toList else topics,
         scheduleInterval = if (config.hasPath("schedule.interval")) Conf.durationFromConfig(config, "schedule.interval") else scheduleInterval,
-        unconfirmedTimeout = if (config.hasPath("unconfirmed.timeout")) Conf.durationFromConfig(config, "unconfirmed.timeout") else unconfirmedTimeout,
-        retryStrategy = if (config.hasPath("retryStrategy")) Retry.Strategy(config.getConfig("retryStrategy")) else retryStrategy
+        unconfirmedTimeout = if (config.hasPath("unconfirmed.timeout")) Conf.durationFromConfig(config, "unconfirmed.timeout") else unconfirmedTimeout
       )
     }
   }
@@ -113,10 +119,10 @@ object KafkaConsumerActor {
   /**
     * Create Akka `Props` for [[KafkaConsumerActor]] from a Typesafe config.
     *
-    * @param conf Typesafe config containing all the [[KafkaConsumer.Conf]] and [[KafkaConsumerActor.Conf]] related configurations.
-    * @param keyDeserializer deserializer for the key
+    * @param conf              Typesafe config containing all the [[KafkaConsumer.Conf]] and [[KafkaConsumerActor.Conf]] related configurations.
+    * @param keyDeserializer   deserializer for the key
     * @param valueDeserializer deserializer for the value
-    * @param downstreamActor the actor where all the consumed messages will be sent to
+    * @param downstreamActor   the actor where all the consumed messages will be sent to
     * @tparam K key deserialiser type
     * @tparam V value deserialiser type
     */
@@ -126,16 +132,16 @@ object KafkaConsumerActor {
                                     downstreamActor: ActorRef): Props = {
     props(
       KafkaConsumer.Conf[K, V](conf, keyDeserializer, valueDeserializer),
-        KafkaConsumerActor.Conf(conf),
-        downstreamActor
+      KafkaConsumerActor.Conf(conf),
+      downstreamActor
     )
   }
 
   /**
     * Create Akka `Props` for [[KafkaConsumerActor]].
     *
-    * @param consumerConf configurations for the [[KafkaConsumer]]
-    * @param actorConf configurations for the [[KafkaConsumerActor]]
+    * @param consumerConf    configurations for the [[KafkaConsumer]]
+    * @param actorConf       configurations for the [[KafkaConsumerActor]]
     * @param downstreamActor the actor where all the consumed messages will be sent to
     * @tparam K key deserialiser type
     * @tparam V value deserialiser type
@@ -148,10 +154,10 @@ object KafkaConsumerActor {
 }
 
 private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
-  consumerConf: KafkaConsumer.Conf[K, V],
-  actorConf: KafkaConsumerActor.Conf,
-  downstreamActor: ActorRef)
-  extends ActorWithInternalRetry with ActorLogging with PollScheduling {
+                                                          consumerConf: KafkaConsumer.Conf[K, V],
+                                                          actorConf: KafkaConsumerActor.Conf,
+                                                          downstreamActor: ActorRef)
+  extends Actor with ActorLogging with PollScheduling {
 
   import KafkaConsumerActor._
   import PollScheduling.Poll
@@ -159,10 +165,10 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
 
   type Records = ConsumerRecords[K, V]
 
-  private var consumer = KafkaConsumer[K, V](consumerConf)
+  private val consumer = KafkaConsumer[K, V](consumerConf)
 
   // Handles partition reassignments in the KafkaClient
-  private val trackPartitions = TrackPartitions(consumer)
+  private val trackPartitions = TrackPartitions(consumer, context.self)
   private val isTimeoutUsed = actorConf.unconfirmedTimeout.toMillis > 0
   private val delayedPollTimeout = 200
 
@@ -183,16 +189,20 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
 
   private val unsubscribeReceive: Receive = {
     case Unsubscribe =>
-      log.info("Unsubscribing")
+      log.info("Unsubscribing from Kafka")
       cancelPoll()
       unsubscribe()
       become(unsubscribed)
 
+      //
+    case Revoke =>
+      log.info("Revoking Assignments!")
+      become(ready)
     case Subscribe(_) =>
       log.warning("Attempted to subscribe while consumer was already subscribed")
 
     case poll: Poll if !isCurrentPoll(poll) =>
-      // Do nothing
+    // Do nothing
   }
 
   private def unsubscribe(): Unit = {
@@ -206,12 +216,13 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
       log.info("Already unsubscribed")
 
     case Subscribe(offsets) =>
-      log.info("Subscribing to topic(s): [{}]", actorConf.topics.mkString(", "))
+      log.info("Subscription received for topic(s): [{}]", actorConf.topics.mkString(", "))
       subscribe(offsets)
       log.debug("To Ready state")
       become(ready)
       pollImmediate(delayedPollTimeout)
 
+    // TODO check:::
     case Confirm(offsets, commit) =>
       log.info("Subscribing to topic(s): [{}]", actorConf.topics.mkString(", "))
       subscribe(Some(offsets))
@@ -221,13 +232,8 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
       pollImmediate(delayedPollTimeout)
 
     case _: Poll =>
-      // Do nothing
+    // Do nothing
 
-  }
-
-  private def subscribe(offsets: Option[Offsets]): Unit = {
-    trackPartitions.seek(offsets.map(_.offsetsMap).getOrElse(Map.empty))
-    consumer.subscribe(actorConf.topics, trackPartitions)
   }
 
   // No unconfirmed or buffered messages
@@ -249,17 +255,25 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
   def unconfirmed(state: Unconfirmed): Receive = unconfirmedCommonReceive(state) orElse {
     case poll: Poll if isCurrentPoll(poll) =>
       if (isConfirmationTimeout(state.deliveryTime)) {
+        log.info("Records timed-out awaiting confirmation, redelivering")
         sendRecords(state.unconfirmed)
+        become(unconfirmed(Unconfirmed(state.unconfirmed, LocalDateTime.now())))
       }
 
-      pollKafka() {
-        case Some(records) =>
-          log.debug("To Buffer Full state")
-          become(bufferFull(Buffered(state.unconfirmed, state.deliveryTime, records)))
-          schedulePoll()
+      // If the last commit caused a partition revocation, we don't poll to allow the unconfirmed to flush through, prior to
+      // the rebalance completion.
+      if (trackPartitions.isRevoked) {
+        log.info("Not polling as revoked!!!")
+      } else {
+        pollKafka() {
+          case Some(records) =>
+            log.debug("To Buffer Full state")
+            become(bufferFull(Buffered(state.unconfirmed, state.deliveryTime, records)))
+            schedulePoll()
 
-        case None =>
-          schedulePoll()
+          case None =>
+            schedulePoll()
+        }
       }
 
     case Confirm(offsets, commit) if state.isCurrentOffset(offsets) =>
@@ -278,7 +292,9 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
 
       // If an confirmation timeout is set and has expired, the message is redelivered
       if (isConfirmationTimeout(state.deliveryTime)) {
+        log.info("Records timed-out awaiting confirmation, redelivering")
         sendRecords(state.unconfirmed)
+        become(bufferFull(Buffered(state.unconfirmed, LocalDateTime.now(), state.buffered)))
       }
       log.debug(s"Buffer is full. Not gonna poll.")
       schedulePoll()
@@ -293,14 +309,18 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
       pollImmediate()
   }
 
-  private def tryWithConsumer(offsets: Offsets)(effect: => Unit): Unit = {
-    def recover(ex: Throwable): Unit = {
-      log.error(ex, "Failed to execute Kafka action. Resetting consumer and retrying.")
-      close()
-      consumer = KafkaConsumer(consumerConf)
-      subscribe(Some(offsets))
-    }
-    evaluateUntilFinished(actorConf.retryStrategy, recover)(effect)
+  private def subscribe(offsetsO: Option[Offsets]): Unit = offsetsO match {
+    case Some(offsets) =>
+      log.info("Subscribing, in manual partition assignment mode to Partitions/Offsets:" + offsets.toString)
+      consumer.assign(offsets.topicPartitions.toList)
+      offsets.offsetsMap.foreach {
+        case (key, value) =>
+          log.info(s"Seek to $key, $value")
+          consumer.seek(key, value)
+      }
+    case None =>
+      log.info(s"Subscribing, in auto partition assignment mode to Topics: ${actorConf.topics} with group.id: ${consumerConf.props("group.id")}")
+      consumer.subscribe(actorConf.topics, trackPartitions)
   }
 
   private def sendRecords(records: Records): Unit = {
@@ -328,11 +348,27 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
     tryWithConsumer(currentConsumerOffsets) {
       log.debug("Poll Kafka for {} milliseconds", timeout)
       val rs = consumer.poll(timeout)
+      log.debug("Poll Complete!")
       if (rs.count() > 0)
         cb(Some(ConsumerRecords(currentConsumerOffsets, rs)))
       else
         cb(None)
     }
+
+  private def tryWithConsumer(offsets: Offsets)(effect: => Unit): Unit = {
+    try {
+      effect
+    } catch {
+      case we: WakeupException =>
+        log.warning("Wakeup Exception, ignoring", we)
+      case cfe: CommitFailedException =>
+        log.warning("Exception while commiting, ignoring: " + cfe.getMessage)
+      case error: Exception =>
+        log.info("EXCEPTION")
+        //TODO evaluate parameter here
+        throw ConsumerException(Some(offsets))
+    }
+  }
 
   private def schedulePoll(): Unit = schedulePoll(actorConf.scheduleInterval)
 
@@ -341,6 +377,19 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
       .map(p => p -> consumer.position(p))
       .toMap
     Offsets(offsetsMap)
+  }
+
+  @scala.throws[Exception](classOf[Exception])
+  override def postRestart(reason: Throwable): Unit = {
+    super.postRestart(reason)
+
+    reason match {
+      case ConsumerException(offsetsO) =>
+        log.warning(s"KafkaConsumerActor restart.  Resubscribing with Offsets: $offsetsO", reason)
+        self ! Subscribe(offsetsO)
+      case _ =>
+        throw new RuntimeException("Unexpected exception thrown by KafkaConsumerActor", reason)
+    }
   }
 
   /**
@@ -368,6 +417,7 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
     tryWithConsumer(currentOffsets) {
       consumer.commitSync(offsetsToCommit.toCommitMap)
     }
+    log.debug("Committing complete")
   }
 
   override def unhandled(message: Any): Unit = {
