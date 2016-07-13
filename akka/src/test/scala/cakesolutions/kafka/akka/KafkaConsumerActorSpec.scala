@@ -1,7 +1,7 @@
 package cakesolutions.kafka.akka
 
 import akka.actor.ActorSystem
-import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe, Unsubscribe}
+import cakesolutions.kafka.akka.KafkaConsumerActor.{AutoAssignedPartitionSubscription, Confirm, Subscribe, Unsubscribe}
 import cakesolutions.kafka.testkit.TestUtils
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.{Config, ConfigFactory}
@@ -16,7 +16,7 @@ object KafkaConsumerActorSpec {
     KafkaProducer(KafkaProducer.Conf(new StringSerializer(), new StringSerializer(), bootstrapServers = kafkaHost + ":" + kafkaPort))
 
   def actorConf(topic: String): KafkaConsumerActor.Conf = {
-    KafkaConsumerActor.Conf(List(topic))
+    KafkaConsumerActor.Conf(AutoAssignedPartitionSubscription(List(topic)))
   }
 }
 
@@ -53,6 +53,16 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     KafkaConsumerActor.Conf(ConfigFactory.parseString(
       s"""
          | topics = ["$topic"]
+         | schedule.interval = 3000 milliseconds
+         | unconfirmed.timeout = 3000 milliseconds
+         | buffer.size = 8
+        """.stripMargin)
+    )
+
+  def actorConfWithPartitionAssignmentFromConfig(topic: String, partition: Int): KafkaConsumerActor.Conf =
+    KafkaConsumerActor.Conf(ConfigFactory.parseString(
+      s"""
+         | topicsPartitions = [{$topic: $partition}]
          | schedule.interval = 3000 milliseconds
          | unconfirmed.timeout = 3000 milliseconds
          | buffer.size = 8
@@ -110,6 +120,25 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
 
     // Consumer and actor config in same config file
     val consumer = system.actorOf(KafkaConsumerActor.props(configuredActor(topic), new StringDeserializer(), new StringDeserializer(), testActor))
+    consumer ! Subscribe()
+
+    val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
+    consumer ! Confirm(rs.offsets)
+    expectNoMsg(5.seconds)
+
+    consumer ! Unsubscribe
+    producer.close()
+  }
+
+  "KafkaConsumerActor configured in manual partition mode" should "consume a sequence of messages" in {
+    val topic = TestUtils.randomString(5)
+
+    val producer = kafkaProducer("localhost", kafkaPort)
+    producer.send(KafkaProducerRecord(topic, None, "value"))
+    producer.flush()
+
+    // Consumer and actor config in same config file
+    val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, actorConfWithPartitionAssignmentFromConfig(topic, 0), testActor))
     consumer ! Subscribe()
 
     val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
