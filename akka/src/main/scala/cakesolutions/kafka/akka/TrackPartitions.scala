@@ -23,23 +23,15 @@ private class TrackPartitions(consumer: KafkaConsumer[_, _], ref: ActorRef) exte
   import TrackPartitions.log
 
   private var _offsets = Map[TopicPartition, Long]()
-
   private var _revoked = false
 
-  //  def seek(next: Map[TopicPartition, Long]): Unit = {
-  //    log.info("Seeking to offsets: {}", next)
-  //    _offsets = next
-  //  }
-
-  //TODO needed?
-  def clearOffsets(): Unit = Map[TopicPartition, Long]()
-
   override def onPartitionsRevoked(partitions: JCollection[TopicPartition]): Unit = {
-    log.debug("!!!!!!onPartitionsRevoked1" + partitions.toString)
+    log.debug("onPartitionsRevoked: " + partitions.toString)
 
     _revoked = true
+
     // If partitions have been revoked, keep a record of our current position with them.
-    if (partitions.size() > 0) {
+    if (partitions.nonEmpty) {
       _offsets = partitions.map(partition => partition -> consumer.position(partition)).toMap
     }
   }
@@ -47,10 +39,11 @@ private class TrackPartitions(consumer: KafkaConsumer[_, _], ref: ActorRef) exte
   def isRevoked = _revoked
 
   override def onPartitionsAssigned(partitions: JCollection[TopicPartition]): Unit = {
-    log.debug("!!!!!!onPartitionsAssigned" + partitions.toString)
+    log.debug("onPartitionsAssigned: " + partitions.toString)
     log.debug(_offsets.size + ":" + _offsets.toString())
 
     _revoked = false
+
     // If all of our previous partition assignments are present in the new assignment, we can continue uninterupted by
     // seeking to the required offsets.  If we have lost any partition assignments (i.e to another group member), we
     // need to clear down the consumer actor state and proceed from the Kafka commit points.
@@ -66,5 +59,10 @@ private class TrackPartitions(consumer: KafkaConsumer[_, _], ref: ActorRef) exte
         log.info(s"Seek $partition, $offset")
         consumer.seek(partition, offset)
       }
+  }
+
+  def reset(): Unit = {
+    _offsets = Map.empty
+    _revoked = false
   }
 }

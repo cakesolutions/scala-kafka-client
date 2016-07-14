@@ -5,7 +5,7 @@ import akka.testkit.TestActor.AutoPilot
 import akka.testkit.{ImplicitSender, TestActor, TestKit, TestProbe}
 import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe, Unsubscribe}
 import cakesolutions.kafka.testkit.TestUtils
-import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
+import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord, KafkaTopicPartition}
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.scalatest.concurrent.ScalaFutures
@@ -48,12 +48,12 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
     )
   }
 
-  def actorConf(topic: String): KafkaConsumerActor.Conf = {
-    KafkaConsumerActor.Conf(List(topic)).withConf(config.getConfig("consumer"))
-  }
+  def actorConf: KafkaConsumerActor.Conf =
+    KafkaConsumerActor.Conf(config.getConfig("consumer"))
 
   "KafkaConsumerActor with single partition topic" should "perform" in {
     val topic = TestUtils.randomString(5)
+    val topicPartition = KafkaTopicPartition(topic, 0)
     val totalMessages = 100000
 
     val producerConf = KafkaProducer.Conf(config.getConfig("producer"), new StringSerializer, new StringSerializer)
@@ -62,7 +62,7 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
     val receiver = TestProbe()
     receiver.setAutoPilot(pilot)
 
-    val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, actorConf(topic), receiver.ref))
+    val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, actorConf, receiver.ref))
 
     1 to totalMessages foreach { n =>
       producer.send(KafkaProducerRecord(topic, None, msg1k))
@@ -70,7 +70,7 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
     producer.flush()
     log.info("Delivered {} messages to topic {}", totalMessages, topic)
 
-    consumer ! Subscribe()
+    consumer ! Subscribe.ManualPartition(List(topicPartition))
 
     whenReady(pilot.future) { case (totalTime, messagesPerSec) =>
       log.info("Total Time millis : {}", totalTime)
