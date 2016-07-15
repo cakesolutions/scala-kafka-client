@@ -16,7 +16,12 @@ private object TrackPartitions {
 }
 
 /**
-  * Not thread safe. Can be used with Kafka consumer API version > 0.9.
+  * Listens to partition change events coming from Kafka driver.  A best-effort is made to continue processing once
+  * reassignment is complete without causing duplications.  Due to limitations in the driver it is not possible in all
+  * cases to allow buffered messages to flush through prior to the partition reassignment completing.
+  *
+  * @param consumer The client driver
+  * @param ref Tha KafkaConsumerActor to notify of partition change events
   */
 private class TrackPartitions(consumer: KafkaConsumer[_, _], ref: ActorRef) extends ConsumerRebalanceListener {
 
@@ -40,7 +45,6 @@ private class TrackPartitions(consumer: KafkaConsumer[_, _], ref: ActorRef) exte
 
   override def onPartitionsAssigned(partitions: JCollection[TopicPartition]): Unit = {
     log.debug("onPartitionsAssigned: " + partitions.toString)
-    log.debug(_offsets.size + ":" + _offsets.toString())
 
     _revoked = false
 
@@ -50,14 +54,13 @@ private class TrackPartitions(consumer: KafkaConsumer[_, _], ref: ActorRef) exte
     val allExisting = _offsets.forall { case (partition, _) => partitions.contains(partition) }
 
     if (!allExisting) {
-      log.info("Revoke RESET!!!!")
       ref ! KafkaConsumerActor.RevokeReset
     } else {
       for {
         partition <- partitions
         offset <- _offsets.get(partition)
       } {
-        log.info(s"Seek $partition, $offset")
+        log.info(s"Seeking partition: [{}] to offset [{}]",  partition, offset)
         consumer.seek(partition, offset)
       }
       ref ! KafkaConsumerActor.RevokeResume

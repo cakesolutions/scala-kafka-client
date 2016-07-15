@@ -117,6 +117,9 @@ object KafkaConsumerActor {
     */
   private[akka] case object RevokeReset extends InternalMessageApi
 
+  /**
+    * Internal message indicating partitions have been reassigned.
+    */
   private[akka] case object RevokeResume extends InternalMessageApi
 
   /**
@@ -445,7 +448,6 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
     * A state after a commit failure, awaiting confirmation of a rebalance to occur.  We can either continue processing
     * if the rebalance completes and no existing partition assignments are removed, otherwise we clear down state are resume
     * from last committed offsets, which may result in some unavoidable redelivery.
-    * @param state
     * @param offsets The offsets of the last delivered records that failed to commit to Kafka
     */
   private def revokeAwait(state: StateData, offsets: Offsets): Receive = {
@@ -465,7 +467,7 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
       become(ready(Subscribed(state.subscription, None)))
 
     case poll: Poll if isCurrentPoll(poll) =>
-      log.info("Poll in Revoke")
+      log.debug("Poll in Revoke")
       pollKafka(state) match {
         case Some(records) =>
           state match {
