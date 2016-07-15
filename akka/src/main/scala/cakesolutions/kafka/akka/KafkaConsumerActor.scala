@@ -14,6 +14,7 @@ import org.apache.kafka.common.serialization.Deserializer
 import scala.collection.JavaConversions._
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe.TypeTag
+import scala.util.{Failure, Success, Try}
 
 /**
   * An actor that wraps [[KafkaConsumer]].
@@ -114,7 +115,9 @@ object KafkaConsumerActor {
   /**
     * Internal message indicating partitions have been revoked.
     */
-  private[akka] case object Revoke extends InternalMessageApi
+  private[akka] case object RevokeReset extends InternalMessageApi
+
+  private[akka] case object RevokeResume extends InternalMessageApi
 
   /**
     * Internal message used for triggering a [[ConsumerException]]
@@ -292,7 +295,7 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
   ) extends UnconfirmedRecordsStateData {
 
     def confirm(offsets: Offsets): Unconfirmed =
-      Unconfirmed(subscription, Some(offsets), unconfirmed, deliveryTime)
+      Unconfirmed(subscription, Some(offsets), buffered, LocalDateTime.now())
 
     def redelivered: Buffered =
       copy(deliveryTime = LocalDateTime.now())
@@ -324,8 +327,8 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
       unsubscribe()
       become(unsubscribed)
 
-    case Revoke =>
-      log.info("Revoking Assignments!")
+    case RevokeReset =>
+      log.info("Revoking Assignments - resetting state!")
       become(ready(state.toSubscribed))
 
     case _: Subscribe =>
@@ -334,6 +337,8 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
     case TriggerConsumerFailure =>
       log.info("Triggering consumer failure!")
       throw consumerFailure(state)
+
+    case RevokeResume => //Do nothing
 
     case poll: Poll if !isCurrentPoll(poll) => // Do nothing
   }
@@ -386,12 +391,20 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
     case Confirm(offsets, commit) if state.isCurrentOffset(offsets) =>
       log.debug("Records confirmed")
       val updatedState = state.confirm(offsets)
-      if (commit) commitOffsets(updatedState, offsets)
-      log.debug("To Ready state")
-      become(ready(updatedState))
 
-      // Immediate poll after confirm with block to reduce poll latency in case the is a backlog in Kafka but processing is fast.
-      pollImmediate(delayedPollTimeout)
+      val commitResult = if (commit) commitOffsets(updatedState, offsets) else Success()
+      commitResult match {
+        case Success(_) =>
+          log.debug("To Ready state")
+          become(ready(updatedState))
+
+          // Immediate poll after confirm with block to reduce poll latency in case the is a backlog in Kafka but processing is fast.
+          pollImmediate(delayedPollTimeout)
+        case Failure(_) =>
+          log.debug("To RevokeAwait State")
+          become(revokeAwait(updatedState, offsets))
+          schedulePoll()
+      }
   }
 
   // Buffered message and unconfirmed message with the client.  No need to poll until its confirmed, or timed out.
@@ -410,11 +423,62 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
     case Confirm(offsets, commit) if state.isCurrentOffset(offsets) =>
       log.debug("Records confirmed")
       val updatedState = state.confirm(offsets)
-      if (commit) commitOffsets(updatedState, offsets)
-      sendRecords(state.buffered)
-      log.debug("To unconfirmed state")
-      become(unconfirmed(updatedState))
-      pollImmediate()
+
+      val commitResult =
+        if (commit) commitOffsets(updatedState, offsets)
+        else Success()
+
+      commitResult match {
+        case Success(_) =>
+          sendRecords(updatedState.unconfirmed)
+          log.debug("To unconfirmed state")
+          become(unconfirmed(updatedState))
+          pollImmediate()
+        case Failure(_) =>
+          log.debug("To RevokeAwait State")
+          become(revokeAwait(updatedState, offsets))
+          schedulePoll()
+      }
+  }
+
+  /**
+    * A state after a commit failure, awaiting confirmation of a rebalance to occur.  We can either continue processing
+    * if the rebalance completes and no existing partition assignments are removed, otherwise we clear down state are resume
+    * from last committed offsets, which may result in some unavoidable redelivery.
+    * @param state
+    * @param offsets The offsets of the last delivered records that failed to commit to Kafka
+    */
+  private def revokeAwait(state: StateData, offsets: Offsets): Receive = {
+    case RevokeResume =>
+      log.info("RevokeResume - resuming processing post rebalance")
+      state match {
+        case u: Unconfirmed =>
+          sendRecords(u.unconfirmed)
+          become(ready(u.confirm(offsets)))
+        case b: Buffered =>
+          sendRecords(b.unconfirmed)
+          become(unconfirmed(b.confirm(offsets)))
+      }
+
+    case RevokeReset =>
+      log.warning("RevokeReset - Resetting state to Committed offsets")
+      become(ready(Subscribed(state.subscription, None)))
+
+    case poll: Poll if isCurrentPoll(poll) =>
+      log.info("Poll in Revoke")
+      pollKafka(state) match {
+        case Some(records) =>
+          state match {
+            case s: Subscribed =>
+              become(revokeAwait(s.toUnconfirmed(records), offsets))
+            case u: Unconfirmed =>
+              become(revokeAwait(u.addToBuffer(records), offsets))
+          }
+          schedulePoll()
+
+        case None =>
+          schedulePoll()
+    }
   }
 
   private def subscribe(s: Subscribe): Unit = s match {
@@ -432,6 +496,13 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
       seekOffsets(offsets)
   }
 
+  // The client is usually misusing the Consumer if incorrect Confirm offsets are provided
+  private def unconfirmedCommonReceive(state: UnconfirmedRecordsStateData): Receive =
+    subscribedCommonReceive(state) orElse {
+      case Confirm(offsets, _) if !state.isCurrentOffset(offsets) =>
+        log.warning("Received confirmation for unexpected offsets: {}", offsets)
+    }
+
   private def seekOffsets(offsets: Offsets): Unit =
     offsets.offsetsMap.foreach {
       case (key, value) =>
@@ -441,18 +512,6 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
 
   private def sendRecords(records: Records): Unit = {
     downstreamActor ! records
-  }
-
-  // The client is usually misusing the Consumer if incorrect Confirm offsets are provided
-  private def unconfirmedCommonReceive(state: UnconfirmedRecordsStateData): Receive =
-    subscribedCommonReceive(state) orElse {
-      case Confirm(offsets, _) if !state.isCurrentOffset(offsets) =>
-        log.warning("Received confirmation for unexpected offsets: {}", offsets)
-    }
-
-  override def postStop(): Unit = {
-    log.info("KafkaConsumerActor stopping")
-    close()
   }
 
   /**
@@ -478,9 +537,39 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
       case we: WakeupException =>
         log.debug("Wakeup Exception. Ignoring.")
         None
+      case error: Exception =>
+        log.info("Exception thrown from Kafka Consumer")
+        throw consumerFailure(state, error)
+    }
+  }
+
+  private def commitOffsets(state: StateData, offsets: Offsets): Try[Unit] = {
+    log.debug("Committing offsets. {}", offsets)
+
+    val currentOffsets = currentConsumerOffsets
+    val currentPartitions = currentOffsets.topicPartitions
+    val offsetsToCommit = offsets.keepOnly(currentPartitions)
+    val nonCommittedOffsets = offsets.remove(currentPartitions)
+
+    if (nonCommittedOffsets.nonEmpty) {
+      log.warning(s"Cannot commit offsets for partitions the consumer is not subscribed to: {}",
+        nonCommittedOffsets.topicPartitions.mkString(", "))
+    }
+
+    tryCommit(offsetsToCommit, state)
+  }
+
+  private def tryCommit(offsetsToCommit: Offsets, state: StateData): Try[Unit] = {
+    try {
+      consumer.commitSync(offsetsToCommit.toCommitMap)
+      Success()
+    } catch {
+      case we: WakeupException =>
+        log.debug("Wakeup Exception. Ignoring.")
+        Success()
       case cfe: CommitFailedException =>
-        log.warning("Exception while commiting. Ignoring: {}", cfe.getMessage)
-        None
+        log.warning("Exception while committing {}", cfe.getMessage)
+        Failure(cfe)
       case error: Exception =>
         log.info("Exception thrown from Kafka Consumer")
         throw consumerFailure(state, error)
@@ -524,29 +613,14 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
   private def timeoutTime(deliveryTime: LocalDateTime) =
     deliveryTime.plus(actorConf.unconfirmedTimeout.toMillis, ChronoUnit.MILLIS)
 
-  private def commitOffsets(state: StateData, offsets: Offsets): Unit = {
-    log.debug("Committing offsets. {}", offsets)
-
-    val currentOffsets = currentConsumerOffsets
-    val currentPartitions = currentOffsets.topicPartitions
-    val offsetsToCommit = offsets.keepOnly(currentPartitions)
-    val nonCommittedOffsets = offsets.remove(currentPartitions)
-
-    if (nonCommittedOffsets.nonEmpty) {
-      log.warning(s"Cannot commit offsets for partitions the consumer is not subscribed to: {}",
-        nonCommittedOffsets.topicPartitions.mkString(", "))
-    }
-
-    tryWithConsumer(state) {
-      consumer.commitSync(offsetsToCommit.toCommitMap)
-      None
-    }
-    log.debug("Committing complete")
-  }
-
   override def unhandled(message: Any): Unit = {
     super.unhandled(message)
     log.warning("Unknown message: {}", message)
+  }
+
+  override def postStop(): Unit = {
+    log.info("KafkaConsumerActor stopping")
+    close()
   }
 
   private def close(): Unit = try {

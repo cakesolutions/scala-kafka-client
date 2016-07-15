@@ -44,14 +44,15 @@ private class TrackPartitions(consumer: KafkaConsumer[_, _], ref: ActorRef) exte
 
     _revoked = false
 
-    // If all of our previous partition assignments are present in the new assignment, we can continue uninterupted by
+    // If all of our previous partition assignments are present in the new assignment, we can continue uninterrupted by
     // seeking to the required offsets.  If we have lost any partition assignments (i.e to another group member), we
     // need to clear down the consumer actor state and proceed from the Kafka commit points.
     val allExisting = _offsets.forall { case (partition, _) => partitions.contains(partition) }
 
-    if (!allExisting)
-      ref ! KafkaConsumerActor.Revoke
-    else
+    if (!allExisting) {
+      log.info("Revoke RESET!!!!")
+      ref ! KafkaConsumerActor.RevokeReset
+    } else {
       for {
         partition <- partitions
         offset <- _offsets.get(partition)
@@ -59,6 +60,8 @@ private class TrackPartitions(consumer: KafkaConsumer[_, _], ref: ActorRef) exte
         log.info(s"Seek $partition, $offset")
         consumer.seek(partition, offset)
       }
+      ref ! KafkaConsumerActor.RevokeResume
+    }
   }
 
   def reset(): Unit = {
