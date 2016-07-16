@@ -34,7 +34,7 @@ For configuration and usage, see the Wiki: [Scala Kafka Client Guide](https://gi
 
 ### Resolve
 
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.7.0"
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.7.1"
 
 ## Scala Kafka Client - Akka Integration
 
@@ -47,7 +47,7 @@ concern for message delivery guarantees and resilience.
 
 ### Resolve
 
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.7.0"
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.7.1"
 
 ## TestKit
  
@@ -60,7 +60,7 @@ depends on a running Kafka Server.  Helps the setup of an in-process Kafka and Z
 ### Resolve
 
     //For kafka integration test support:
-    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-tesktkit" % "0.7.0" % "test"
+    libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-tesktkit" % "0.7.1" % "test"
 
 ## License
     
