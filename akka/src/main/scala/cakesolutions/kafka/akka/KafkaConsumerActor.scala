@@ -454,6 +454,7 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
     case RevokeResume =>
       log.info("RevokeResume - resuming processing post rebalance")
       state match {
+        case _: Subscribed =>
         case u: Unconfirmed =>
           sendRecords(u.unconfirmed)
           become(ready(u.confirm(offsets)))
@@ -475,6 +476,7 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
               become(revokeAwait(s.toUnconfirmed(records), offsets))
             case u: Unconfirmed =>
               become(revokeAwait(u.addToBuffer(records), offsets))
+            case _: Buffered =>
           }
           schedulePoll()
 

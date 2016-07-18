@@ -61,19 +61,19 @@ object Health {
   }
 
   case object Critical extends Status {
-    override val prio = 1
+    override val priority = 1
   }
 
   case object Warning extends Status {
-    override val prio = 2
+    override val priority = 2
   }
 
   case object Unknown extends Status {
-    override val prio = 3
+    override val priority = 3
   }
 
   case object Ok extends Status {
-    override val prio = 4
+    override val priority = 4
   }
 
   val values = Set(Ok, Warning, Critical, Unknown)
@@ -92,4 +92,10 @@ object Health {
     Ok -> add(map1, map2, Ok)
   )
 
+  /**
+    * A component that can expose its health
+    */
+  trait HealthStatus {
+    def getHealth: Health
+  }
 }
