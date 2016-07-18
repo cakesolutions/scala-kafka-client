@@ -48,9 +48,8 @@ class KafkaE2EActorPerfSpec(system_ : ActorSystem)
     )
   }
 
-  def consumerActorConf(topic: String): KafkaConsumerActor.Conf = {
-    KafkaConsumerActor.Conf(List(topic)).withConf(config.getConfig("consumer"))
-  }
+  def consumerActorConf: KafkaConsumerActor.Conf =
+    KafkaConsumerActor.Conf(config.getConfig("consumer"))
 
   val producerConf = KafkaProducer.Conf(config.getConfig("producer"), new StringSerializer, new StringSerializer)
 
@@ -68,7 +67,7 @@ class KafkaE2EActorPerfSpec(system_ : ActorSystem)
     val receiver = TestProbe()
     receiver.setAutoPilot(pilot)
 
-    val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, consumerActorConf(sourceTopic), receiver.ref))
+    val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, consumerActorConf, receiver.ref))
 
     1 to totalMessages foreach { n =>
       testProducer.send(KafkaProducerRecord(sourceTopic, None, msg1k))
@@ -76,7 +75,7 @@ class KafkaE2EActorPerfSpec(system_ : ActorSystem)
     testProducer.flush()
     log.info("Delivered {} messages to topic {}", totalMessages, sourceTopic)
 
-    consumer ! Subscribe()
+    consumer ! Subscribe.AutoPartition(List(sourceTopic))
 
     whenReady(pilot.future) { case (totalTime, messagesPerSec) =>
       log.info("Total Time millis : {}", totalTime)

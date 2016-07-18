@@ -25,22 +25,12 @@ import scala.util.{Failure, Success}
 object KafkaProducerActor {
 
   /**
-    * Kafka writable records received from [[Matcher]].
-    *
-    * @param records the records that are to be written to Kafka
-    * @param response optional message that is to be sent back to the sender after messages have been written to Kafka
-    * @tparam K Kafka message key type
-    * @tparam V Kafka message value type
-    */
-  case class MatcherResult[K, V](records: Iterable[ProducerRecord[K, V]], response: Option[Any])
-
-  /**
     * A partial function that extracts producer records from messages sent to [[KafkaProducerActor]].
     *
     * @tparam K Kafka message key type
     * @tparam V Kafka message value type
     */
-  type Matcher[K, V] = PartialFunction[Any, MatcherResult[K, V]]
+  type Matcher[K, V] = PartialFunction[Any, ProducerRecords[K, V]]
 
   /**
     * The default [[Matcher]] that is used for extracting Kafka records from incoming messages.
@@ -53,7 +43,7 @@ object KafkaProducerActor {
     val extractor = ProducerRecords.extractor[K, V]
 
     {
-      case extractor(producerRecords) => MatcherResult(producerRecords.records, producerRecords.response)
+      case extractor(producerRecords) => producerRecords
     }
   }
 
@@ -111,7 +101,6 @@ object KafkaProducerActor {
 private class KafkaProducerActor[K, V](producerConf: KafkaProducer.Conf[K, V], matcher: KafkaProducerActor.Matcher[K, V])
   extends Actor with ActorLogging {
 
-  import KafkaProducerActor.MatcherResult
   import context.dispatcher
 
   type Record = ProducerRecord[K, V]
@@ -123,18 +112,22 @@ private class KafkaProducerActor[K, V](producerConf: KafkaProducer.Conf[K, V], m
 
   override def receive: Receive = matcher.andThen(handleResult)
 
-  private def handleResult(result: MatcherResult[K, V]): Unit = {
+  private def handleResult(result: ProducerRecords[K, V]): Unit = {
     log.debug("Received a batch. Writing to Kafka.")
     val s = sender()
     sendMany(result.records).onComplete {
       case Success(_) =>
         log.debug("Wrote batch to Kafka.")
-        result.response.foreach { response =>
-          log.debug("Sending a response back.")
+        result.successResponse.foreach { response =>
+          log.debug("Sending a success response back.")
           s ! response
         }
       case Failure(err) =>
         logSendError(err)
+        result.failureResponse.foreach { response =>
+          log.debug("Sending a failure response back.")
+          s ! response
+        }
     }
   }
 
