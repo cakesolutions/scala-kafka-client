@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
 
-class ConsumerHealthSpec extends KafkaIntSpec {
+class KafkaHealthSpec extends KafkaIntSpec {
 
   val log = LoggerFactory.getLogger(getClass)
 
@@ -42,18 +42,29 @@ class ConsumerHealthSpec extends KafkaIntSpec {
     producer.send(KafkaProducerRecord(topic, Some("key"), "value"))
     producer.flush()
 
-    getHealth.status shouldEqual Health.Critical
+    getProducerHealth.status shouldEqual Health.Ok
+    getConsumerHealth.status shouldEqual Health.Ok
 
     val records2: ConsumerRecords[String, String] = consumer.poll(1000)
     records2.count() shouldEqual 1
 
-    getHealth.status shouldEqual Health.Ok
+    getProducerHealth.status shouldEqual Health.Ok
+    getConsumerHealth.status shouldEqual Health.Ok
+
+    kafkaServer.close()
+
+    consumer.poll(0)
+
+    getProducerHealth.status shouldEqual Health.Critical
+    getConsumerHealth.status shouldEqual Health.Critical
 
     producer.close()
     consumer.close()
   }
 
-  val health = new KafkaConsumerHealth(ManagementFactory.getPlatformMBeanServer, 30, 60)
+  def consumerHealth = KafkaHealth.kafkaConsumerHealth(ManagementFactory.getPlatformMBeanServer, 1, 0)
+  def producerHealth = KafkaHealth.kafkaProducerHealth(ManagementFactory.getPlatformMBeanServer, 1, 0)
 
-  def getHealth: Health = health.getHealth
+  def getConsumerHealth: Health = consumerHealth.getHealth
+  def getProducerHealth: Health = producerHealth.getHealth
 }

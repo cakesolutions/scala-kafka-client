@@ -2,6 +2,9 @@ package cakesolutions.kafka
 
 import cakesolutions.kafka.Health.{Ok, Status}
 
+/**
+  * Model to represent the health of a component.
+  */
 trait Health {
   val status: Status
   val message: String
@@ -28,18 +31,12 @@ case class NestedHealth(topMessage: String, nested: List[Health]) extends Health
   val message = indentedMsg(0)
 }
 
-/**
-  * Model to represent the health of a component, for integration with sensu.
-  */
 case class SimpleHealth(status: Status, message: String = "", exceptions: Seq[Throwable] = Seq()) extends Health {
   override val counts = Map(status -> 1)
 
   override def detailsTree(i: Int): String = s"${indent(i)}${status}: ${message}"
 }
 
-/**
-  * Created by user on 16/07/2016.
-  */
 object Health {
 
   sealed trait Status extends Ordered[Status] {
