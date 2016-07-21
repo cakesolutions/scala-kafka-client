@@ -3,7 +3,7 @@ package cakesolutions.kafka
 import java.lang.management.ManagementFactory
 
 import cakesolutions.kafka.testkit.TestUtils
-import org.apache.kafka.clients.consumer.{ConsumerRecords, OffsetResetStrategy}
+import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.slf4j.LoggerFactory
 
