@@ -353,8 +353,8 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
 
   // No unconfirmed or buffered messages
   private def ready(state: Subscribed): Receive = subscribedCommonReceive(state) orElse {
-    case Poll(correlation, timeout) if isCurrentPoll(correlation) =>
-      pollKafka(state) match {
+    case poll: Poll if isCurrentPoll(poll) =>
+      pollKafka(state, poll.timeout) match {
         case Some(records) =>
           sendRecords(records)
           log.debug("To unconfirmed state")
@@ -381,7 +381,7 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
         log.info("Partitions revoked. Not polling.")
         schedulePoll()
       } else {
-        pollKafka(state) match {
+        pollKafka(state, poll.timeout) match {
           case Some(records) =>
             log.debug("To Buffer Full state")
             become(bufferFull(state.addToBuffer(records)))
@@ -470,7 +470,7 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
 
     case poll: Poll if isCurrentPoll(poll) =>
       log.debug("Poll in Revoke")
-      pollKafka(state) match {
+      pollKafka(state, poll.timeout) match {
         case Some(records) =>
           state match {
             case s: Subscribed =>
@@ -525,7 +525,7 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
     *
     * @param timeout - specify a blocking poll timeout.  Default 0 for non blocking poll.
     */
-  private def pollKafka(state: StateData, timeout: Int = 0): Option[Records] =
+  private def pollKafka(state: StateData, timeout: Int): Option[Records] =
     tryWithConsumer(state) {
       log.debug("Poll Kafka for {} milliseconds", timeout)
       val rs = consumer.poll(timeout)
