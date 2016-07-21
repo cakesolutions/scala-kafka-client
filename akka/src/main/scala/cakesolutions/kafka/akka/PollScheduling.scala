@@ -17,7 +17,7 @@ private object PollScheduling {
   final case class Poll(correlationId: Long, timeout: Int = 0)
 }
 
-private trait PollScheduling extends ActorLogging {
+private[akka] trait PollScheduling extends ActorLogging {
   self: Actor =>
 
   import PollScheduling._

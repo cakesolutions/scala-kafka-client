@@ -9,7 +9,7 @@ import scala.collection.mutable
 /**
   * Extensions added to Typesafe config class.
   */
-private object TypesafeConfigExtensions {
+private[kafka] object TypesafeConfigExtensions {
 
   implicit class RichConfig(val config: Config) extends AnyVal {
 

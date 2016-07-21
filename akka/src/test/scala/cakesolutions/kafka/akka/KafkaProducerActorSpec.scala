@@ -44,9 +44,9 @@ class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
 
     val results = consumeFromTopic(topic, 3, 10000)
 
-    results(0) shouldEqual (None, "foo")
-    results(1) shouldEqual (Some("key"), "value")
-    results(2) shouldEqual (None, "bar")
+    results(0) shouldEqual ((None, "foo"))
+    results(1) shouldEqual ((Some("key"), "value"))
+    results(2) shouldEqual ((None, "bar"))
   }
 
   "KafkaProducerActor" should "write a given batch to Kafka, requiring no response" in {
@@ -58,7 +58,8 @@ class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     val batch: Seq[ProducerRecord[String, String]] = Seq(
       KafkaProducerRecord(topic, "foo"),
       KafkaProducerRecord(topic, "key", "value"),
-      KafkaProducerRecord(topic, "bar"))
+      KafkaProducerRecord(topic, "bar")
+    )
     val message = ProducerRecords(batch)
 
     probe.send(producer, message)
@@ -67,9 +68,9 @@ class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
 
     val results = consumeFromTopic(topic, 3, 10000)
 
-    results(0) shouldEqual (None, "foo")
-    results(1) shouldEqual (Some("key"), "value")
-    results(2) shouldEqual (None, "bar")
+    results(0) shouldEqual ((None, "foo"))
+    results(1) shouldEqual ((Some("key"), "value"))
+    results(2) shouldEqual ((None, "bar"))
   }
 
   private def consumeFromTopic(topic: String, expectedNumOfMessages: Int, timeout: Long) = {
