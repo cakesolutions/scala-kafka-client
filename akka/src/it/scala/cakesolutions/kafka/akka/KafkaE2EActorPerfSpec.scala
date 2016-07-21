@@ -31,7 +31,7 @@ class KafkaE2EActorPerfSpec(system_ : ActorSystem)
 
   def this() = this(ActorSystem("MySpec"))
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     TestKit.shutdownActorSystem(system)
   }
 
