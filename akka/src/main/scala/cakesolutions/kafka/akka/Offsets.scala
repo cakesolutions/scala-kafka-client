@@ -22,7 +22,7 @@ object Offsets {
   * Because the offsets are unique to the consumed batch,
   * the offsets are also used as a confirmation key for confirming that the batch has been fully processed.
   */
-case class Offsets(offsetsMap: Map[TopicPartition, Long]) extends AnyVal {
+final case class Offsets(offsetsMap: Map[TopicPartition, Long]) extends AnyVal {
 
   /**
     * Get offset for a topic & partition pair.

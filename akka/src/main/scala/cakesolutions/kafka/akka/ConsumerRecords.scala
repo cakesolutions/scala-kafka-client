@@ -1,12 +1,12 @@
 package cakesolutions.kafka.akka
 
-import scala.reflect.runtime.universe.{TypeTag, typeTag}
 import cakesolutions.kafka.KafkaProducerRecord
 import org.apache.kafka.clients.consumer.{ConsumerRecord => JConsumerRecord, ConsumerRecords => JConsumerRecords}
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 
 import scala.collection.JavaConverters._
+import scala.reflect.runtime.universe.TypeTag
 
 /**
   * Helper functions for [[ConsumerRecords]].
@@ -96,10 +96,7 @@ object ConsumerRecords {
     * @return an extractor for given key and value types
     */
   def extractor[Key: TypeTag, Value: TypeTag]: Extractor[Any, ConsumerRecords[Key, Value]] =
-    Extractor {
-      case rs: ConsumerRecords[_, _] => rs.cast[Key, Value]
-      case _ => None
-    }
+    new TypeTaggedExtractor[ConsumerRecords[Key, Value]]
 }
 
 /**
@@ -110,39 +107,10 @@ object ConsumerRecords {
   * @tparam Key type of the key in records
   * @tparam Value type of the value in records
   */
-case class ConsumerRecords[Key: TypeTag, Value: TypeTag](offsets: Offsets, records: JConsumerRecords[Key, Value])
-  extends HasOffsets {
+final case class ConsumerRecords[Key: TypeTag, Value: TypeTag](offsets: Offsets, records: JConsumerRecords[Key, Value])
+  extends TypeTagged[ConsumerRecords[Key, Value]] with HasOffsets {
 
   import ConsumerRecords.Pair
-
-  val keyTag: TypeTag[Key] = typeTag[Key]
-  val valueTag: TypeTag[Value] = typeTag[Value]
-
-  /**
-    * Compare given types to key-value types.
-    *
-    * Useful for regaining generic type information in runtime when it has been lost (e.g. in actor communication).
-    *
-    * @tparam OtherKey the key type to compare to
-    * @tparam OtherValue the value type to compare to
-    * @return true when given types match object's type parameters, and false otherwise
-    */
-  def hasType[OtherKey: TypeTag, OtherValue: TypeTag]: Boolean =
-    typeTag[OtherKey].tpe <:< keyTag.tpe &&
-      typeTag[OtherValue].tpe <:< valueTag.tpe
-
-  /**
-    * Attempt to cast key-value pairs to given types.
-    *
-    * Useful for regaining generic type information in runtime when it has been lost (e.g. in actor communication).
-    *
-    * @tparam OtherKey the key type to cast to
-    * @tparam OtherValue the value type to cast to
-    * @return the same records in casted form when casting is possible, and otherwise `None`
-    */
-  def cast[OtherKey: TypeTag, OtherValue: TypeTag]: Option[ConsumerRecords[OtherKey, OtherValue]] =
-    if (hasType[OtherKey, OtherValue]) Some(this.asInstanceOf[ConsumerRecords[OtherKey, OtherValue]])
-    else None
 
   /**
     * Convert to Kafka's `ProducerRecord`s.

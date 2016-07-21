@@ -9,7 +9,7 @@ import scala.collection.JavaConversions._
 /**
   * Utilities for creating a Kafka consumer.
   *
-  * This companion object provides tools for creating Kafka consumers using helpful functions.
+  * This singleton object provides tools for creating Kafka consumers using helpful functions.
   * Unlike with [[KafkaProducer]], the consumer object is not wrapped in an object that provides a Scala-like API.
   */
 object KafkaConsumer {
@@ -31,6 +31,7 @@ object KafkaConsumer {
       * @param autoCommitInterval the frequency in milliseconds that the consumer offsets are auto-committed to Kafka when auto commit is enabled
       * @param sessionTimeoutMs the timeout used to detect failures when using Kafka's group management facilities
       * @param maxPartitionFetchBytes the maximum amount of data per-partition the server will return
+      * @param maxPollRecords the maximum number of records returned in a single call to poll()
       * @param autoOffsetReset what to do when there is no initial offset in Kafka or if the current offset does not exist any more on the server
       * @tparam K key deserialiser type
       * @tparam V value deserialiser type
@@ -44,6 +45,7 @@ object KafkaConsumer {
                     autoCommitInterval: Int = 1000,
                     sessionTimeoutMs: Int = 30000,
                     maxPartitionFetchBytes: String = 262144.toString,
+                    maxPollRecords: Int = Integer.MAX_VALUE,
                     autoOffsetReset: OffsetResetStrategy = OffsetResetStrategy.LATEST): Conf[K, V] = {
 
       val configMap = Map[String, AnyRef](
@@ -53,6 +55,7 @@ object KafkaConsumer {
         ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG -> autoCommitInterval.toString,
         ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG -> sessionTimeoutMs.toString,
         ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG -> maxPartitionFetchBytes,
+        ConsumerConfig.MAX_POLL_RECORDS_CONFIG -> maxPollRecords.toString,
         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> autoOffsetReset.toString.toLowerCase
       )
 
@@ -86,7 +89,7 @@ object KafkaConsumer {
     * @tparam K key deserializer type
     * @tparam V value deserializer type
     */
-  case class Conf[K, V](props: Map[String, AnyRef],
+  final case class Conf[K, V](props: Map[String, AnyRef],
                         keyDeserializer: Deserializer[K],
                         valueDeserializer: Deserializer[V]) {
 

@@ -3,7 +3,7 @@ package cakesolutions.kafka.akka
 import cakesolutions.kafka.KafkaProducerRecord
 import org.apache.kafka.clients.producer.ProducerRecord
 
-import scala.reflect.runtime.universe.{TypeTag, typeTag}
+import scala.reflect.runtime.universe.TypeTag
 
 /**
   * Helper functions for [[ProducerRecords]].
@@ -20,11 +20,11 @@ object ProducerRecords {
     * @param failureResponse optional response message to the sender on failed delivery
     */
   def fromValues[Value: TypeTag](
-    topic: String,
-    values: Seq[Value],
-    successResponse: Option[Any],
-    failureResponse: Option[Any]
-  ): ProducerRecords[Nothing, Value] = {
+                                  topic: String,
+                                  values: Seq[Value],
+                                  successResponse: Option[Any],
+                                  failureResponse: Option[Any]
+                                ): ProducerRecords[Nothing, Value] = {
     val records = values.map(value => KafkaProducerRecord(topic, value))
     ProducerRecords[Nothing, Value](records, successResponse, failureResponse)
   }
@@ -40,12 +40,12 @@ object ProducerRecords {
     * @param failureResponse optional response message to the sender on failed delivery
     */
   def fromValuesWithKey[Key: TypeTag, Value: TypeTag](
-    topic: String,
-    key: Key,
-    values: Seq[Value],
-    successResponse: Option[Any],
-    failureResponse: Option[Any]
-  ): ProducerRecords[Key, Value] = {
+                                                       topic: String,
+                                                       key: Key,
+                                                       values: Seq[Value],
+                                                       successResponse: Option[Any],
+                                                       failureResponse: Option[Any]
+                                                     ): ProducerRecords[Key, Value] = {
 
     val records = values.map(value => KafkaProducerRecord(topic, key, value))
     ProducerRecords(records, successResponse, failureResponse)
@@ -60,10 +60,10 @@ object ProducerRecords {
     * @param failureResponse optional response message to the sender on failed delivery
     */
   def fromValuesWithTopic[Value: TypeTag](
-    valuesWithTopic: Seq[(String, Value)],
-    successResponse: Option[Any],
-    failureResponse: Option[Any]
-  ): ProducerRecords[Nothing, Value] = {
+                                           valuesWithTopic: Seq[(String, Value)],
+                                           successResponse: Option[Any],
+                                           failureResponse: Option[Any]
+                                         ): ProducerRecords[Nothing, Value] = {
 
     val records = valuesWithTopic.map {
       case (topic, value) => KafkaProducerRecord(topic, value)
@@ -81,11 +81,11 @@ object ProducerRecords {
     * @param failureResponse optional response message to the sender on failed delivery
     */
   def fromKeyValues[Key: TypeTag, Value: TypeTag](
-    topic: String,
-    keyValues: Seq[(Key, Value)],
-    successResponse: Option[Any],
-    failureResponse: Option[Any]
-  ): ProducerRecords[Key, Value] = {
+                                                   topic: String,
+                                                   keyValues: Seq[(Key, Value)],
+                                                   successResponse: Option[Any],
+                                                   failureResponse: Option[Any]
+                                                 ): ProducerRecords[Key, Value] = {
 
     val records = keyValues.map {
       case (key, value) => KafkaProducerRecord(topic, key, value)
@@ -101,10 +101,10 @@ object ProducerRecords {
     * @param failureResponse optional response message to the sender on failed delivery
     */
   def fromKeyValuesWithTopic[Key: TypeTag, Value: TypeTag](
-    keyValuesWithTopic: Seq[(String, Key, Value)],
-    successResponse: Option[Any],
-    failureResponse: Option[Any]
-  ): ProducerRecords[Key, Value] = {
+                                                            keyValuesWithTopic: Seq[(String, Key, Value)],
+                                                            successResponse: Option[Any],
+                                                            failureResponse: Option[Any]
+                                                          ): ProducerRecords[Key, Value] = {
 
     val records = keyValuesWithTopic.map {
       case (topic, key, value) => KafkaProducerRecord(topic, key, value)
@@ -121,15 +121,15 @@ object ProducerRecords {
     * @param failureResponse optional response message to the sender on failed delivery
     */
   def fromConsumerRecords[Key: TypeTag, Value: TypeTag](
-    topic: String,
-    consumerRecords: ConsumerRecords[Key, Value],
-    failureResponse: Option[Any]
-  ) =
-    ProducerRecords(
-      consumerRecords.toProducerRecords(topic),
-      Some(consumerRecords.offsets),
-      Some(failureResponse)
-    )
+                                                         topic: String,
+                                                         consumerRecords: ConsumerRecords[Key, Value],
+                                                         failureResponse: Option[Any]
+                                                       ) =
+  ProducerRecords(
+    consumerRecords.toProducerRecords(topic),
+    Some(consumerRecords.offsets),
+    Some(failureResponse)
+  )
 
   /**
     * Create an extractor for pattern matching any value with a specific [[ProducerRecords]] type.
@@ -139,10 +139,7 @@ object ProducerRecords {
     * @return an extractor for given key and value types
     */
   def extractor[Key: TypeTag, Value: TypeTag]: Extractor[Any, ProducerRecords[Key, Value]] =
-    Extractor {
-      case producerRecords: ProducerRecords[_, _] => producerRecords.cast[Key, Value]
-      case _ => None
-    }
+    new TypeTaggedExtractor[ProducerRecords[Key, Value]]
 }
 
 /**
@@ -152,38 +149,8 @@ object ProducerRecords {
   * @param successResponse an optional message that is to be sent back to the sender after records have been successfully written to Kafka
   * @param failureResponse optional message that is to be sent back to the sender when messages were not successfully written to Kafka
   */
-case class ProducerRecords[Key: TypeTag, Value: TypeTag](
+final case class ProducerRecords[Key: TypeTag, Value: TypeTag](
   records: Iterable[ProducerRecord[Key, Value]],
   successResponse: Option[Any] = None,
   failureResponse: Option[Any] = None
-) {
-
-  val keyTag: TypeTag[Key] = typeTag[Key]
-  val valueTag: TypeTag[Value] = typeTag[Value]
-
-  /**
-    * Compare given types to key-value types.
-    *
-    * Useful for regaining generic type information in runtime when it has been lost (e.g. in actor communication).
-    *
-    * @tparam OtherKey the key type to compare to
-    * @tparam OtherValue the value type to compare to
-    * @return true when given types match object's type parameters, and false otherwise
-    */
-  def hasType[OtherKey: TypeTag, OtherValue: TypeTag]: Boolean =
-    typeTag[OtherKey].tpe <:< keyTag.tpe &&
-      typeTag[OtherValue].tpe <:< valueTag.tpe
-
-  /**
-    * Attempt to cast key-value pairs to given types.
-    *
-    * Useful for regaining generic type information in runtime when it has been lost (e.g. in actor communication).
-    *
-    * @tparam OtherKey the key type to cast to
-    * @tparam OtherValue the value type to cast to
-    * @return the same records in casted form when casting is possible, and otherwise `None`
-    */
-  def cast[OtherKey: TypeTag, OtherValue: TypeTag]: Option[ProducerRecords[OtherKey, OtherValue]] =
-    if (hasType[OtherKey, OtherValue]) Some(this.asInstanceOf[ProducerRecords[OtherKey, OtherValue]])
-    else None
-}
+) extends TypeTagged[ProducerRecords[Key, Value]]

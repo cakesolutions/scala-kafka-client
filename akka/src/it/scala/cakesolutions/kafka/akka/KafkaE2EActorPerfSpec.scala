@@ -3,7 +3,8 @@ package cakesolutions.kafka.akka
 import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.TestActor.AutoPilot
 import akka.testkit.{ImplicitSender, TestActor, TestKit, TestProbe}
-import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe, Unsubscribe}
+import cakesolutions.kafka.akka.KafkaConsumerActor.Confirm
+import cakesolutions.kafka.akka.KafkaConsumerActor.Subscribe.AutoPartition
 import cakesolutions.kafka.testkit.TestUtils
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.ConfigFactory
@@ -67,7 +68,7 @@ class KafkaE2EActorPerfSpec(system_ : ActorSystem)
     val receiver = TestProbe()
     receiver.setAutoPilot(pilot)
 
-    val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, consumerActorConf, receiver.ref))
+    val consumer = KafkaConsumerActor(consumerConf, consumerActorConf, receiver.ref)
 
     1 to totalMessages foreach { n =>
       testProducer.send(KafkaProducerRecord(sourceTopic, None, msg1k))
@@ -75,7 +76,7 @@ class KafkaE2EActorPerfSpec(system_ : ActorSystem)
     testProducer.flush()
     log.info("Delivered {} messages to topic {}", totalMessages, sourceTopic)
 
-    consumer ! Subscribe.AutoPartition(List(sourceTopic))
+    consumer.subscribe(AutoPartition(Seq(sourceTopic)))
 
     whenReady(pilot.future) { case (totalTime, messagesPerSec) =>
       log.info("Total Time millis : {}", totalTime)
@@ -83,7 +84,7 @@ class KafkaE2EActorPerfSpec(system_ : ActorSystem)
 
       totalTime should be < 7000L
 
-      consumer ! Unsubscribe
+      consumer.unsubscribe()
       testProducer.close()
       log.info("Done")
     }
@@ -112,9 +113,10 @@ class PipelinePilot(producer: ActorRef, targetTopic: String, expectedMessages: L
       case Some(r) =>
         total += r.size
 
-        producer.!(
-          ProducerRecords(r.toProducerRecords(targetTopic), Some(Confirm(r.offsets, commit = true)))
-        )(sender)
+        producer.tell(
+          msg = ProducerRecords(r.toProducerRecords(targetTopic), Some(Confirm(r.offsets, commit = true))),
+          sender = sender
+        )
 
         if (total >= expectedMessages) {
           val totalTime = System.currentTimeMillis() - start
