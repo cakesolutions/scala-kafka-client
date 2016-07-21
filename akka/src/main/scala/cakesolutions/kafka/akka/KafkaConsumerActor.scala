@@ -395,7 +395,7 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
       log.debug("Records confirmed")
       val updatedState = state.confirm(offsets)
 
-      val commitResult = if (commit) commitOffsets(updatedState, offsets) else Success()
+      val commitResult = if (commit) commitOffsets(updatedState, offsets) else Success({})
       commitResult match {
         case Success(_) =>
           log.debug("To Ready state")
@@ -429,7 +429,7 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
 
       val commitResult =
         if (commit) commitOffsets(updatedState, offsets)
-        else Success()
+        else Success({})
 
       commitResult match {
         case Success(_) =>
@@ -456,10 +456,12 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
       state match {
         case u: Unconfirmed =>
           sendRecords(u.unconfirmed)
-          become(ready(u.confirm(offsets)))
+          become(unconfirmed(u))
         case b: Buffered =>
           sendRecords(b.unconfirmed)
-          become(unconfirmed(b.confirm(offsets)))
+          become(bufferFull(b))
+        case s: Subscribed =>
+          become(ready(s))
       }
 
     case RevokeReset =>
@@ -475,6 +477,8 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
               become(revokeAwait(s.toUnconfirmed(records), offsets))
             case u: Unconfirmed =>
               become(revokeAwait(u.addToBuffer(records), offsets))
+            case b: Buffered =>
+              throw consumerFailure(b)
           }
           schedulePoll()
 
@@ -564,11 +568,11 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
   private def tryCommit(offsetsToCommit: Offsets, state: StateData): Try[Unit] = {
     try {
       consumer.commitSync(offsetsToCommit.toCommitMap)
-      Success()
+      Success({})
     } catch {
       case we: WakeupException =>
         log.debug("Wakeup Exception. Ignoring.")
-        Success()
+        Success({})
       case cfe: CommitFailedException =>
         log.warning("Exception while committing {}", cfe.getMessage)
         Failure(cfe)
