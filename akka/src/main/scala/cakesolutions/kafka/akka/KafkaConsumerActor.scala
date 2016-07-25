@@ -190,7 +190,7 @@ object KafkaConsumerActor {
       )
   }
 
-  lazy val kafkaHealth = KafkaHealth.kafkaConsumerHealth(ManagementFactory.getPlatformMBeanServer, 1, 0)
+  lazy val kafkaHealth = KafkaHealth.kafkaConsumerHealth(ManagementFactory.getPlatformMBeanServer)
 
   /**
     * Create Akka `Props` for [[KafkaConsumerActor]] from a Typesafe config.
