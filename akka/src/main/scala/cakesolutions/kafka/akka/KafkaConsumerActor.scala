@@ -1,10 +1,12 @@
 package cakesolutions.kafka.akka
 
+import java.lang.management.ManagementFactory
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 
 import akka.actor._
-import cakesolutions.kafka.KafkaConsumer
+import cakesolutions.kafka.Health.Critical
+import cakesolutions.kafka.{KafkaConsumer, KafkaHealth, SimpleHealth}
 import com.typesafe.config.Config
 import org.apache.kafka.clients.consumer.CommitFailedException
 import org.apache.kafka.common.TopicPartition
@@ -110,6 +112,8 @@ object KafkaConsumerActor {
     */
   case object Unsubscribe extends MessageApi
 
+  case object HealthCheck extends MessageApi
+
   private[akka] sealed trait InternalMessageApi extends FullMessageApi
 
   /**
@@ -185,6 +189,8 @@ object KafkaConsumerActor {
         unconfirmedTimeout = if (config.hasPath("unconfirmed.timeout")) Conf.durationFromConfig(config, "unconfirmed.timeout") else unconfirmedTimeout
       )
   }
+
+  lazy val kafkaHealth = KafkaHealth.kafkaConsumerHealth(ManagementFactory.getPlatformMBeanServer, 1, 0)
 
   /**
     * Create Akka `Props` for [[KafkaConsumerActor]] from a Typesafe config.
@@ -320,6 +326,9 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
     case Confirm(offsets, commit) =>
       log.warning("Attempted to confirm offsets while consumer wasn't subscribed")
 
+    case HealthCheck =>
+      sender() ! SimpleHealth(Critical, "Consumer not subscribed")
+
     case _: Poll => // Do nothing
   }
 
@@ -340,6 +349,9 @@ private class KafkaConsumerActor[K: TypeTag, V: TypeTag](
     case TriggerConsumerFailure =>
       log.info("Triggering consumer failure!")
       throw consumerFailure(state)
+
+    case HealthCheck =>
+      sender() ! kafkaHealth.getHealth
 
     case RevokeResume => //Do nothing
 

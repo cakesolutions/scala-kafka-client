@@ -6,6 +6,39 @@ import cakesolutions.kafka.Health.{Critical, HealthStatus, Ok, Warning}
 
 import scala.collection.JavaConverters._
 
+object KafkaHealth {
+
+  /**
+    * Create a consumer Health check component to monitor the state of any currently active consumers within the JVM.
+    *
+    * @param mbeanServer Provide the platforms Mbean server.
+    * @param warningThreshold A warning will be reported if the connection count is not greater than this value.
+    * @param criticalThreshold. A critical will be reported if the connection count is not greater than this value.
+    * @return KafkaHealth Component
+    */
+  def kafkaConsumerHealth(mbeanServer: MBeanServer, warningThreshold: Double, criticalThreshold: Double) =
+    new KafkaHealth(mbeanServer, warningThreshold, criticalThreshold, "kafka.consumer:type=consumer-metrics", "Kafka Consumer")
+
+  /**
+    * Create a producer Health check component to monitor the state of any currently active producers within the JVM.
+    *
+    * @param mbeanServer Provide the platforms Mbean server.
+    * @param warningThreshold A warning will be reported if the connection count is not greater than this value.
+    * @param criticalThreshold. A critical will be reported if the connection count is not greater than this value.
+    * @return KafkaHealth Component
+    */
+  def kafkaProducerHealth(mbeanServer: MBeanServer, warningThreshold: Double, criticalThreshold: Double) =
+    new KafkaHealth(mbeanServer, warningThreshold, criticalThreshold, "kafka.producer:type=producer-metrics", "Kafka Producer")
+}
+
+/**
+  * A health check component that attempts to provide a status as to the current health of a consumer or producer connection to a Kafka cluster.
+  *
+  * * @param mbeanServer Provide the platforms Mbean server.
+  * @param warningThreshold A warning will be reported if the connection count is not greater than this value.
+  * @param jmxPrefix identifies the JMX property to access Kafka client metrics
+  * @param name Name of the component being health checked.
+  */
 class KafkaHealth(mbeanServer: MBeanServer, warningThreshold: Double, criticalThreshold: Double, jmxPrefix: String, name: String) extends HealthStatus {
 
   private val clientIdProp = "client-id"
@@ -49,17 +82,12 @@ class KafkaHealth(mbeanServer: MBeanServer, warningThreshold: Double, criticalTh
     h.fold(l => unexpectedErrorHealth(l), r => r)
   }
 
+  /**
+    * Retrieve the current health of the Kafka consumer/producer
+    * @return
+    */
   override def getHealth: Health = {
     val nested = objectNames.map(objectName => mkHealth(objectName)).toList
     NestedHealth(name, nested)
   }
-}
-
-object KafkaHealth {
-  def kafkaConsumerHealth(mbeanServer: MBeanServer, warningThreshold: Double, criticalThreshold: Double) =
-    new KafkaHealth(mbeanServer, warningThreshold, criticalThreshold, "kafka.consumer:type=consumer-metrics", "Kafka Consumer")
-
-  def kafkaProducerHealth(mbeanServer: MBeanServer, warningThreshold: Double, criticalThreshold: Double) =
-    new KafkaHealth(mbeanServer, warningThreshold, criticalThreshold, "kafka.producer:type=producer-metrics", "Kafka Producer")
-
 }
