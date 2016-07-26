@@ -84,12 +84,12 @@ Both the `0.9.*` and `0.10.*` versions are maintained concurrently.
 
 Here is the full table of binary compatibilities between Scala Kafka client and the Kafka Java driver:
 
- Scala Kafka client | Kafka Java Driver
- ------------------ | -----------------
- 0.10.0.0           | 0.10.0.0
- 0.9.0.0            | 0.9.0.1
- 0.8.0              | 0.10.0.0
- 0.7.0              | 0.9.0.1
+ Scala Kafka client    | Kafka Java Driver
+ --------------------- | -----------------
+ 0.10.0.0 (unreleased) | 0.10.0.0
+ 0.9.0.0  (unreleased) | 0.9.0.1
+ 0.8.0                 | 0.10.0.0
+ 0.7.0                 | 0.9.0.1
 
 ## Change log
 
