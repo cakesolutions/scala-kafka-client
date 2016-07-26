@@ -1,12 +1,12 @@
 package cakesolutions.kafka.akka
 
-import scala.reflect.runtime.universe.{TypeTag, typeTag}
 import cakesolutions.kafka.KafkaProducerRecord
 import org.apache.kafka.clients.consumer.{ConsumerRecord => JConsumerRecord, ConsumerRecords => JConsumerRecords}
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 
 import scala.collection.JavaConverters._
+import scala.reflect.runtime.universe.TypeTag
 
 /**
   * Helper functions for [[ConsumerRecords]].

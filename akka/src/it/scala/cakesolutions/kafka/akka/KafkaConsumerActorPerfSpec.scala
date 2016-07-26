@@ -4,6 +4,7 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.TestActor.AutoPilot
 import akka.testkit.{ImplicitSender, TestActor, TestKit, TestProbe}
 import cakesolutions.kafka.akka.KafkaConsumerActor.Confirm
+import cakesolutions.kafka.akka.KafkaConsumerActor.Subscribe.AutoPartition
 import cakesolutions.kafka.testkit.TestUtils
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.ConfigFactory
@@ -31,7 +32,7 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
 
   def this() = this(ActorSystem("MySpec"))
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     TestKit.shutdownActorSystem(system)
   }
 
@@ -48,9 +49,8 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
     )
   }
 
-  def actorConf(topic: String): KafkaConsumerActor.Conf = {
-    KafkaConsumerActor.Conf(List(topic)).withConf(config.getConfig("consumer"))
-  }
+  def actorConf: KafkaConsumerActor.Conf =
+    KafkaConsumerActor.Conf(config.getConfig("consumer"))
 
   "KafkaConsumerActor with single partition topic" should "perform" in {
     val topic = TestUtils.randomString(5)
@@ -62,7 +62,7 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
     val receiver = TestProbe()
     receiver.setAutoPilot(pilot)
 
-    val consumer = KafkaConsumerActor(consumerConf, actorConf(topic), receiver.ref)
+    val consumer = KafkaConsumerActor(consumerConf, actorConf, receiver.ref)
 
     1 to totalMessages foreach { n =>
       producer.send(KafkaProducerRecord(topic, None, msg1k))
@@ -70,7 +70,7 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
     producer.flush()
     log.info("Delivered {} messages to topic {}", totalMessages, topic)
 
-    consumer.subscribe()
+    consumer.subscribe(AutoPartition(Seq(topic)))
 
     whenReady(pilot.future) { case (totalTime, messagesPerSec) =>
       log.info("Total Time millis : {}", totalTime)

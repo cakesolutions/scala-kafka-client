@@ -4,6 +4,19 @@ lazy val commonSettings = Seq(
   publishMavenStyle := true,
   bintrayOrganization := Some("cakesolutions"),
   bintrayPackageLabels := Seq("scala", "kafka"),
+  scalacOptions in Compile ++= Seq(
+    "-encoding", "UTF-8",
+    "-target:jvm-1.8",
+    "-feature",
+    "-deprecation",
+    "-unchecked",
+    "-Xlint",
+    "-Xfuture",
+    "-Ywarn-dead-code",
+    "-Ywarn-unused-import",
+    "-Ywarn-unused",
+    "-Ywarn-nullary-unit"
+  ),
   scalacOptions in (Compile, doc) ++= Seq("-groups", "-implicits"),
   javacOptions in (Compile, doc) ++= Seq("-notimestamp", "-linksource"),
   autoAPIMappings := true,
@@ -47,21 +60,19 @@ lazy val commonSettings = Seq(
 lazy val kafkaTestkit = project.in(file("testkit"))
   .settings(commonSettings: _*)
 
-lazy val scalaKafkaClient = project.in(file("client")).
-  settings(commonSettings: _*).
-  dependsOn(kafkaTestkit % "test").
-  configs(IntegrationTest extend Test)
+lazy val scalaKafkaClient = project.in(file("client"))
+  .settings(commonSettings: _*)
+  .dependsOn(kafkaTestkit % "test")
+  .configs(IntegrationTest extend Test)
 
-lazy val scalaKafkaClientAkka = project.in(file("akka")).
-  settings(commonSettings: _*).
-  dependsOn(scalaKafkaClient).
-  dependsOn(kafkaTestkit % "test").
-  configs(IntegrationTest extend Test)
+lazy val scalaKafkaClientAkka = project.in(file("akka"))
+  .settings(commonSettings: _*)
+  .dependsOn(scalaKafkaClient)
+  .dependsOn(kafkaTestkit % "test")
+  .configs(IntegrationTest extend Test)
 
-lazy val root = project.in(file(".")).
-  settings(commonSettings: _*).
-  settings(unidocSettings: _*).
-  settings(publishArtifact := false).
-  settings(publish := {}).
-  settings(publishLocal := {}).
-  aggregate(scalaKafkaClient, scalaKafkaClientAkka, kafkaTestkit)
+lazy val root = project.in(file("."))
+  .settings(commonSettings: _*)
+  .settings(unidocSettings: _*)
+  .settings(name := "scala-kafka-client-root", publishArtifact := false, publish := {}, publishLocal := {})
+  .aggregate(scalaKafkaClient, scalaKafkaClientAkka, kafkaTestkit)
