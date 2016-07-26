@@ -433,8 +433,8 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
 
   // No unconfirmed or buffered messages
   private def ready(state: Subscribed): Receive = subscribedCommonReceive(state) orElse {
-    case poll: Poll if isCurrentPoll(poll) =>
-      pollKafka(state, poll.timeout) match {
+    case Poll(correlation, timeout) if isCurrentPoll(correlation) =>
+      pollKafka(state) match {
         case Some(records) =>
           sendRecords(records)
           log.debug("To unconfirmed state")
@@ -464,7 +464,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
         log.info("Partitions revoked. Not polling.")
         schedulePoll()
       } else {
-        pollKafka(state, poll.timeout) match {
+        pollKafka(state) match {
           case Some(records) =>
             log.debug("To Buffer Full state")
             become(bufferFull(state.addToBuffer(records)))
@@ -478,7 +478,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       log.debug("Records confirmed")
       val updatedState = state.confirm(offsets)
 
-      val commitResult = if (commit) commitOffsets(updatedState, offsets) else Success({})
+      val commitResult = if (commit) commitOffsets(updatedState, offsets) else Success(())
       commitResult match {
         case Success(_) =>
           log.debug("To Ready state")
@@ -512,7 +512,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
 
       val commitResult =
         if (commit) commitOffsets(updatedState, offsets)
-        else Success({})
+        else Success(())
 
       commitResult match {
         case Success(_) =>
@@ -537,14 +537,13 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     case RevokeResume =>
       log.info("RevokeResume - Resuming processing post rebalance")
       state match {
+        case _: Subscribed =>
         case u: Unconfirmed =>
           sendRecords(u.unconfirmed)
-          become(unconfirmed(u))
+          become(ready(u.confirm(offsets)))
         case b: Buffered =>
           sendRecords(b.unconfirmed)
-          become(bufferFull(b))
-        case s: Subscribed =>
-          become(ready(s))
+          become(unconfirmed(b.confirm(offsets)))
       }
 
     case RevokeReset =>
@@ -553,15 +552,14 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
 
     case poll: Poll if isCurrentPoll(poll) =>
       log.debug("Poll in Revoke")
-      pollKafka(state, poll.timeout) match {
+      pollKafka(state) match {
         case Some(records) =>
           state match {
             case s: Subscribed =>
               become(revokeAwait(s.toUnconfirmed(records), offsets))
             case u: Unconfirmed =>
               become(revokeAwait(u.addToBuffer(records), offsets))
-            case b: Buffered =>
-              throw consumerFailure(b)
+            case _: Buffered =>
           }
           schedulePoll()
 
@@ -611,7 +609,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     *
     * @param timeout - specify a blocking poll timeout.  Default 0 for non blocking poll.
     */
-  private def pollKafka(state: StateData, timeout: Int): Option[Records] =
+  private def pollKafka(state: StateData, timeout: Int = 0): Option[Records] =
     tryWithConsumer(state) {
       log.debug("Poll Kafka for {} milliseconds", timeout)
       val rs = consumer.poll(timeout)
@@ -654,11 +652,11 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   private def tryCommit(offsetsToCommit: Offsets, state: StateData): Try[Unit] = {
     try {
       consumer.commitSync(offsetsToCommit.toCommitMap)
-      Success({})
+      Success(())
     } catch {
       case we: WakeupException =>
         log.debug("Wakeup Exception. Ignoring.")
-        Success({})
+        Success(())
       case cfe: CommitFailedException =>
         log.warning("Exception while committing {}", cfe.getMessage)
         Failure(cfe)
