@@ -7,8 +7,10 @@ package cakesolutions.kafka.akka
   * @tparam I the input value to extract a value from
   * @tparam O the value that is to be extracted
   */
-trait Extractor[I, O] {
+trait Extractor[-I, +O] {
   def unapply(input: I): Option[O]
+
+  def asPF: PartialFunction[I, O] = Extractor.asPF[I, O](this)
 }
 
 /**
@@ -28,4 +30,8 @@ object Extractor {
     * @return an extractor
     */
   def apply[I, O](f: I => Option[O]): Extractor[I, O] = new Ext(f)
+
+  def asPF[I, O](ext: Extractor[I, O]): PartialFunction[I, O] = {
+    case ext(o) => o
+  }
 }

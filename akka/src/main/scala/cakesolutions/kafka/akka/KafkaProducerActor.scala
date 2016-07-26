@@ -25,16 +25,6 @@ import scala.util.{Failure, Success}
 object KafkaProducerActor {
 
   /**
-    * Kafka writable records received from [[Matcher]].
-    *
-    * @param records the records that are to be written to Kafka
-    * @param response optional message that is to be sent back to the sender after messages have been written to Kafka
-    * @tparam K Kafka message key type
-    * @tparam V Kafka message value type
-    */
-  final case class MatcherResult[K, V](records: Iterable[ProducerRecord[K, V]], response: Option[Any])
-
-  /**
     * A partial function that extracts producer records from messages sent to [[KafkaProducerActor]].
     *
     * @tparam K Kafka message key type
@@ -49,13 +39,7 @@ object KafkaProducerActor {
     * @tparam K Kafka message key type
     * @tparam V Kafka message value type
     */
-  def defaultMatcher[K: TypeTag, V: TypeTag]: Matcher[K, V] = {
-    val extractor = ProducerRecords.extractor[K, V]
-
-    {
-      case extractor(producerRecords) => producerRecords
-    }
-  }
+  def defaultMatcher[K: TypeTag, V: TypeTag]: Matcher[K, V] = ProducerRecords.extractor[K, V].asPF
 
   /**
     * Create Akka `Props` for [[KafkaProducerActor]].

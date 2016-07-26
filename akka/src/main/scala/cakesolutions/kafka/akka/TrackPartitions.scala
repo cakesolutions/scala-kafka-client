@@ -23,7 +23,7 @@ private object TrackPartitions {
   * @param consumer The client driver
   * @param ref Tha KafkaConsumerActor to notify of partition change events
   */
-private class TrackPartitions(consumer: KafkaConsumer[_, _], ref: ActorRef) extends ConsumerRebalanceListener {
+private final class TrackPartitions(consumer: KafkaConsumer[_, _], ref: ActorRef) extends ConsumerRebalanceListener {
 
   import TrackPartitions.log
 

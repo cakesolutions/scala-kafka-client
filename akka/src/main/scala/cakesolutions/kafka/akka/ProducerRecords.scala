@@ -20,11 +20,11 @@ object ProducerRecords {
     * @param failureResponse optional response message to the sender on failed delivery
     */
   def fromValues[Value: TypeTag](
-                                  topic: String,
-                                  values: Seq[Value],
-                                  successResponse: Option[Any],
-                                  failureResponse: Option[Any]
-                                ): ProducerRecords[Nothing, Value] = {
+    topic: String,
+    values: Seq[Value],
+    successResponse: Option[Any],
+    failureResponse: Option[Any]
+  ): ProducerRecords[Nothing, Value] = {
     val records = values.map(value => KafkaProducerRecord(topic, value))
     ProducerRecords[Nothing, Value](records, successResponse, failureResponse)
   }
@@ -40,12 +40,12 @@ object ProducerRecords {
     * @param failureResponse optional response message to the sender on failed delivery
     */
   def fromValuesWithKey[Key: TypeTag, Value: TypeTag](
-                                                       topic: String,
-                                                       key: Key,
-                                                       values: Seq[Value],
-                                                       successResponse: Option[Any],
-                                                       failureResponse: Option[Any]
-                                                     ): ProducerRecords[Key, Value] = {
+    topic: String,
+    key: Key,
+    values: Seq[Value],
+    successResponse: Option[Any],
+    failureResponse: Option[Any]
+  ): ProducerRecords[Key, Value] = {
 
     val records = values.map(value => KafkaProducerRecord(topic, key, value))
     ProducerRecords(records, successResponse, failureResponse)
@@ -60,10 +60,10 @@ object ProducerRecords {
     * @param failureResponse optional response message to the sender on failed delivery
     */
   def fromValuesWithTopic[Value: TypeTag](
-                                           valuesWithTopic: Seq[(String, Value)],
-                                           successResponse: Option[Any],
-                                           failureResponse: Option[Any]
-                                         ): ProducerRecords[Nothing, Value] = {
+    valuesWithTopic: Seq[(String, Value)],
+    successResponse: Option[Any],
+    failureResponse: Option[Any]
+  ): ProducerRecords[Nothing, Value] = {
 
     val records = valuesWithTopic.map {
       case (topic, value) => KafkaProducerRecord(topic, value)
@@ -81,11 +81,11 @@ object ProducerRecords {
     * @param failureResponse optional response message to the sender on failed delivery
     */
   def fromKeyValues[Key: TypeTag, Value: TypeTag](
-                                                   topic: String,
-                                                   keyValues: Seq[(Key, Value)],
-                                                   successResponse: Option[Any],
-                                                   failureResponse: Option[Any]
-                                                 ): ProducerRecords[Key, Value] = {
+    topic: String,
+    keyValues: Seq[(Key, Value)],
+    successResponse: Option[Any],
+    failureResponse: Option[Any]
+  ): ProducerRecords[Key, Value] = {
 
     val records = keyValues.map {
       case (key, value) => KafkaProducerRecord(topic, key, value)
@@ -101,10 +101,10 @@ object ProducerRecords {
     * @param failureResponse optional response message to the sender on failed delivery
     */
   def fromKeyValuesWithTopic[Key: TypeTag, Value: TypeTag](
-                                                            keyValuesWithTopic: Seq[(String, Key, Value)],
-                                                            successResponse: Option[Any],
-                                                            failureResponse: Option[Any]
-                                                          ): ProducerRecords[Key, Value] = {
+    keyValuesWithTopic: Seq[(String, Key, Value)],
+    successResponse: Option[Any],
+    failureResponse: Option[Any]
+  ): ProducerRecords[Key, Value] = {
 
     val records = keyValuesWithTopic.map {
       case (topic, key, value) => KafkaProducerRecord(topic, key, value)
@@ -121,10 +121,10 @@ object ProducerRecords {
     * @param failureResponse optional response message to the sender on failed delivery
     */
   def fromConsumerRecords[Key: TypeTag, Value: TypeTag](
-                                                         topic: String,
-                                                         consumerRecords: ConsumerRecords[Key, Value],
-                                                         failureResponse: Option[Any]
-                                                       ) =
+    topic: String,
+    consumerRecords: ConsumerRecords[Key, Value],
+    failureResponse: Option[Any]
+  ) =
   ProducerRecords(
     consumerRecords.toProducerRecords(topic),
     Some(consumerRecords.offsets),

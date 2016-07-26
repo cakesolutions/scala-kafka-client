@@ -5,7 +5,6 @@ import java.time.temporal.ChronoUnit
 
 import akka.actor._
 import cakesolutions.kafka.KafkaConsumer
-import cakesolutions.kafka.akka.KafkaConsumerActor.Subscribe.{AutoPartition, ManualOffset, ManualPartition}
 import com.typesafe.config.Config
 import org.apache.kafka.clients.consumer.CommitFailedException
 import org.apache.kafka.common.TopicPartition
@@ -198,10 +197,10 @@ object KafkaConsumerActor {
     * @tparam V value deserialiser type
     */
   def props[K: TypeTag, V: TypeTag](
-     conf: Config,
-     keyDeserializer: Deserializer[K],
-     valueDeserializer: Deserializer[V],
-     downstreamActor: ActorRef
+    conf: Config,
+    keyDeserializer: Deserializer[K],
+    valueDeserializer: Deserializer[V],
+    downstreamActor: ActorRef
   ): Props =
     props(
       KafkaConsumer.Conf[K, V](conf, keyDeserializer, valueDeserializer),
@@ -277,21 +276,14 @@ object KafkaConsumerActor {
   * Classic, non-Akka API for interacting with [[KafkaConsumerActor]].
   */
 final class KafkaConsumerActor private (val ref: ActorRef) {
-  import KafkaConsumerActor.{Subscribe, Confirm, Unsubscribe}
+  import KafkaConsumerActor.{Confirm, Subscribe, Unsubscribe}
 
   /**
     * Initiate consumption from Kafka or reset an already started stream.
     *
     * @param subscription Either an AutoPartition, ManualPartition or ManualOffsets subscription.
     */
-  def subscribe(subscription: Subscribe): Unit = subscription match {
-    case a:AutoPartition =>
-      ref ! a
-    case mp:ManualPartition =>
-      ref ! mp
-    case mo:ManualOffset =>
-      ref ! mo
-  }
+  def subscribe(subscription: Subscribe): Unit = ref ! subscription
 
   /**
     * Unsubscribe from Kafka
@@ -395,7 +387,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   override def receive = unsubscribed
 
   // Initial state
-  private def unsubscribed: Receive = {
+  private val unsubscribed: Receive = {
     case Unsubscribe =>
       log.info("Already unsubscribed")
 
@@ -452,13 +444,16 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
         case None =>
           schedulePoll()
       }
+
+    case c: Confirm =>
+      log.info("Received a confirmation while nothing was unconfirmed. Offsets: {}", c.offsets)
   }
 
   // Unconfirmed message with client, buffer empty
   private def unconfirmed(state: Unconfirmed): Receive = unconfirmedCommonReceive(state) orElse {
     case poll: Poll if isCurrentPoll(poll) =>
       if (isConfirmationTimeout(state.deliveryTime)) {
-        log.info("Records timed-out awaiting confirmation, redelivering")
+        log.info("Records timed out while waiting for a confirmation. Redelivering!")
         sendRecords(state.unconfirmed)
         become(unconfirmed(state.redelivered))
       }
@@ -503,7 +498,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     case poll: Poll if isCurrentPoll(poll) =>
       // If an confirmation timeout is set and has expired, the message is redelivered
       if (isConfirmationTimeout(state.deliveryTime)) {
-        log.info("Records timed-out awaiting confirmation, redelivering")
+        log.info("Records timed out while waiting for a confirmation. Redelivering!")
         sendRecords(state.unconfirmed)
         become(bufferFull(state.redelivered))
       }
@@ -540,7 +535,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     */
   private def revokeAwait(state: StateData, offsets: Offsets): Receive = {
     case RevokeResume =>
-      log.info("RevokeResume - resuming processing post rebalance")
+      log.info("RevokeResume - Resuming processing post rebalance")
       state match {
         case u: Unconfirmed =>
           sendRecords(u.unconfirmed)
@@ -573,6 +568,9 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
         case None =>
           schedulePoll()
     }
+
+    case c: Confirm =>
+      log.info("Received a confirmation while waiting for rebalance to finish. Received offsets: {}", c.offsets)
   }
 
   private def subscribe(s: Subscribe): Unit = s match {
