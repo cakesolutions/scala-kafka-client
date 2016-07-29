@@ -12,9 +12,6 @@ import scala.reflect.runtime.universe.TypeTag
   * Helper functions for [[ConsumerRecords]].
   */
 object ConsumerRecords {
-  type Pair[Key, Value] = (Option[Key], Value)
-  type Partition = (String, Int)
-
   /**
     * Create consumer records for a single partition from values only.
     *
@@ -24,7 +21,7 @@ object ConsumerRecords {
     * The offsets will contain only one partition.
     * The partition offset will be set according to the size of the given sequence.
     */
-  def fromValues[Key >: Null : TypeTag, Value: TypeTag](partition: Partition, values: Seq[Value]): ConsumerRecords[Key, Value] =
+  def fromValues[Key >: Null : TypeTag, Value: TypeTag](partition: TopicPartition, values: Seq[Value]): ConsumerRecords[Key, Value] =
     fromPairs(partition, values.map(None -> _))
 
   /**
@@ -36,7 +33,7 @@ object ConsumerRecords {
     * The offsets will contain only one partition.
     * The partition offset will be set according to size of the given sequence.
     */
-  def fromPairs[Key >: Null : TypeTag, Value: TypeTag](partition: Partition, pairs: Seq[Pair[Key, Value]]): ConsumerRecords[Key, Value] =
+  def fromPairs[Key >: Null : TypeTag, Value: TypeTag](partition: TopicPartition, pairs: Seq[(Option[Key], Value)]): ConsumerRecords[Key, Value] =
     fromMap(Map(partition -> pairs))
 
   /**
@@ -47,18 +44,17 @@ object ConsumerRecords {
     *
     * The partition offsets will be set according to the number of messages in a partition.
     */
-  def fromMap[Key >: Null : TypeTag, Value: TypeTag](values: Map[Partition, Seq[Pair[Key, Value]]]): ConsumerRecords[Key, Value] = {
-    def createConsumerRecords(topic: String, partition: Int, pairs: Seq[Pair[Key, Value]]) =
+  def fromMap[Key >: Null : TypeTag, Value: TypeTag](values: Map[TopicPartition, Seq[(Option[Key], Value)]]): ConsumerRecords[Key, Value] = {
+    def createConsumerRecords(topicPartition: TopicPartition, pairs: Seq[(Option[Key], Value)]) =
       pairs.zipWithIndex.map {
         case ((key, value), offset) =>
-          new JConsumerRecord[Key, Value](topic, partition, offset, key.orNull, value)
+          new JConsumerRecord[Key, Value](topicPartition.topic(), topicPartition.partition(), offset, key.orNull, value)
       }
 
     val recordsMap = values.map {
-      case ((topic, partition), pairs) =>
-        val tp = new TopicPartition(topic, partition)
-        val rs = createConsumerRecords(topic, partition, pairs)
-        tp -> rs
+      case (topicPartition, pairs) =>
+        val rs = createConsumerRecords(topicPartition, pairs)
+        topicPartition -> rs
     }
 
     val offsets = Offsets(recordsMap.mapValues(_.maxBy(_.offset()).offset()))
@@ -107,10 +103,10 @@ object ConsumerRecords {
   * @tparam Key type of the key in records
   * @tparam Value type of the value in records
   */
-final case class ConsumerRecords[Key: TypeTag, Value: TypeTag](offsets: Offsets, records: JConsumerRecords[Key, Value])
-  extends TypeTagged[ConsumerRecords[Key, Value]] with HasOffsets {
-
-  import ConsumerRecords.Pair
+final case class ConsumerRecords[Key: TypeTag, Value: TypeTag](
+  offsets: Offsets,
+  records: JConsumerRecords[Key, Value]
+) extends TypeTagged[ConsumerRecords[Key, Value]] with HasOffsets {
 
   /**
     * Convert to Kafka's `ProducerRecord`s.
@@ -133,20 +129,20 @@ final case class ConsumerRecords[Key: TypeTag, Value: TypeTag](offsets: Offsets,
   /**
     * All the records as a list.
     */
-  val recordsList: List[JConsumerRecord[Key, Value]] = records.asScala.toList
+  def recordsList: List[JConsumerRecord[Key, Value]] = records.asScala.toList
 
   /**
     * All the keys and values as a sequence.
     */
-  val pairs: Seq[Pair[Key, Value]] = recordsList.map(r => (Option(r.key()), r.value()))
+  def pairs: Seq[(Option[Key], Value)] = recordsList.map(r => (Option(r.key()), r.value()))
 
   /**
     * All the values as a sequence.
     */
-  val values: Seq[Value] = recordsList.map(_.value())
+  def values: Seq[Value] = recordsList.map(_.value())
 
   /**
     * The number of records.
     */
-  val size: Int = records.count()
+  def size: Int = records.count()
 }
