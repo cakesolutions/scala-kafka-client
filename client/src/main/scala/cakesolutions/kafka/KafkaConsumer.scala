@@ -89,9 +89,11 @@ object KafkaConsumer {
     * @tparam K key deserializer type
     * @tparam V value deserializer type
     */
-  final case class Conf[K, V](props: Map[String, AnyRef],
-                        keyDeserializer: Deserializer[K],
-                        valueDeserializer: Deserializer[V]) {
+  final case class Conf[K, V](
+    props: Map[String, AnyRef],
+    keyDeserializer: Deserializer[K],
+    valueDeserializer: Deserializer[V]
+  ) {
 
     /**
       * Extend the config with additional Typesafe config.

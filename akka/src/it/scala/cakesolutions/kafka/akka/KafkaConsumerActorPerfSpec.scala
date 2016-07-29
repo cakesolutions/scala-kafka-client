@@ -5,7 +5,6 @@ import akka.testkit.TestActor.AutoPilot
 import akka.testkit.{ImplicitSender, TestActor, TestKit, TestProbe}
 import cakesolutions.kafka.akka.KafkaConsumerActor.Confirm
 import cakesolutions.kafka.akka.KafkaConsumerActor.Subscribe.AutoPartition
-import cakesolutions.kafka.testkit.TestUtils
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
@@ -15,6 +14,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Promise
+import scala.util.Random
 
 /**
   * Ad hoc performance test for validating async consumer performance.  Pass environment variable KAFKA with contact point for
@@ -52,8 +52,10 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
   def actorConf: KafkaConsumerActor.Conf =
     KafkaConsumerActor.Conf(config.getConfig("consumer"))
 
+  private def randomString: String = Random.alphanumeric.take(5).mkString("")
+
   "KafkaConsumerActor with single partition topic" should "perform" in {
-    val topic = TestUtils.randomString(5)
+    val topic = randomString
     val totalMessages = 100000
 
     val producerConf = KafkaProducer.Conf(config.getConfig("producer"), new StringSerializer, new StringSerializer)

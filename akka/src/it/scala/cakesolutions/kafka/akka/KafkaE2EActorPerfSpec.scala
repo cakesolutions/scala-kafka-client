@@ -5,7 +5,6 @@ import akka.testkit.TestActor.AutoPilot
 import akka.testkit.{ImplicitSender, TestActor, TestKit, TestProbe}
 import cakesolutions.kafka.akka.KafkaConsumerActor.Confirm
 import cakesolutions.kafka.akka.KafkaConsumerActor.Subscribe.AutoPartition
-import cakesolutions.kafka.testkit.TestUtils
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
@@ -15,6 +14,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Promise
+import scala.util.Random
 
 /**
   * Ad hoc performance test for validating async consumer performance.  Pass environment variable KAFKA with contact point for
@@ -42,6 +42,8 @@ class KafkaE2EActorPerfSpec(system_ : ActorSystem)
 
   val msg1k = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/1k.txt")).mkString
 
+  private def randomString: String = Random.alphanumeric.take(5).mkString("")
+
   val consumerConf: KafkaConsumer.Conf[String, String] = {
     KafkaConsumer.Conf(config.getConfig("consumer"),
       new StringDeserializer,
@@ -55,8 +57,8 @@ class KafkaE2EActorPerfSpec(system_ : ActorSystem)
   val producerConf = KafkaProducer.Conf(config.getConfig("producer"), new StringSerializer, new StringSerializer)
 
   "KafkaConsumerActor to KafkaProducer with async commit" should "perform" in {
-    val sourceTopic = TestUtils.randomString(5)
-    val targetTopic = TestUtils.randomString(5)
+    val sourceTopic = randomString
+    val targetTopic = randomString
     val totalMessages = 100000
 
     //For loading the source topic with test data
