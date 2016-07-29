@@ -62,8 +62,8 @@ class KafkaHealthSpec extends KafkaIntSpec {
     consumer.close()
   }
 
-  def consumerHealth = KafkaHealth.kafkaConsumerHealth(ManagementFactory.getPlatformMBeanServer, 1, 0)
-  def producerHealth = KafkaHealth.kafkaProducerHealth(ManagementFactory.getPlatformMBeanServer, 1, 0)
+  def consumerHealth = KafkaHealth.kafkaConsumerHealth(ManagementFactory.getPlatformMBeanServer)
+  def producerHealth = KafkaHealth.kafkaProducerHealth(ManagementFactory.getPlatformMBeanServer)
 
   def getConsumerHealth: Health = consumerHealth.getHealth
   def getProducerHealth: Health = producerHealth.getHealth
