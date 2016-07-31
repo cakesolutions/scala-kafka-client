@@ -8,8 +8,6 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
-
 class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_) {
 
   def this() = this(ActorSystem("KafkaProducerActorSpec"))
