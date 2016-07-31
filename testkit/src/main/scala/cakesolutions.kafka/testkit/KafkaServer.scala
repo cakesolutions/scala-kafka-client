@@ -5,9 +5,13 @@ import java.net.ServerSocket
 
 import kafka.server.{KafkaConfig, KafkaServerStartable}
 import org.apache.curator.test.TestingServer
+import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer, OffsetResetStrategy}
+import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
+import org.apache.kafka.common.serialization.{Deserializer, Serializer}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ArrayBuffer
 import scala.util.{Random, Try}
 
 object KafkaServer {
@@ -25,9 +29,25 @@ object KafkaServer {
     * Default configurations used by the Kafka test server
     */
   val defaultConfig: Map[String, String] = Map(
-    "broker.id" -> "1",
-    "replica.socket.timeout.ms" -> "1500",
-    "controlled.shutdown.enable" -> "true"
+    KafkaConfig.BrokerIdProp  -> "1",
+    KafkaConfig.ReplicaSocketTimeoutMsProp -> "1500",
+    KafkaConfig.ControlledShutdownEnableProp -> "true"
+  )
+
+  /**
+    * Default configurations used for consuming records using [[KafkaServer]].
+    */
+  val defaultConsumerConfig: Map[String, String] = Map(
+    ConsumerConfig.GROUP_ID_CONFIG -> "test",
+    ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false",
+    ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> OffsetResetStrategy.EARLIEST.toString.toLowerCase
+  )
+
+  /**
+    * Default configurations used for producing records using [[KafkaServer]].
+    */
+  val defaultProducerConfig: Map[String, String] = Map(
+    ProducerConfig.ACKS_CONFIG -> "all"
   )
 
   private def createConfig(
@@ -76,7 +96,9 @@ final class KafkaServer(
 
   private val logDir = createTempDir("kafka-local")
 
-  // Start a zookeeper server
+  private val bootstrapServerAddress = "localhost:" + kafkaPort.toString
+
+  // Zookeeper server
   private val zkServer = new TestingServer(zookeeperPort, false)
 
   // Build Kafka config with zookeeper connection
@@ -97,5 +119,83 @@ final class KafkaServer(
     kafkaServer.shutdown()
     zkServer.stop()
     Try(deleteFile(logDir)).failed.foreach(_.printStackTrace)
+  }
+
+  /**
+    * Consume records from Kafka synchronously.
+    *
+    * Calling this function block the function call for a given amount of time
+    * or until expected number of records have been received from Kafka.
+    * Runtime exception is thrown if the consumer didn't receive expected amount of records.
+    *
+    * @param topic the topic to subscribe to
+    * @param expectedNumOfRecords maximum number of messages to read from Kafka
+    * @param timeout the duration in milliseconds for consuming messages
+    * @param keyDeserializer the deserializer for the record key
+    * @param valueDeserializer the deserializer for the record value
+    * @param consumerConfig custom configurations for Kafka consumer
+    * @return a sequence of key-value pairs received from Kafka
+    */
+  def consume[Key, Value](
+    topic: String,
+    expectedNumOfRecords: Int,
+    timeout: Long,
+    keyDeserializer: Deserializer[Key],
+    valueDeserializer: Deserializer[Value],
+    consumerConfig: Map[String, String] = defaultConsumerConfig
+  ): Seq[(Option[Key], Value)] = {
+    val extendedConfig: Map[String, Object] = consumerConfig + (ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> bootstrapServerAddress)
+    val consumer = new KafkaConsumer(extendedConfig.asJava, keyDeserializer, valueDeserializer)
+
+    try {
+      consumer.subscribe(List(topic).asJava)
+
+      var total = 0
+      val collected = ArrayBuffer.empty[(Option[Key], Value)]
+      val start = System.currentTimeMillis()
+
+      while (total <= expectedNumOfRecords && System.currentTimeMillis() < start + timeout) {
+        val records = consumer.poll(100)
+        val kvs = records.asScala.map(r => (Option(r.key()), r.value()))
+        collected ++= kvs
+        total += records.count()
+      }
+
+      if (collected.size < expectedNumOfRecords) {
+        sys.error(s"Did not receive expected amount records. Expected $expectedNumOfRecords but got ${collected.size}.")
+      }
+
+      collected.toVector
+    } finally {
+      consumer.close()
+    }
+  }
+
+  /**
+    * Send records to Kafka synchronously.
+    *
+    * Calling this function will block until all records have been successfully written to Kafka.
+    *
+    * @param records the records to write to Kafka
+    * @param keySerializer the serializer for the record key
+    * @param valueSerializer the serializer for the record value
+    * @param producerConfig custom configurations for Kafka producer
+    */
+  def produce[Key, Value](
+    topic: String,
+    records: Iterable[ProducerRecord[Key, Value]],
+    keySerializer: Serializer[Key],
+    valueSerializer: Serializer[Value],
+    producerConfig: Map[String, String] = defaultProducerConfig
+  ): Unit = {
+    val extendedConfig: Map[String, Object] = producerConfig + (ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> bootstrapServerAddress)
+    val producer = new KafkaProducer(extendedConfig.asJava, keySerializer, valueSerializer)
+
+    try {
+      records.foreach { r => producer.send(r) }
+    } finally {
+      producer.flush()
+      producer.close()
+    }
   }
 }
