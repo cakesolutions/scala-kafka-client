@@ -3,13 +3,13 @@ package cakesolutions.kafka.akka
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, OneForOneStrategy, Props, SupervisorStrategy}
 import cakesolutions.kafka.akka.KafkaConsumerActor.Subscribe.{ManualOffset, ManualPartition}
 import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe, TriggerConsumerFailure, Unsubscribe}
-import cakesolutions.kafka.testkit.TestUtils
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducerRecord, KafkaTopicPartition}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
+import scala.util.Random
 
 class KafkaConsumerActorRecoverySpec(_system: ActorSystem) extends KafkaIntSpec(_system) {
 
@@ -29,7 +29,9 @@ class KafkaConsumerActorRecoverySpec(_system: ActorSystem) extends KafkaIntSpec(
       autoOffsetReset = OffsetResetStrategy.EARLIEST)
   }
 
-  private def randomTopicPartition = KafkaTopicPartition(TestUtils.randomString(5), 0)
+  private def randomString: String = Random.alphanumeric.take(5).mkString("")
+
+  private def randomTopicPartition = KafkaTopicPartition(randomString, 0)
 
   "KafkaConsumerActor with manual commit" should "recover to a commit point on resubscription" in {
     val topicPartition = randomTopicPartition

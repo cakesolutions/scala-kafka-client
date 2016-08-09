@@ -44,7 +44,7 @@ object KafkaConsumer {
                     enableAutoCommit: Boolean = true,
                     autoCommitInterval: Int = 1000,
                     sessionTimeoutMs: Int = 30000,
-                    maxPartitionFetchBytes: String = 262144.toString,
+                    maxPartitionFetchBytes: Int = ConsumerConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES,
                     maxPollRecords: Int = Integer.MAX_VALUE,
                     autoOffsetReset: OffsetResetStrategy = OffsetResetStrategy.LATEST): Conf[K, V] = {
 
@@ -54,7 +54,7 @@ object KafkaConsumer {
         ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> enableAutoCommit.toString,
         ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG -> autoCommitInterval.toString,
         ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG -> sessionTimeoutMs.toString,
-        ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG -> maxPartitionFetchBytes,
+        ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG -> maxPartitionFetchBytes.toString,
         ConsumerConfig.MAX_POLL_RECORDS_CONFIG -> maxPollRecords.toString,
         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> autoOffsetReset.toString.toLowerCase
       )
@@ -89,9 +89,11 @@ object KafkaConsumer {
     * @tparam K key deserializer type
     * @tparam V value deserializer type
     */
-  final case class Conf[K, V](props: Map[String, AnyRef],
-                        keyDeserializer: Deserializer[K],
-                        valueDeserializer: Deserializer[V]) {
+  final case class Conf[K, V](
+    props: Map[String, AnyRef],
+    keyDeserializer: Deserializer[K],
+    valueDeserializer: Deserializer[V]
+  ) {
 
     /**
       * Extend the config with additional Typesafe config.

@@ -12,7 +12,6 @@ object KafkaTopicPartition {
     */
   def apply(topic: Topic, partition: Partition): TopicPartition = new TopicPartition(topic, partition)
 
-
   /**
     * Create a Kafka topic-partition from a given Typesafe config.
     */

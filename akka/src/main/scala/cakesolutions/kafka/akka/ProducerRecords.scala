@@ -24,10 +24,12 @@ object ProducerRecords {
     values: Seq[Value],
     successResponse: Option[Any],
     failureResponse: Option[Any]
-  ): ProducerRecords[Nothing, Value] = {
-    val records = values.map(value => KafkaProducerRecord(topic, value))
-    ProducerRecords[Nothing, Value](records, successResponse, failureResponse)
-  }
+  ): ProducerRecords[Nothing, Value] =
+    ProducerRecords[Nothing, Value](
+      KafkaProducerRecord.fromValues(topic, values),
+      successResponse,
+      failureResponse
+    )
 
   /**
     * Create producer records from a single key and multiple values.
@@ -45,11 +47,12 @@ object ProducerRecords {
     values: Seq[Value],
     successResponse: Option[Any],
     failureResponse: Option[Any]
-  ): ProducerRecords[Key, Value] = {
-
-    val records = values.map(value => KafkaProducerRecord(topic, key, value))
-    ProducerRecords(records, successResponse, failureResponse)
-  }
+  ): ProducerRecords[Key, Value] =
+    ProducerRecords(
+      KafkaProducerRecord.fromValuesWithKey(topic, key, values),
+      successResponse,
+      failureResponse
+    )
 
   /**
     * Create producer records from topics and values.
@@ -63,13 +66,12 @@ object ProducerRecords {
     valuesWithTopic: Seq[(String, Value)],
     successResponse: Option[Any],
     failureResponse: Option[Any]
-  ): ProducerRecords[Nothing, Value] = {
-
-    val records = valuesWithTopic.map {
-      case (topic, value) => KafkaProducerRecord(topic, value)
-    }
-    ProducerRecords[Nothing, Value](records, successResponse)
-  }
+  ): ProducerRecords[Nothing, Value] =
+    ProducerRecords[Nothing, Value](
+      KafkaProducerRecord.fromValuesWithTopic(valuesWithTopic),
+      successResponse,
+      failureResponse
+    )
 
   /**
     * Create producer records from key-value pairs.
@@ -85,13 +87,12 @@ object ProducerRecords {
     keyValues: Seq[(Key, Value)],
     successResponse: Option[Any],
     failureResponse: Option[Any]
-  ): ProducerRecords[Key, Value] = {
-
-    val records = keyValues.map {
-      case (key, value) => KafkaProducerRecord(topic, key, value)
-    }
-    ProducerRecords(records, successResponse, failureResponse)
-  }
+  ): ProducerRecords[Key, Value] =
+    ProducerRecords(
+      KafkaProducerRecord.fromKeyValues(topic, keyValues),
+      successResponse,
+      failureResponse
+    )
 
   /**
     * Create producer records from topic, key, and value triples.
@@ -104,13 +105,12 @@ object ProducerRecords {
     keyValuesWithTopic: Seq[(String, Key, Value)],
     successResponse: Option[Any],
     failureResponse: Option[Any]
-  ): ProducerRecords[Key, Value] = {
-
-    val records = keyValuesWithTopic.map {
-      case (topic, key, value) => KafkaProducerRecord(topic, key, value)
-    }
-    ProducerRecords(records, successResponse, failureResponse)
-  }
+  ): ProducerRecords[Key, Value] =
+    ProducerRecords(
+      KafkaProducerRecord.fromKeyValuesWithTopic(keyValuesWithTopic),
+      successResponse,
+      failureResponse
+    )
 
   /**
     * Convert consumer records to key-value pairs.
@@ -124,12 +124,12 @@ object ProducerRecords {
     topic: String,
     consumerRecords: ConsumerRecords[Key, Value],
     failureResponse: Option[Any]
-  ) =
-  ProducerRecords(
-    consumerRecords.toProducerRecords(topic),
-    Some(consumerRecords.offsets),
-    Some(failureResponse)
-  )
+  ): ProducerRecords[Key, Value] =
+    ProducerRecords(
+      consumerRecords.toProducerRecords(topic),
+      Some(consumerRecords.offsets),
+      Some(failureResponse)
+    )
 
   /**
     * Create an extractor for pattern matching any value with a specific [[ProducerRecords]] type.

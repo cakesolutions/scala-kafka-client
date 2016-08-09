@@ -8,8 +8,6 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
-
 class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_) {
 
   def this() = this(ActorSystem("KafkaProducerActorSpec"))
@@ -73,26 +71,6 @@ class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     results(2) shouldEqual ((None, "bar"))
   }
 
-  private def consumeFromTopic(topic: String, expectedNumOfMessages: Int, timeout: Long) = {
-    val consumer = KafkaConsumer(consumerConf)
-    consumer.subscribe(List(topic))
-
-    var total = 0
-    var collected = Vector.empty[(Option[String], String)]
-    val start = System.currentTimeMillis()
-
-    while (total <= expectedNumOfMessages && System.currentTimeMillis() < start + timeout) {
-      val records = consumer.poll(100)
-      collected = collected ++ records.map(r => (Option(r.key()), r.value()))
-      total += records.count()
-    }
-
-    consumer.close()
-
-    if (collected.size < expectedNumOfMessages) {
-      sys.error(s"Did not receive expected amount messages. Expected $expectedNumOfMessages but got ${collected.size}.")
-    }
-
-    collected
-  }
+  private def consumeFromTopic(topic: String, expectedNumOfMessages: Int, timeout: Long) =
+    kafkaServer.consume(topic, expectedNumOfMessages, timeout, deserializer, deserializer)
 }

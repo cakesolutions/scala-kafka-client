@@ -3,7 +3,6 @@ package cakesolutions.kafka.akka
 import akka.actor.ActorSystem
 import cakesolutions.kafka.akka.KafkaConsumerActor.Subscribe.AutoPartition
 import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe, Unsubscribe}
-import cakesolutions.kafka.testkit.TestUtils
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord, KafkaTopicPartition}
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
@@ -11,6 +10,7 @@ import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializ
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
+import scala.util.Random
 
 object KafkaConsumerActorSpec {
   def kafkaProducer(kafkaHost: String, kafkaPort: Int): KafkaProducer[String, String] =
@@ -25,12 +25,14 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
 
   val log = LoggerFactory.getLogger(getClass)
 
+  private def randomString: String = Random.alphanumeric.take(5).mkString("")
+
   val consumerConfFromConfig: KafkaConsumer.Conf[String, String] = {
     KafkaConsumer.Conf(
       ConfigFactory.parseString(
         s"""
            | bootstrap.servers = "localhost:$kafkaPort",
-           | group.id = "${TestUtils.randomString(5)}"
+           | group.id = "$randomString"
            | enable.auto.commit = false
            | auto.offset.reset = "earliest"
         """.stripMargin), new StringDeserializer, new StringDeserializer)
@@ -41,7 +43,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
       new StringDeserializer,
       new StringDeserializer,
       bootstrapServers = s"localhost:$kafkaPort",
-      groupId = TestUtils.randomString(5),
+      groupId = randomString,
       enableAutoCommit = false,
       autoOffsetReset = OffsetResetStrategy.EARLIEST
     )
@@ -59,7 +61,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     ConfigFactory.parseString(
       s"""
          | bootstrap.servers = "localhost:$kafkaPort",
-         | group.id = "${TestUtils.randomString(5)}"
+         | group.id = "$randomString"
          | enable.auto.commit = false
          | auto.offset.reset = "earliest"
          | topics = ["$topic"]
@@ -74,7 +76,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     (List(consumerConfFromConfig, consumerConf) zip List(KafkaConsumerActor.Conf(), actorConfFromConfig))
       .foreach {
         case (consumerConfig, actorConf) =>
-          val topic = TestUtils.randomString(5)
+          val topic = randomString
 
           val producer = kafkaProducer("localhost", kafkaPort)
           producer.send(KafkaProducerRecord(topic, None, "value"))
@@ -93,7 +95,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
   }
 
   "KafkaConsumerActor configured via props" should "consume a sequence of messages" in {
-    val topic = TestUtils.randomString(5)
+    val topic = randomString
 
     val producer = kafkaProducer("localhost", kafkaPort)
     producer.send(KafkaProducerRecord(topic, None, "value"))
@@ -112,7 +114,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
   }
 
   "KafkaConsumerActor configured in manual partition mode" should "consume a sequence of messages" in {
-    val topic = TestUtils.randomString(5)
+    val topic = randomString
     val topicPartition = KafkaTopicPartition(topic, 0)
 
     val producer = kafkaProducer("localhost", kafkaPort)

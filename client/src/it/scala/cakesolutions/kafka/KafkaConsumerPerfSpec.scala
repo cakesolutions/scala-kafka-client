@@ -1,13 +1,13 @@
 package cakesolutions.kafka
 
 import cakesolutions.kafka.KafkaConsumer.Conf
-import cakesolutions.kafka.testkit.TestUtils
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
+import scala.util.Random
 
 /**
   * Ad hoc performance test for validating consumer performance.  Pass environment variable KAFKA with contact point for
@@ -29,8 +29,10 @@ class KafkaConsumerPerfSpec extends FlatSpecLike
       new StringDeserializer)
   )
 
+  private def randomString: String = Random.alphanumeric.take(5).mkString("")
+
   "Kafka Consumer with single partition topic" should "perform" in {
-    val topic = TestUtils.randomString(5)
+    val topic = randomString
     val producerConf = KafkaProducer.Conf(config.getConfig("producer"), new StringSerializer, new StringSerializer)
     val producer = KafkaProducer[String, String](producerConf)
 
