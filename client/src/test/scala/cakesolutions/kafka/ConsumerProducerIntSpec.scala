@@ -38,7 +38,7 @@ class ConsumerProducerIntSpec extends KafkaIntSpec {
   val producerFromDirectConfig: KafkaProducer.Conf[String, String] = {
     KafkaProducer.Conf(new StringSerializer(),
       new StringSerializer(),
-      bootstrapServers = "localhost:" + kafkaPort)
+      bootstrapServers = s"localhost:$kafkaPort")
   }
 
   val consumerFromDirectConfig: KafkaConsumer.Conf[String, String] = {

@@ -1,10 +1,8 @@
 package cakesolutions.kafka
 
-import java.util
-
 import cakesolutions.kafka.TypesafeConfigExtensions._
 import com.typesafe.config.Config
-import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetResetStrategy, KafkaConsumer ⇒ JKafkaConsumer}
+import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetResetStrategy, KafkaConsumer => JKafkaConsumer}
 import org.apache.kafka.common.serialization.Deserializer
 
 import scala.collection.JavaConversions._
@@ -21,20 +19,6 @@ object KafkaConsumer {
     * Utilities for creating Kafka consumer configurations.
     */
   object Conf {
-
-    /**
-      * Transforms the ``fun`` to be a ``Deserializer[A]``.
-      *
-      * @param fun the function that (statelessly) performs the deserialization
-      */
-    private class FunDeserializer[A](fun: Array[Byte] ⇒ A) extends Deserializer[A] {
-
-      override def configure(configs: util.Map[String, _], isKey: Boolean): Unit = { }
-
-      override def close(): Unit = { }
-
-      override def deserialize(topic: String, data: Array[Byte]): A = fun(data)
-    }
 
     /**
       * Kafka consumer configuration constructor with common configurations as parameters.
@@ -93,21 +77,6 @@ object KafkaConsumer {
       */
     def apply[K, V](config: Config, keyDeserializer: Deserializer[K], valueDeserializer: Deserializer[V]): Conf[K, V] =
       apply(config.toPropertyMap, keyDeserializer, valueDeserializer)
-
-    /**
-      * Creates a Kafka consumer configuration from a Typesafe config.
-      *
-      * The configuration names and values must match the Kafka's `ConsumerConfig` style.
-      *
-      * @param config a Typesafe config to build configuration from
-      * @param keyDeserializer deserialiser for the key: a simple function from payload => A
-      * @param valueDeserializer deserialiser for the value
-      * @tparam K key deserialiser type
-      * @tparam V value deserialiser type
-      * @return consumer configuration
-      */
-    def apply[K, V](config: Config, keyDeserializer: Deserializer[K], valueDeserializer: Array[Byte] ⇒ V): Conf[K, V] =
-      apply(config.toPropertyMap, keyDeserializer, new FunDeserializer(valueDeserializer))
   }
 
   /**
