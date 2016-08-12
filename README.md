@@ -1,4 +1,4 @@
-# Scala support for Apache Kafka's Java client library 0.9.0.x and 0.10.0.0
+# Scala support for Apache Kafka's Java client library 0.9.0.x and 0.10.0.x
 
 [![Join the chat at https://gitter.im/cakesolutions/scala-kafka-client](https://badges.gitter.im/cakesolutions/scala-kafka-client.svg)](https://gitter.im/cakesolutions/scala-kafka-client?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build status](https://travis-ci.org/cakesolutions/scala-kafka-client.svg?branch=master)](https://travis-ci.org/cakesolutions/scala-kafka-client)
@@ -37,7 +37,7 @@ For configuration and usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.8.0"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.10.0.0-RC1"
 ```
 
 ### Akka Integration
@@ -51,7 +51,7 @@ For configuration and usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.8.0"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.10.0.0-RC1"
 ```
 
 ### TestKit
@@ -65,7 +65,7 @@ For usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-testkit" % "0.8.0" % "test"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-testkit" % "0.10.0.0-RC1" % "test"
 ```
 
 ## Version Compatibility
@@ -86,12 +86,22 @@ Here is the full table of binary compatibilities between Scala Kafka client and 
 
  Scala Kafka client    | Kafka Java Driver
  --------------------- | -----------------
- 0.10.0.0 (unreleased) | 0.10.0.0
- 0.9.0.0  (unreleased) | 0.9.0.1
+ 0.10.0.0-RC1          | 0.10.0.x
+ 0.9.0.0-RC1           | 0.9.0.x
  0.8.0                 | 0.10.0.0
  0.7.0                 | 0.9.0.1
 
 ## Change log
+
+### 0.9.0.0-RC1,0.10.0.0-RC1 - 07/2016
+
+* Subscribe model changed, now supports more explicit subscription types
+* Handling of partition rebalances improved
+* ConsumerActor failure and restart mechanics improved
+* Versioning scheme changed
+* Testkit improvements
+* ConsumerActor wrapper API provided
+* Tested against Kafka 0.10.0.1
 
 ### 0.8.0 - 06/2016
 

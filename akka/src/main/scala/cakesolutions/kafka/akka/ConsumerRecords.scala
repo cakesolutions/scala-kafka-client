@@ -96,12 +96,13 @@ object ConsumerRecords {
 }
 
 /**
-  * Records consumed from Kafka by [[KafkaConsumerActor]].
+  * A batch of key-value records consumed from Kafka by the [[KafkaConsumerActor]].  The expected Key and Value types for
+  * the records are provided as type parameters.
   *
   * @param offsets the last offsets of all the subscribed partitions after consuming the records from Kafka
   * @param records the records consumed from Kafka
-  * @tparam Key type of the key in records
-  * @tparam Value type of the value in records
+  * @tparam Key Indicates the Type for the Keys in the consumed Kafka records
+  * @tparam Value Indicates the Type for the Values in the consumed Kafka records
   */
 final case class ConsumerRecords[Key: TypeTag, Value: TypeTag](
   offsets: Offsets,
