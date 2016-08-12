@@ -2,8 +2,9 @@ package cakesolutions.kafka
 
 import cakesolutions.kafka.TypesafeConfigExtensions._
 import com.typesafe.config.Config
-import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer => JKafkaConsumer, OffsetResetStrategy}
+import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetResetStrategy, KafkaConsumer => JKafkaConsumer}
 import org.apache.kafka.common.serialization.Deserializer
+
 import scala.collection.JavaConversions._
 
 /**
