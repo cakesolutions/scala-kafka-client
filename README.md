@@ -112,6 +112,14 @@ Here is the full table of binary compatibilities between Scala Kafka client and 
 
 * Supports Kafka Client 0.9.0.1
 
+## Acknowledgements
+
+<img src="https://www.yourkit.com/images/yklogo.png" align="right" />
+YourKit supports open source projects with its full-featured Java Profiler.
+YourKit, LLC is the creator of [YourKit Java Profiler](https://www.yourkit.com/java/profiler/index.jsp)
+and [YourKit .NET Profiler](https://www.yourkit.com/.net/profiler/index.jsp),
+innovative and intelligent tools for profiling Java and .NET applications.
+
 ## License
 
 Copyright 2016, Cake Solutions.
