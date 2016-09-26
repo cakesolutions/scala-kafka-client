@@ -56,6 +56,13 @@ object KafkaConsumerActor {
   final case class Confirm(offsets: Offsets, commit: Boolean = false) extends MessageApi
 
   /**
+    * Sent when the actor is backing off delivery of messages due to suspected backpressure
+    * caused by missed deliveries
+    * @param redeliveryCount the current redelivery count
+    */
+  final case class BackingOff(redeliveryCount: Int) extends MessageApi
+
+  /**
     * Actor API - Initiate consumption from Kafka or reset an already started stream.
     *
     * Subscription has three modes:
@@ -327,6 +334,8 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     val subscription: Subscribe
     val lastConfirmedOffsets: Option[Offsets]
 
+    def scheduleInterval: FiniteDuration = actorConf.scheduleInterval
+
     def toSubscribed: Subscribed = Subscribed(subscription, lastConfirmedOffsets)
 
     def advanceSubscription: Subscribe = {
@@ -350,6 +359,12 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   private sealed trait UnconfirmedRecordsStateData extends StateData {
     val unconfirmed: Records
 
+    def redeliveryCount: Int
+
+    def noBackoffNeeded(): Boolean = redeliveryCount < 2
+
+    override def scheduleInterval: FiniteDuration = redeliveryCount * super.scheduleInterval + super.scheduleInterval
+
     def isCurrentOffset(offsets: Offsets): Boolean = unconfirmed.offsets == offsets
   }
 
@@ -357,13 +372,14 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
      subscription: Subscribe,
      lastConfirmedOffsets: Option[Offsets],
      unconfirmed: Records,
-     deliveryTime: LocalDateTime = LocalDateTime.now()
+     deliveryTime: LocalDateTime = LocalDateTime.now(),
+     redeliveryCount: Int = 0
   ) extends UnconfirmedRecordsStateData {
 
     def confirm(offsets: Offsets): Subscribed = Subscribed(subscription, Some(offsets))
 
     def redelivered: Unconfirmed =
-      copy(deliveryTime = LocalDateTime.now())
+      copy(deliveryTime = LocalDateTime.now(), redeliveryCount = redeliveryCount + 1)
 
     def addToBuffer(buffered: Records): Buffered =
       Buffered(subscription, lastConfirmedOffsets, unconfirmed, deliveryTime, buffered)
@@ -374,14 +390,15 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     lastConfirmedOffsets: Option[Offsets],
     unconfirmed: Records,
     deliveryTime: LocalDateTime = LocalDateTime.now(),
-    buffered: Records
+    buffered: Records,
+    redeliveryCount: Int = 0
   ) extends UnconfirmedRecordsStateData {
 
     def confirm(offsets: Offsets): Unconfirmed =
       Unconfirmed(subscription, Some(offsets), buffered, LocalDateTime.now())
 
     def redelivered: Buffered =
-      copy(deliveryTime = LocalDateTime.now())
+      copy(deliveryTime = LocalDateTime.now(), redeliveryCount = redeliveryCount + 1)
   }
 
   override def receive = unsubscribed
@@ -442,7 +459,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
           pollImmediate()
 
         case None =>
-          schedulePoll()
+          schedulePoll(stateData = state)
       }
 
     case c: Confirm =>
@@ -453,8 +470,14 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   private def unconfirmed(state: Unconfirmed): Receive = unconfirmedCommonReceive(state) orElse {
     case poll: Poll if isCurrentPoll(poll) =>
       if (isConfirmationTimeout(state.deliveryTime)) {
-        log.info("Records timed out while waiting for a confirmation. Redelivering!")
-        sendRecords(state.unconfirmed)
+        log.info("In unconfirmed: records timed out while waiting for a confirmation.")
+        if (state.noBackoffNeeded()) {
+          log.info("In unconfirmed: redelivering.")
+          sendRecords(state.unconfirmed)
+        } else {
+          log.info("In unconfirmed: backing off.")
+          downstreamActor ! BackingOff(state.redeliveryCount)
+        }
         become(unconfirmed(state.redelivered))
       }
 
@@ -462,15 +485,15 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       // we don't poll to allow the unconfirmed to flush through, prior to the rebalance completion.
       if (trackPartitions.isRevoked) {
         log.info("Partitions revoked. Not polling.")
-        schedulePoll()
+        schedulePoll(stateData = state)
       } else {
         pollKafka(state, poll.timeout) match {
           case Some(records) =>
             log.debug("To Buffer Full state")
             become(bufferFull(state.addToBuffer(records)))
-            schedulePoll()
+            schedulePoll(stateData = state)
           case None =>
-            schedulePoll()
+            schedulePoll(stateData = state)
         }
       }
 
@@ -489,7 +512,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
         case Failure(_) =>
           log.debug("To RevokeAwait State")
           become(revokeAwait(updatedState, offsets))
-          schedulePoll()
+          schedulePoll(stateData = state)
       }
   }
 
@@ -498,12 +521,18 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     case poll: Poll if isCurrentPoll(poll) =>
       // If an confirmation timeout is set and has expired, the message is redelivered
       if (isConfirmationTimeout(state.deliveryTime)) {
-        log.info("Records timed out while waiting for a confirmation. Redelivering!")
-        sendRecords(state.unconfirmed)
+        log.info("In bufferFull: records timed out while waiting for a confirmation.")
+        if (state.noBackoffNeeded()) {
+          log.info("In bufferFull: redelivering.")
+          sendRecords(state.unconfirmed)
+        } else {
+          log.info("In bufferFull: backing off.")
+          downstreamActor ! BackingOff(state.redeliveryCount)
+        }
         become(bufferFull(state.redelivered))
       }
-      log.debug(s"Buffer is full. Not gonna poll.")
-      schedulePoll()
+      log.debug(s"Buffer is full. Not going to poll.")
+      schedulePoll(stateData = state)
 
     // The next message can be sent immediately from the buffer.  A poll to Kafka for new messages for the buffer also happens immediately.
     case Confirm(offsets, commit) if state.isCurrentOffset(offsets) =>
@@ -523,7 +552,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
         case Failure(_) =>
           log.debug("To RevokeAwait State")
           become(revokeAwait(updatedState, offsets))
-          schedulePoll()
+          schedulePoll(stateData = state)
       }
   }
 
@@ -563,10 +592,10 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
             case b: Buffered =>
               throw consumerFailure(b)
           }
-          schedulePoll()
+          schedulePoll(stateData = state)
 
         case None =>
-          schedulePoll()
+          schedulePoll(stateData = state)
     }
 
     case c: Confirm =>
@@ -671,7 +700,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   private def consumerFailure(state: StateData, cause: Exception = null) =
     ConsumerException(Some(state.advanceSubscription), cause = cause)
 
-  private def schedulePoll(): Unit = schedulePoll(actorConf.scheduleInterval)
+  private def schedulePoll(stateData: StateData): Unit = schedulePoll(stateData.scheduleInterval)
 
   private def currentConsumerOffsets: Offsets = {
     val offsetsMap = consumer.assignment()
