@@ -33,21 +33,23 @@ object KafkaConsumer {
       * @param sessionTimeoutMs the timeout used to detect failures when using Kafka's group management facilities
       * @param maxPartitionFetchBytes the maximum amount of data per-partition the server will return
       * @param maxPollRecords the maximum number of records returned in a single call to poll()
+      * @param maxPollInterval the maximum delay between invocations of poll() when using consumer group management
       * @param autoOffsetReset what to do when there is no initial offset in Kafka or if the current offset does not exist any more on the server
       * @tparam K key deserialiser type
       * @tparam V value deserialiser type
       * @return consumer configuration consisting of all the given values
       */
     def apply[K, V](keyDeserializer: Deserializer[K],
-                    valueDeserializer: Deserializer[V],
-                    bootstrapServers: String = "localhost:9092",
-                    groupId: String,
-                    enableAutoCommit: Boolean = true,
-                    autoCommitInterval: Int = 1000,
-                    sessionTimeoutMs: Int = 30000,
-                    maxPartitionFetchBytes: Int = ConsumerConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES,
-                    maxPollRecords: Int = Integer.MAX_VALUE,
-                    autoOffsetReset: OffsetResetStrategy = OffsetResetStrategy.LATEST): Conf[K, V] = {
+      valueDeserializer: Deserializer[V],
+      bootstrapServers: String = "localhost:9092",
+      groupId: String,
+      enableAutoCommit: Boolean = true,
+      autoCommitInterval: Int = 1000,
+      sessionTimeoutMs: Int = 10000,
+      maxPartitionFetchBytes: Int = ConsumerConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES,
+      maxPollRecords: Int = 500,
+      maxPollInterval: Int = 300000,
+      autoOffsetReset: OffsetResetStrategy = OffsetResetStrategy.LATEST): Conf[K, V] = {
 
       val configMap = Map[String, AnyRef](
         ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> bootstrapServers,
@@ -57,6 +59,7 @@ object KafkaConsumer {
         ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG -> sessionTimeoutMs.toString,
         ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG -> maxPartitionFetchBytes.toString,
         ConsumerConfig.MAX_POLL_RECORDS_CONFIG -> maxPollRecords.toString,
+        ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG -> maxPollInterval.toString,
         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> autoOffsetReset.toString.toLowerCase
       )
 

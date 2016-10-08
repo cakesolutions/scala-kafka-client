@@ -1,4 +1,5 @@
 lazy val commonSettings = Seq(
+  resolvers += "Apache Staging" at "https://repository.apache.org/content/groups/staging/",
   organization := "net.cakesolutions",
   scalaVersion := "2.11.8",
   publishMavenStyle := true,
