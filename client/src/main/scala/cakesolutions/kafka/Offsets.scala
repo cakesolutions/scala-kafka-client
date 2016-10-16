@@ -1,4 +1,4 @@
-package cakesolutions.kafka.akka
+package cakesolutions.kafka
 
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
@@ -17,7 +17,6 @@ object Offsets {
 /**
   * Map of partitions to partition offsets.
   *
-  * [[KafkaConsumerActor]] sends [[Offsets]] along with a batch of data related to the offsets.
   * The offsets in this case represent the point the Kafka consumer reached after consuming the batch.
   * Because the offsets are unique to the consumed batch,
   * the offsets are also used as a confirmation key for confirming that the batch has been fully processed.

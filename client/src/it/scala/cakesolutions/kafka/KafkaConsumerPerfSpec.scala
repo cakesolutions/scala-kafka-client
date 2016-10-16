@@ -6,7 +6,6 @@ import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializ
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
 import scala.util.Random
 
 /**
@@ -42,7 +41,7 @@ class KafkaConsumerPerfSpec extends FlatSpecLike
     producer.flush()
     log.info("Delivered 100000 msg to topic {}", topic)
 
-    consumer.subscribe(List(topic))
+    consumer.subscribe(Subscribe.ManualPartition.withTopics(topic))
 
     var start = 0l
 

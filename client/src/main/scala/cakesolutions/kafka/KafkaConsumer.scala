@@ -2,10 +2,13 @@ package cakesolutions.kafka
 
 import cakesolutions.kafka.TypesafeConfigExtensions._
 import com.typesafe.config.Config
-import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetResetStrategy, KafkaConsumer => JKafkaConsumer}
+import org.apache.kafka.clients.consumer.internals.NoOpConsumerRebalanceListener
+import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRebalanceListener, ConsumerRecords, OffsetResetStrategy, KafkaConsumer => JKafkaConsumer}
+import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.Deserializer
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
+import scala.util.Try
 
 /**
   * Utilities for creating a Kafka consumer.
@@ -38,16 +41,18 @@ object KafkaConsumer {
       * @tparam V value deserialiser type
       * @return consumer configuration consisting of all the given values
       */
-    def apply[K, V](keyDeserializer: Deserializer[K],
-                    valueDeserializer: Deserializer[V],
-                    bootstrapServers: String = "localhost:9092",
-                    groupId: String,
-                    enableAutoCommit: Boolean = true,
-                    autoCommitInterval: Int = 1000,
-                    sessionTimeoutMs: Int = 30000,
-                    maxPartitionFetchBytes: Int = ConsumerConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES,
-                    maxPollRecords: Int = Integer.MAX_VALUE,
-                    autoOffsetReset: OffsetResetStrategy = OffsetResetStrategy.LATEST): Conf[K, V] = {
+    def apply[K, V](
+      keyDeserializer: Deserializer[K],
+      valueDeserializer: Deserializer[V],
+      bootstrapServers: String = "localhost:9092",
+      groupId: String,
+      enableAutoCommit: Boolean = true,
+      autoCommitInterval: Int = 1000,
+      sessionTimeoutMs: Int = 30000,
+      maxPartitionFetchBytes: Int = ConsumerConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES,
+      maxPollRecords: Int = Integer.MAX_VALUE,
+      autoOffsetReset: OffsetResetStrategy = OffsetResetStrategy.LATEST
+    ): Conf[K, V] = {
 
       val configMap = Map[String, AnyRef](
         ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> bootstrapServers,
@@ -104,12 +109,6 @@ object KafkaConsumer {
       copy(props = props ++ config.toPropertyMap)
 
     /**
-      * Is auto commit mode in use.
-      */
-    def isAutoCommitMode: Boolean =
-      props.getOrElse(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "").toString.equals("true")
-
-    /**
       * Extend the configuration with a single key-value pair.
       */
     def withProperty(key: String, value: AnyRef) =
@@ -124,6 +123,95 @@ object KafkaConsumer {
     * @tparam V value serialiser type
     * @return Kafka consumer client
     */
-  def apply[K, V](conf: Conf[K, V]): JKafkaConsumer[K, V] =
-    new JKafkaConsumer[K, V](conf.props, conf.keyDeserializer, conf.valueDeserializer)
+  def apply[K, V](conf: Conf[K, V]): KafkaConsumer[K, V] =
+    new KafkaConsumer(new JKafkaConsumer[K, V](conf.props.asJava, conf.keyDeserializer, conf.valueDeserializer))
+}
+
+final class KafkaConsumer[K, V](val consumer: JKafkaConsumer[K, V]) {
+
+  /**
+    * Unsubscribe from topics currently subscribed to.
+    *
+    * This also clears any directly assigned partitions.
+    */
+  def unsubscribe(): Unit = consumer.unsubscribe()
+
+  /**
+    * Subscribe to Kafka using given subscription strategy.
+    *
+    * @param sub subscription mode to subscribe with
+    * @param rebalanceListener listener for consumer rebalances. Only used with auto-partition mode.
+    */
+  def subscribe(sub: Subscribe, rebalanceListener: ConsumerRebalanceListener = new NoOpConsumerRebalanceListener): Unit =
+    sub match {
+      case Subscribe.AutoPartition(topics) =>
+        consumer.subscribe(topics.toList.asJava, rebalanceListener)
+
+      case Subscribe.ManualPartition(topicPartitions) =>
+        consumer.assign(topicPartitions.toList.asJava)
+
+      case Subscribe.ManualOffset(offsets) =>
+        consumer.assign(offsets.topicPartitions.asJava)
+        seekOffsets(offsets)
+    }
+
+  /**
+    * Seek consumer to use given topic partitions.
+    */
+  def seekOffsets(offsets: Offsets): Unit =
+    offsets.offsetsMap.foreach {
+      case (key, value) => consumer.seek(key, value)
+    }
+
+  /**
+    * Commit given offsets synchronously.
+    */
+  def commitSync(offsets: Offsets): Unit =
+    consumer.commitSync(offsets.toCommitMap.asJava)
+
+
+  /**
+    * Commit offsets for the last consumed records synchronously.
+    */
+  def commitSyncLast(): Unit =
+    consumer.commitSync()
+
+  /**
+    * Commit offsets asynchronously
+    */
+  def commitAsync(offsets: Offsets, callback: Try[Offsets] => Unit): Unit =
+    consumer.commitAsync(offsets.toCommitMap.asJava, OffsetCommitCallback(callback))
+
+  /**
+    * Commit offsets for the last consumed records asynchronously.
+    */
+  def commitAsyncLast(callback: Try[Offsets] => Unit): Unit =
+    consumer.commitAsync(OffsetCommitCallback(callback))
+
+  /**
+    * Get the offsets for given partitions.
+    */
+  def offsets(partitions: Iterable[TopicPartition]): Offsets =
+    Offsets(
+      partitions.map(p => p -> consumer.position(p)).toMap
+    )
+
+  /**
+    * Get the current consumer offsets.
+    */
+  def offsets: Offsets = offsets(consumer.assignment().asScala)
+
+  /**
+    * Close consumer.
+    */
+  def close(): Unit = consumer.close()
+
+  /**
+    * Fetch data from subscribed topics/partitions.
+    *
+    * @param timeout the time in milliseconds to wait for incoming data
+    * @return consumer records fetched from Kafka
+    */
+  def poll(timeout: Long = 0L): ConsumerRecords[K, V] =
+    consumer.poll(timeout)
 }

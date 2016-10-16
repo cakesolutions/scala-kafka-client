@@ -4,14 +4,12 @@ import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 
 import akka.actor._
-import cakesolutions.kafka.KafkaConsumer
+import cakesolutions.kafka.{KafkaConsumer, Offsets, Subscribe}
 import com.typesafe.config.Config
 import org.apache.kafka.clients.consumer.CommitFailedException
-import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.serialization.Deserializer
 
-import scala.collection.JavaConversions._
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe.TypeTag
 import scala.util.{Failure, Success, Try}
@@ -29,8 +27,8 @@ import scala.util.{Failure, Success, Try}
   * By including the received offsets in the confirmation message,
   * we avoid accidentally confirming batches that have not been fully processed yet.
   *
-  * Actor's Kafka subscriptions can be controlled via the Actor Messages:
-  * [[KafkaConsumerActor.Subscribe]] and [[KafkaConsumerActor.Unsubscribe]].
+  * Actor's Kafka subscriptions can be controlled via messages:
+  * [[Subscribe]] and [[KafkaConsumerActor.Unsubscribe]].
   *
   * For cases where there is Kafka or configuration issues, the Actor's supervisor strategy is applied.
   */
@@ -54,56 +52,6 @@ object KafkaConsumerActor {
     * @param commit  true to commit offsets
     */
   final case class Confirm(offsets: Offsets, commit: Boolean = false) extends MessageApi
-
-  /**
-    * Actor API - Initiate consumption from Kafka or reset an already started stream.
-    *
-    * Subscription has three modes:
-    *
-    *  - Auto partition: provide the topics to subscribe to, and let Kafka manage partition delegation between consumers.
-    *  - Manual partition: provide the topics with partitions, and let Kafka decide the point where to begin consuming messages from.
-    *  - Manual offset: provide the topics with partitions and offsets for precise control.
-    */
-  sealed trait Subscribe extends MessageApi
-
-  object Subscribe {
-
-    /**
-      * Subscribe to topics in auto assigned partition mode.
-      *
-      * In auto assigned partition mode, the consumer partitions are managed by Kafka.
-      * This means that they can get automatically rebalanced with other consumers consuming from the same topic.
-      *
-      * The message consumption starting point will be decided by offset reset strategy in the consumer configuration.
-      *
-      * @param topics the topics to subscribe to start consuming from
-      */
-    final case class AutoPartition(topics: Iterable[String]) extends Subscribe
-
-    /**
-      * Subscribe to topics in manually assigned partition mode.
-      *
-      * In manually assigned partition mode, the consumer partitions are managed by the client.
-      * This means that Kafka will not be automatically rebalance the partitions when new consumers appear in the consumer group.
-      *
-      * The message consumption starting point will be decided by offset reset strategy in the consumer configuration.
-      *
-      * @param topicPartitions the topics with partitions to start consuming from
-      */
-    final case class ManualPartition(topicPartitions: Iterable[TopicPartition]) extends Subscribe
-
-    /**
-      * Subscribe to topics in manually assigned partition mode, and set the offsets to consume from.
-      *
-      * In manually assigned partition mode, the consumer partitions are managed by the client.
-      * This means that Kafka will not be automatically rebalance the partitions when new consumers appear in the consumer group.
-      *
-      * In addition to manually assigning the partitions, the partition offsets will be set to start from the given offsets.
-      *
-      * @param offsets the topics with partitions and offsets to start consuming from
-      */
-    final case class ManualOffset(offsets: Offsets) extends Subscribe
-  }
 
   /**
     * Actor API - Unsubscribe from Kafka.
@@ -276,7 +224,7 @@ object KafkaConsumerActor {
   * Classic, non-Akka API for interacting with [[KafkaConsumerActor]].
   */
 final class KafkaConsumerActor private (val ref: ActorRef) {
-  import KafkaConsumerActor.{Confirm, Subscribe, Unsubscribe}
+  import KafkaConsumerActor.{Confirm, Unsubscribe}
 
   /**
     * Initiate consumption from Kafka or reset an already started stream.
@@ -329,14 +277,10 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
 
     def toSubscribed: Subscribed = Subscribed(subscription, lastConfirmedOffsets)
 
-    def advanceSubscription: Subscribe = {
-      def advance(offsets: Offsets) = subscription match {
-        case _: Subscribe.ManualOffset => Subscribe.ManualOffset(offsets)
-        case _: Subscribe.ManualPartition => Subscribe.ManualOffset(offsets)
-        case s: Subscribe.AutoPartition => s
-      }
-      lastConfirmedOffsets.map(advance).getOrElse(subscription)
-    }
+    def advanceSubscription: Subscribe =
+      lastConfirmedOffsets
+        .map(subscription.advance)
+        .getOrElse(subscription)
   }
 
   private final case class Subscribed(
@@ -573,19 +517,9 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       log.info("Received a confirmation while waiting for rebalance to finish. Received offsets: {}", c.offsets)
   }
 
-  private def subscribe(s: Subscribe): Unit = s match {
-    case Subscribe.AutoPartition(topics) =>
-      log.info(s"Subscribing in auto partition assignment mode to topics [{}].", topics.mkString(","))
-      consumer.subscribe(topics.toList, trackPartitions)
-
-    case Subscribe.ManualPartition(topicPartitions) =>
-      log.info("Subscribing in manual partition assignment mode to topic/partitions [{}].", topicPartitions.mkString(","))
-      consumer.assign(topicPartitions.toList)
-
-    case Subscribe.ManualOffset(offsets) =>
-      log.info("Subscribing in manual partition assignment mode to partitions with offsets [{}]", offsets)
-      consumer.assign(offsets.topicPartitions.toList)
-      seekOffsets(offsets)
+  private def subscribe(s: Subscribe): Unit = {
+    log.info("Subscription in mode: {}", s)
+    consumer.subscribe(s)
   }
 
   // The client is usually misusing the Consumer if incorrect Confirm offsets are provided
@@ -593,13 +527,6 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     subscribedCommonReceive(state) orElse {
       case Confirm(offsets, _) if !state.isCurrentOffset(offsets) =>
         log.warning("Received confirmation for unexpected offsets: {}", offsets)
-    }
-
-  private def seekOffsets(offsets: Offsets): Unit =
-    offsets.offsetsMap.foreach {
-      case (key, value) =>
-        log.info(s"Seek to $key, $value")
-        consumer.seek(key, value)
     }
 
   private def sendRecords(records: Records): Unit = {
@@ -616,10 +543,10 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       log.debug("Poll Kafka for {} milliseconds", timeout)
       val rs = consumer.poll(timeout)
       log.debug("Poll Complete!")
-      if (rs.count() > 0)
-        Some(ConsumerRecords(currentConsumerOffsets, rs))
-      else
+      if (rs.isEmpty)
         None
+      else
+        Some(ConsumerRecords(consumer.offsets, rs))
     }
 
   private def tryWithConsumer[T](state: StateData)(effect: => Option[T]): Option[T] = {
@@ -638,7 +565,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   private def commitOffsets(state: StateData, offsets: Offsets): Try[Unit] = {
     log.debug("Committing offsets. {}", offsets)
 
-    val currentOffsets = currentConsumerOffsets
+    val currentOffsets = consumer.offsets
     val currentPartitions = currentOffsets.topicPartitions
     val offsetsToCommit = offsets.keepOnly(currentPartitions)
     val nonCommittedOffsets = offsets.remove(currentPartitions)
@@ -653,7 +580,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
 
   private def tryCommit(offsetsToCommit: Offsets, state: StateData): Try[Unit] = {
     try {
-      consumer.commitSync(offsetsToCommit.toCommitMap)
+      consumer.commitSync(offsetsToCommit)
       Success({})
     } catch {
       case we: WakeupException =>
@@ -668,17 +595,11 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     }
   }
 
-  private def consumerFailure(state: StateData, cause: Exception = null) =
+  private def consumerFailure(state: StateData, cause: Exception = null) = {
     ConsumerException(Some(state.advanceSubscription), cause = cause)
+  }
 
   private def schedulePoll(): Unit = schedulePoll(actorConf.scheduleInterval)
-
-  private def currentConsumerOffsets: Offsets = {
-    val offsetsMap = consumer.assignment()
-      .map(p => p -> consumer.position(p))
-      .toMap
-    Offsets(offsetsMap)
-  }
 
   override def postRestart(reason: Throwable): Unit = {
     super.postRestart(reason)

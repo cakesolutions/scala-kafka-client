@@ -3,11 +3,12 @@ package cakesolutions.kafka.akka
 import java.util.{Collection => JCollection}
 
 import akka.actor.ActorRef
-import org.apache.kafka.clients.consumer.{ConsumerRebalanceListener, KafkaConsumer}
+import cakesolutions.kafka.{KafkaConsumer, Offsets}
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener
 import org.apache.kafka.common.TopicPartition
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 private object TrackPartitions {
   private val log = LoggerFactory.getLogger(getClass)
@@ -27,7 +28,7 @@ private final class TrackPartitions(consumer: KafkaConsumer[_, _], ref: ActorRef
 
   import TrackPartitions.log
 
-  private var _offsets = Map[TopicPartition, Long]()
+  private var _offsets = Offsets.empty
   private var _revoked = false
 
   override def onPartitionsRevoked(partitions: JCollection[TopicPartition]): Unit = {
@@ -36,8 +37,8 @@ private final class TrackPartitions(consumer: KafkaConsumer[_, _], ref: ActorRef
     _revoked = true
 
     // If partitions have been revoked, keep a record of our current position with them.
-    if (partitions.nonEmpty) {
-      _offsets = partitions.map(partition => partition -> consumer.position(partition)).toMap
+    if (!partitions.isEmpty) {
+      _offsets = consumer.offsets(partitions.asScala)
     }
   }
 
@@ -51,24 +52,18 @@ private final class TrackPartitions(consumer: KafkaConsumer[_, _], ref: ActorRef
     // If all of our previous partition assignments are present in the new assignment, we can continue uninterrupted by
     // seeking to the required offsets.  If we have lost any partition assignments (i.e to another group member), we
     // need to clear down the consumer actor state and proceed from the Kafka commit points.
-    val allExisting = _offsets.forall { case (partition, _) => partitions.contains(partition) }
+    val allExisting = _offsets.topicPartitions.forall { partition => partitions.contains(partition) }
 
     if (!allExisting) {
       ref ! KafkaConsumerActor.RevokeReset
     } else {
-      for {
-        partition <- partitions
-        offset <- _offsets.get(partition)
-      } {
-        log.info(s"Seeking partition: [{}] to offset [{}]",  partition, offset)
-        consumer.seek(partition, offset)
-      }
+      consumer.seekOffsets(_offsets.keepOnly(partitions.asScala.toSet))
       ref ! KafkaConsumerActor.RevokeResume
     }
   }
 
   def reset(): Unit = {
-    _offsets = Map.empty
+    _offsets = Offsets.empty
     _revoked = false
   }
 }

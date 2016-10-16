@@ -2,13 +2,13 @@ package cakesolutions.kafka
 
 import cakesolutions.kafka.TypesafeConfigExtensions._
 import com.typesafe.config.Config
-import org.apache.kafka.clients.producer.{Callback, ProducerConfig, ProducerRecord, RecordMetadata, KafkaProducer => JKafkaProducer}
+import org.apache.kafka.clients.producer.{ProducerConfig, ProducerRecord, RecordMetadata, KafkaProducer => JKafkaProducer}
 import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.serialization.Serializer
 
 import scala.collection.JavaConversions._
-import scala.concurrent.{Future, Promise}
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.util.Try
 
 /**
   * Utilities for creating a Kafka producer.
@@ -38,14 +38,16 @@ object KafkaProducer {
       * @tparam V value serialiser type
       * @return producer configuration consisting of all the given values
       */
-    def apply[K, V](keySerializer: Serializer[K],
-                    valueSerializer: Serializer[V],
-                    bootstrapServers: String = "localhost:9092",
-                    acks: String = "all",
-                    retries: Int = 0,
-                    batchSize: Int = 16384,
-                    lingerMs: Int = 1,
-                    bufferMemory: Int = 33554432): Conf[K, V] = {
+    def apply[K, V](
+      keySerializer: Serializer[K],
+      valueSerializer: Serializer[V],
+      bootstrapServers: String = "localhost:9092",
+      acks: String = "all",
+      retries: Int = 0,
+      batchSize: Int = 16384,
+      lingerMs: Int = 1,
+      bufferMemory: Int = 33554432
+    ): Conf[K, V] = {
 
       val configMap = Map[String, AnyRef](
         ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> bootstrapServers,
@@ -86,9 +88,11 @@ object KafkaProducer {
     * @tparam K key serializer type
     * @tparam V value serializer type
     */
-  final case class Conf[K, V](props: Map[String, AnyRef],
-                        keySerializer: Serializer[K],
-                        valueSerializer: Serializer[V]) {
+  final case class Conf[K, V](
+    props: Map[String, AnyRef],
+    keySerializer: Serializer[K],
+    valueSerializer: Serializer[V]
+  ) {
 
     /**
       * Extend the config with additional Typesafe config.
@@ -142,16 +146,26 @@ object KafkaProducer {
 final class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) {
 
   /**
-    * Asynchronously send a record to a topic, providing a `Future` to contain the result of the operation.
+    * Asynchronously send a record.
     *
-    * @param record `ProducerRecord` to sent
-    * @return the results of the sent records as a `Future`
+    * @param record `ProducerRecord` to send
+    * @return the result of the sent record as a `Future`
     */
   def send(record: ProducerRecord[K, V]): Future[RecordMetadata] = {
     val promise = Promise[RecordMetadata]()
-    producer.send(record, producerCallback(promise))
+    producer.send(record, WriteCallback(promise))
     promise.future
   }
+
+  /**
+    * Sends multiple records asynchronously.
+    *
+    * @param records `ProducerRecords` to send
+    * @param ec execution context used for combining send results together
+    * @return the results of the sent records as a `Future`
+    */
+  def sendMany(records: Iterable[ProducerRecord[K, V]])(implicit ec: ExecutionContext): Future[Iterable[RecordMetadata]] =
+    Future.traverse(records)(send)
 
   /**
     * Asynchronously send a record to a topic and invoke the provided callback when the send has been acknowledged.
@@ -160,7 +174,7 @@ final class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) {
     * @param callback callback that is called when the send has been acknowledged
     */
   def sendWithCallback(record: ProducerRecord[K, V])(callback: Try[RecordMetadata] => Unit): Unit = {
-    producer.send(record, producerCallback(callback))
+    producer.send(record, WriteCallback(callback))
   }
 
   /**
@@ -184,20 +198,6 @@ final class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) {
     *
     * @see Java `KafkaProducer` [[http://kafka.apache.org/090/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#close() close]] method
     */
-  def close() =
+  def close(): Unit =
     producer.close()
-
-  private def producerCallback(promise: Promise[RecordMetadata]): Callback =
-    producerCallback(result => promise.complete(result))
-
-  private def producerCallback(callback: Try[RecordMetadata] => Unit): Callback = {
-    new Callback {
-      override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit = {
-        val result =
-          if (exception == null) Success(metadata)
-          else Failure(exception)
-        callback(result)
-      }
-    }
-  }
 }

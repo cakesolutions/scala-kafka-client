@@ -3,7 +3,6 @@ package cakesolutions.kafka
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
 import scala.util.Random
 
 class KafkaConsumerSpec extends KafkaIntSpec {
@@ -35,7 +34,7 @@ class KafkaConsumerSpec extends KafkaIntSpec {
 
     val producer = KafkaProducer(producerConfig)
     val consumer = KafkaConsumer(consumerConfig)
-    consumer.subscribe(List(topic))
+    consumer.subscribe(Subscribe.ManualPartition.withTopics(topic))
 
     val records1 = consumer.poll(1000)
     records1.count() shouldEqual 0

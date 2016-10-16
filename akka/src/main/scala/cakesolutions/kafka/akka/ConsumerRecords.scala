@@ -1,6 +1,6 @@
 package cakesolutions.kafka.akka
 
-import cakesolutions.kafka.KafkaProducerRecord
+import cakesolutions.kafka.{HasOffsets, KafkaProducerRecord, Offsets}
 import org.apache.kafka.clients.consumer.{ConsumerRecord => JConsumerRecord, ConsumerRecords => JConsumerRecords}
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition

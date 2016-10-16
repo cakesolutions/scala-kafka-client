@@ -5,7 +5,6 @@ import org.apache.kafka.clients.consumer.{ConsumerRecords, OffsetResetStrategy}
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
 import scala.util.Random
 
 class ConsumerProducerIntSpec extends KafkaIntSpec {
@@ -64,7 +63,7 @@ class ConsumerProducerIntSpec extends KafkaIntSpec {
 
     val producer = KafkaProducer(producerFromDirectConfig)
     val consumer = KafkaConsumer(consumerFromDirectConfig)
-    consumer.subscribe(List(topic))
+    consumer.subscribe(Subscribe.ManualPartition.withTopics(topic))
 
     val records1 = consumer.poll(1000)
     records1.count() shouldEqual 0
@@ -91,7 +90,7 @@ class ConsumerProducerIntSpec extends KafkaIntSpec {
     producer.send(KafkaProducerRecord(topic, Some("key"), "value"))
     producer.flush()
 
-    consumer.subscribe(List(topic))
+    consumer.subscribe(Subscribe.ManualPartition.withTopics(topic))
 
     val records2: ConsumerRecords[String, String] = consumer.poll(1000)
     records2.count() shouldEqual 1
@@ -110,7 +109,7 @@ class ConsumerProducerIntSpec extends KafkaIntSpec {
 
     def consumeAndCount[K, V](conf: KafkaConsumer.Conf[K, V]): Int = {
       val consumer = KafkaConsumer(conf)
-      consumer.subscribe(List(topic))
+      consumer.subscribe(Subscribe.ManualPartition.withTopics(topic))
 
       val count = (1 to 30).map { _ =>
         consumer.poll(1000).count
