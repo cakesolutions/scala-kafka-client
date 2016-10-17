@@ -105,7 +105,7 @@ object ProducerRecords {
     keyValuesWithTopic: Seq[(String, Option[Key], Value)],
     successResponse: Option[Any],
     failureResponse: Option[Any]
-  ): ProducerRecords[Option[Key], Value] =
+  ): ProducerRecords[Key, Value] =
     ProducerRecords(
       KafkaProducerRecord.fromKeyValuesWithTopic(keyValuesWithTopic),
       successResponse,
