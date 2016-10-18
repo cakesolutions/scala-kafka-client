@@ -1,6 +1,6 @@
 import Dependencies._
 
-name := "examples"
+name := "scala-kafka-client-examples"
 
 Defaults.itSettings
 
