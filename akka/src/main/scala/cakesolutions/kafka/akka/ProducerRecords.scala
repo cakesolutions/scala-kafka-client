@@ -43,7 +43,7 @@ object ProducerRecords {
     */
   def fromValuesWithKey[Key: TypeTag, Value: TypeTag](
     topic: String,
-    key: Key,
+    key: Option[Key],
     values: Seq[Value],
     successResponse: Option[Any],
     failureResponse: Option[Any]
@@ -84,7 +84,7 @@ object ProducerRecords {
     */
   def fromKeyValues[Key: TypeTag, Value: TypeTag](
     topic: String,
-    keyValues: Seq[(Key, Value)],
+    keyValues: Seq[(Option[Key], Value)],
     successResponse: Option[Any],
     failureResponse: Option[Any]
   ): ProducerRecords[Key, Value] =
@@ -102,7 +102,7 @@ object ProducerRecords {
     * @param failureResponse optional response message to the sender on failed delivery
     */
   def fromKeyValuesWithTopic[Key: TypeTag, Value: TypeTag](
-    keyValuesWithTopic: Seq[(String, Key, Value)],
+    keyValuesWithTopic: Seq[(String, Option[Key], Value)],
     successResponse: Option[Any],
     failureResponse: Option[Any]
   ): ProducerRecords[Key, Value] =

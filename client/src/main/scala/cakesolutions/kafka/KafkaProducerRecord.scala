@@ -127,7 +127,7 @@ object KafkaProducerRecord {
     * @param key key of the records
     * @param values values of the records
     */
-  def fromValuesWithKey[Key, Value](topic: String, key: Key, values: Seq[Value]): Seq[ProducerRecord[Key, Value]] =
+  def fromValuesWithKey[Key, Value](topic: String, key: Option[Key], values: Seq[Value]): Seq[ProducerRecord[Key, Value]] =
     values.map(value => KafkaProducerRecord(topic, key, value))
 
   /**
@@ -148,7 +148,7 @@ object KafkaProducerRecord {
     * @param topic topic to write the records to
     * @param keyValues a sequence of key and value pairs
     */
-  def fromKeyValues[Key, Value](topic: String, keyValues: Seq[(Key, Value)]): Seq[ProducerRecord[Key, Value]] =
+  def fromKeyValues[Key, Value](topic: String, keyValues: Seq[(Option[Key], Value)]): Seq[ProducerRecord[Key, Value]] =
     keyValues.map {
       case (key, value) => KafkaProducerRecord(topic, key, value)
     }
@@ -158,7 +158,7 @@ object KafkaProducerRecord {
     *
     * @param keyValuesWithTopic a sequence of topic, key, and value triples.
     */
-  def fromKeyValuesWithTopic[Key, Value](keyValuesWithTopic: Iterable[(String, Key, Value)]): Iterable[ProducerRecord[Key, Value]] =
+  def fromKeyValuesWithTopic[Key, Value](keyValuesWithTopic: Iterable[(String, Option[Key], Value)]): Iterable[ProducerRecord[Key, Value]] =
     keyValuesWithTopic.map {
       case (topic, key, value) => KafkaProducerRecord(topic, key, value)
     }
