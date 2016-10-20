@@ -5,7 +5,7 @@ name := "scala-kafka-client-akka"
 Defaults.itSettings
 
 libraryDependencies ++= Seq(
-  "com.typesafe" % "config" % "1.3.0",
+  "com.typesafe" % "config" % versions.typesafeConfig,
   "com.typesafe.akka" %% "akka-actor" % versions.akka,
 
   "org.apache.kafka" % "kafka-clients" % versions.kafka,

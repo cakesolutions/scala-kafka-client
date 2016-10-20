@@ -3,7 +3,7 @@ import Dependencies._
 name := "scala-kafka-client-testkit"
 
 libraryDependencies ++= Seq(
-  "com.typesafe" % "config" % "1.3.0",
+  "com.typesafe" % "config" % versions.typesafeConfig,
 
   "org.slf4j" % "slf4j-api" % versions.slf4j,
 
