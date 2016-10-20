@@ -5,7 +5,7 @@ name := "scala-kafka-client-examples"
 Defaults.itSettings
 
 libraryDependencies ++= Seq(
-  "com.typesafe" % "config" % "1.3.0",
+  "com.typesafe" % "config" % versions.typesafeConfig,
 
   "org.apache.kafka" % "kafka-clients" % versions.kafka,
   "org.slf4j" % "slf4j-api" % versions.slf4j,
