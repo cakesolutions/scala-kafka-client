@@ -25,6 +25,12 @@ object ConsumerToProducerBoot extends App {
 }
 
 object ConsumerToProducer {
+
+  /*
+   * Starts an ActorSystem and instantiates the below Actor that subscribes and
+   * consumes from the configured KafkaConsumerActor and pipelines records directly to another topic via
+   * the configured KafkaProducerActor.
+   */
   def apply(consumerConfig: Config, producerConfig: Config): ActorRef = {
 
     // Create KafkaConsumerActor config with bootstrap.servers specified in Typesafe config
@@ -57,6 +63,7 @@ class ConsumerToProducer(
   val consumer = context.actorOf(
     KafkaConsumerActor.props(kafkaConfig, actorConfig, self)
   )
+  context.watch(consumer)
 
   // The KafkaProducerActor
   val producer = context.actorOf(KafkaProducerActor.props(producerConf))

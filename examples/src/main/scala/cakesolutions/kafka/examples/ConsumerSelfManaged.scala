@@ -3,23 +3,24 @@ package cakesolutions.kafka.examples
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import cakesolutions.kafka.KafkaConsumer
 import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe}
-import cakesolutions.kafka.akka.{ConsumerRecords, KafkaConsumerActor}
-import com.typesafe.config.{Config, ConfigFactory}
+import cakesolutions.kafka.akka.{ConsumerRecords, KafkaConsumerActor, Offsets}
+import com.typesafe.config.Config
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
+import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.StringDeserializer
 
 import scala.concurrent.duration._
 
 /**
-  * Simple Kafka Consumer using AutoPartition subscription mode, subscribing to topic: 'topic1'.
+  * Simple Kafka Consumer using ManualPartition subscription mode, subscribing to topic: 'topic1'.
   *
   * Kafka bootstrap server can be provided as an environment variable: -DKAFKA=127.0.0.1:9092 (default).
   */
-object AutoPartitionConsumerBoot extends App {
-  AutoPartitionConsumer(ConfigFactory.load().getConfig("consumer"))
+object ConsumerSelfManagedBood extends App {
+  ConsumerSelfManaged
 }
 
-object AutoPartitionConsumer {
+object ConsumerSelfManaged {
 
   /*
    * Starts an ActorSystem and instantiates the below Actor that subscribes and
@@ -29,7 +30,7 @@ object AutoPartitionConsumer {
     val consumerConf = KafkaConsumer.Conf(
       new StringDeserializer,
       new StringDeserializer,
-      groupId = "test_group",
+      groupId = "groupId",
       enableAutoCommit = false,
       autoOffsetReset = OffsetResetStrategy.EARLIEST)
       .withConf(config)
@@ -37,11 +38,11 @@ object AutoPartitionConsumer {
     val actorConf = KafkaConsumerActor.Conf(1.seconds, 3.seconds)
 
     val system = ActorSystem()
-    system.actorOf(Props(new AutoPartitionConsumer(consumerConf, actorConf)))
+    system.actorOf(Props(new ConsumerSelfManaged(consumerConf, actorConf)))
   }
 }
 
-class AutoPartitionConsumer(
+class ConsumerSelfManaged(
   kafkaConfig: KafkaConsumer.Conf[String, String],
   actorConfig: KafkaConsumerActor.Conf) extends Actor with ActorLogging {
 
@@ -52,19 +53,20 @@ class AutoPartitionConsumer(
   )
   context.watch(consumer)
 
-  consumer ! Subscribe.AutoPartition(List("topic1"))
+  consumer ! Subscribe.ManualOffset(Offsets(Map((new TopicPartition("topic1", 0), 1))))
 
   override def receive: Receive = {
 
     // Records from Kafka
     case recordsExt(records) =>
-      processRecords(records.pairs)
-      sender() ! Confirm(records.offsets, commit = true)
+      processRecords(records)
+      sender() ! Confirm(records.offsets, commit = false)
   }
 
-  private def processRecords(records: Seq[(Option[String], String)]) =
-    records.foreach { case (key, value) =>
+  private def processRecords(records: ConsumerRecords[String, String]) = {
+    records.pairs.foreach { case (key, value) =>
       log.info(s"Received [$key,$value]")
     }
+    log.info(s"Batch complete, offsets: ${records.offsets}")
+  }
 }
-
