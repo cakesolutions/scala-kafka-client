@@ -2,7 +2,7 @@
 
 [![Join the chat at https://gitter.im/cakesolutions/scala-kafka-client](https://badges.gitter.im/cakesolutions/scala-kafka-client.svg)](https://gitter.im/cakesolutions/scala-kafka-client?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build status](https://travis-ci.org/cakesolutions/scala-kafka-client.svg?branch=master)](https://travis-ci.org/cakesolutions/scala-kafka-client)
-[![Dependencies](https://app.updateimpact.com/badge/748875216658239488/root.svg?config=compile)](https://app.updateimpact.com/latest/748875216658239488/root)
+[![Dependencies](https://app.updateimpact.com/badge/748875216658239488/scala-kafka-client-root.svg?config=compile)](https://app.updateimpact.com/latest/748875216658239488/scala-kafka-client-root)
 
 This project comprises a few helper modules for operating the [Kafka Java Client Driver](https://kafka.apache.org/0100/javadoc/index.html) in a Scala codebase.
 

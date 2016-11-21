@@ -4,5 +4,6 @@ object Dependencies {
     val scalaTest = "3.0.0"
     val akka = "2.4.8"
     val kafka = "0.10.1.0"
+    val typesafeConfig = "1.3.0"
   }
 }
