@@ -18,13 +18,14 @@ object KafkaConsumer {
 
   /**
     * Implicit conversion to support calling the org.apache.kafka.clients.consumer.KafkaConsumer.offsetsForTimes method with a Map[TopicPartition, scala.Long].
+    *
     * @param offsetQuery
     * @return
     */
   implicit def toJavaOffsetQuery(offsetQuery: Map[TopicPartition, scala.Long]): java.util.Map[TopicPartition, java.lang.Long] =
-  offsetQuery.map { case (tp, time) =>
-    tp -> new java.lang.Long(time)
-  }
+    offsetQuery.map { case (tp, time) =>
+      tp -> new java.lang.Long(time)
+    }
 
   /**
     * Utilities for creating Kafka consumer configurations.
@@ -35,17 +36,17 @@ object KafkaConsumer {
       * Kafka consumer configuration constructor with common configurations as parameters.
       * For more detailed configuration, use the other [[Conf]] constructors.
       *
-      * @param keyDeserializer        deserializer for the key
-      * @param valueDeserializer      deserializer for the value
-      * @param bootstrapServers       a list of host/port pairs to use for establishing the initial connection to the Kafka cluster
-      * @param groupId                a unique string that identifies the consumer group this consumer belongs to
-      * @param enableAutoCommit       if true the consumer's offsets will be periodically committed in the background
-      * @param autoCommitInterval     the frequency in milliseconds that the consumer offsets are auto-committed to Kafka when auto commit is enabled
-      * @param sessionTimeoutMs       the timeout used to detect failures when using Kafka's group management facilities
+      * @param keyDeserializer deserializer for the key
+      * @param valueDeserializer deserializer for the value
+      * @param bootstrapServers a list of host/port pairs to use for establishing the initial connection to the Kafka cluster
+      * @param groupId a unique string that identifies the consumer group this consumer belongs to
+      * @param enableAutoCommit if true the consumer's offsets will be periodically committed in the background
+      * @param autoCommitInterval the frequency in milliseconds that the consumer offsets are auto-committed to Kafka when auto commit is enabled
+      * @param sessionTimeoutMs the timeout used to detect failures when using Kafka's group management facilities
       * @param maxPartitionFetchBytes the maximum amount of data per-partition the server will return
-      * @param maxPollRecords         the maximum number of records returned in a single call to poll()
-      * @param maxPollInterval        the maximum delay between invocations of poll() when using consumer group management
-      * @param autoOffsetReset        what to do when there is no initial offset in Kafka or if the current offset does not exist any more on the server
+      * @param maxPollRecords the maximum number of records returned in a single call to poll()
+      * @param maxPollInterval the maximum delay between invocations of poll() when using consumer group management
+      * @param autoOffsetReset what to do when there is no initial offset in Kafka or if the current offset does not exist any more on the server
       * @tparam K key deserialiser type
       * @tparam V value deserialiser type
       * @return consumer configuration consisting of all the given values
@@ -82,15 +83,15 @@ object KafkaConsumer {
       *
       * The configuration names and values must match the Kafka's `ConsumerConfig` style.
       *
-      * @param config            a Typesafe config to build configuration from
-      * @param keyDeserializer   deserialiser for the key
+      * @param config a Typesafe config to build configuration from
+      * @param keyDeserializer deserialiser for the key
       * @param valueDeserializer deserialiser for the value
       * @tparam K key deserialiser type
       * @tparam V value deserialiser type
       * @return consumer configuration
       */
     def apply[K, V](config: Config, keyDeserializer: Deserializer[K], valueDeserializer: Deserializer[V]): Conf[K, V] =
-    apply(config.toPropertyMap, keyDeserializer, valueDeserializer)
+      apply(config.toPropertyMap, keyDeserializer, valueDeserializer)
   }
 
   /**
@@ -115,19 +116,19 @@ object KafkaConsumer {
       * The supplied config overrides existing properties.
       */
     def withConf(config: Config): Conf[K, V] =
-    copy(props = props ++ config.toPropertyMap)
+      copy(props = props ++ config.toPropertyMap)
 
     /**
       * Is auto commit mode in use.
       */
     def isAutoCommitMode: Boolean =
-    props.getOrElse(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "").toString.equals("true")
+      props.getOrElse(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "").toString.equals("true")
 
     /**
       * Extend the configuration with a single key-value pair.
       */
     def withProperty(key: String, value: AnyRef) =
-    copy(props = props + (key -> value))
+      copy(props = props + (key -> value))
   }
 
   /**
@@ -139,5 +140,5 @@ object KafkaConsumer {
     * @return Kafka consumer client
     */
   def apply[K, V](conf: Conf[K, V]): JKafkaConsumer[K, V] =
-  new JKafkaConsumer[K, V](conf.props, conf.keyDeserializer, conf.valueDeserializer)
+    new JKafkaConsumer[K, V](conf.props, conf.keyDeserializer, conf.valueDeserializer)
 }
