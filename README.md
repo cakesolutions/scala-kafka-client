@@ -1,4 +1,4 @@
-# Scala support for Apache Kafka's Java client library 0.9.0.x and 0.10.0.x
+# Scala support for Apache Kafka's Java client library 0.9.0.x and 0.10.x.x
 
 [![Join the chat at https://gitter.im/cakesolutions/scala-kafka-client](https://badges.gitter.im/cakesolutions/scala-kafka-client.svg)](https://gitter.im/cakesolutions/scala-kafka-client?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build status](https://travis-ci.org/cakesolutions/scala-kafka-client.svg?branch=master)](https://travis-ci.org/cakesolutions/scala-kafka-client)
@@ -37,7 +37,7 @@ For configuration and usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.10.0.0"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.10.1.0"
 ```
 
 ### Akka Integration
@@ -51,7 +51,7 @@ For configuration and usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.10.0.0"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.10.1.0"
 ```
 
 ### TestKit
@@ -65,7 +65,7 @@ For usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-testkit" % "0.10.0.0" % "test"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-testkit" % "0.10.1.0" % "test"
 ```
 
 ## Version Compatibility
@@ -86,12 +86,20 @@ Here is the full table of binary compatibilities between Scala Kafka client and 
 
  Scala Kafka client    | Kafka Java Driver
  --------------------- | -----------------
+ 0.10.1.0              | 0.10.1.x
  0.10.0.0              | 0.10.0.x
  0.9.0.0               | 0.9.0.x
  0.8.0                 | 0.10.0.0
  0.7.0                 | 0.9.0.1
 
 ## Change log
+
+### 0.10.1.0 - 11/2016
+
+* Supports Kafka 0.10.1.0
+* Added support for new Consumer property: max.poll.interval
+* Removed log4j-over-slf4j dependency
+* Added examples to source
 
 ### 0.9.0.0,0.10.0.0 - 08/2016
 
