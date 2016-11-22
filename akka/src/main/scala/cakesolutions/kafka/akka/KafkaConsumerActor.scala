@@ -368,8 +368,12 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       */
     def redeliveryCount: Int
 
-    def noBackoffNeeded(): Boolean = redeliveryCount <= actorConf.maxRedeliveries
+    def noBackoffNeeded(): Boolean = redeliveryCount < actorConf.maxRedeliveries
 
+    /**
+      * Naive strategy to increment poll backoff when in redelivery.
+      * @return
+      */
     override def scheduleInterval: FiniteDuration = redeliveryCount * super.scheduleInterval + super.scheduleInterval
 
     def isCurrentOffset(offsets: Offsets): Boolean = unconfirmed.offsets == offsets
