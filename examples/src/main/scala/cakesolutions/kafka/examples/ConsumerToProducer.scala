@@ -42,7 +42,7 @@ object ConsumerToProducer {
       autoOffsetReset = OffsetResetStrategy.EARLIEST)
       .withConf(consumerConfig)
 
-    val actorConf = KafkaConsumerActor.Conf(1.seconds, 3.seconds)
+    val actorConf = KafkaConsumerActor.Conf(1.seconds, 3.seconds, 5)
 
     // Create KafkaProducerActor config with defaults and bootstrap.servers specified in Typesafe config
     val producerConf = KafkaProducer.Conf(new StringSerializer, new StringSerializer).withConf(producerConfig)

@@ -53,6 +53,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
       s"""
          | schedule.interval = 1 second
          | unconfirmed.timeout = 3 seconds
+         | max.redeliveries = 3
         """.stripMargin)
     )
 
@@ -65,6 +66,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
          | auto.offset.reset = "earliest"
          | schedule.interval = 1 second
          | unconfirmed.timeout = 3 seconds
+         | max.redeliveries = 3
         """.  stripMargin
     )
 

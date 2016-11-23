@@ -71,7 +71,7 @@ lazy val scalaKafkaClientAkka = project.in(file("akka"))
   .dependsOn(kafkaTestkit % "test")
   .configs(IntegrationTest extend Test)
 
-lazy val scalaKafkaKlientExamples = project.in(file("examples"))
+lazy val scalaKafkaClientExamples = project.in(file("examples"))
   .settings(commonSettings: _*)
   .dependsOn(scalaKafkaClientAkka)
 

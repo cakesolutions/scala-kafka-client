@@ -13,5 +13,5 @@ libraryDependencies ++= Seq(
 
   //Test deps
   "org.apache.curator" % "curator-test" % "2.7.0", //3.0.0
-  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
+  "ch.qos.logback" % "logback-classic" % versions.logback % "test"
 )

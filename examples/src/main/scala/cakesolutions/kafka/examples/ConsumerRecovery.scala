@@ -1,6 +1,6 @@
 package cakesolutions.kafka.examples
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, OneForOneStrategy, Props, SupervisorStrategy}
 import cakesolutions.kafka.KafkaConsumer
 import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe}
 import cakesolutions.kafka.akka.{ConsumerRecords, KafkaConsumerActor}
@@ -11,24 +11,14 @@ import org.apache.kafka.common.serialization.StringDeserializer
 import scala.concurrent.duration._
 
 /**
-  * Simple Kafka Consumer using AutoPartition subscription mode, subscribing to topic: 'topic1'.
-  *
-  * If the topic is configured in Kafka with multiple partitions, this app can be started multiple times (potentially on separate nodes)
-  * and Kafka will balance the partitions to the instances providing parallel consumption of the topic.
-  *
-  * Kafka bootstrap server can be provided as an environment variable: -DKAFKA=127.0.0.1:9092 (default).
+  * A simple consumer example with a configured Supervision Strategy to handle failures of the Kafka driver.
   */
-object AutoPartitionConsumerBoot extends App {
-  AutoPartitionConsumer(ConfigFactory.load().getConfig("consumer"))
+object ConsumerRecoveryBoot extends App {
+  ConsumerRecovery(ConfigFactory.load().getConfig("consumer"))
 }
 
-object AutoPartitionConsumer {
-
-  /*
-   * Starts an ActorSystem and instantiates the below Actor that subscribes and
-   * consumes from the configured KafkaConsumerActor.
-   */
-  def apply(config: Config): ActorRef = {
+object ConsumerRecovery {
+  def apply(config: Config): ActorRef ={
     val consumerConf = KafkaConsumer.Conf(
       new StringDeserializer,
       new StringDeserializer,
@@ -40,20 +30,32 @@ object AutoPartitionConsumer {
     val actorConf = KafkaConsumerActor.Conf(1.seconds, 3.seconds)
 
     val system = ActorSystem()
-    system.actorOf(Props(new AutoPartitionConsumer(consumerConf, actorConf)))
+    system.actorOf(Props(new ConsumerRecovery(consumerConf, actorConf)))
   }
 }
 
-class AutoPartitionConsumer(
+class ConsumerRecovery(
   kafkaConfig: KafkaConsumer.Conf[String, String],
   actorConfig: KafkaConsumerActor.Conf) extends Actor with ActorLogging {
+
+  /**
+    * Provide a Supervision Strategy for handling failures in the KafkaConsumerActor.  This simple strategy is configured
+    * to retry fatal exceptions up to 10 times, and then escalate the issues if still unable to progress, which will result
+    * in the application terminating.
+    */
+  override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy(maxNrOfRetries = 10) {
+    case _: KafkaConsumerActor.ConsumerException =>
+      log.info("Consumer exception caught. Restarting consumer.")
+      SupervisorStrategy.Restart
+    case _ =>
+      SupervisorStrategy.Escalate
+  }
 
   val recordsExt = ConsumerRecords.extractor[String, String]
 
   val consumer = context.actorOf(
     KafkaConsumerActor.props(kafkaConfig, actorConfig, self)
   )
-  context.watch(consumer)
 
   consumer ! Subscribe.AutoPartition(List("topic1"))
 
@@ -70,4 +72,3 @@ class AutoPartitionConsumer(
       log.info(s"Received [$key,$value]")
     }
 }
-

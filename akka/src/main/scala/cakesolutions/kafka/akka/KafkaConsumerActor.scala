@@ -57,7 +57,7 @@ object KafkaConsumerActor {
 
   /**
     * Sent when the actor is backing off delivery of messages due to suspected backpressure
-    * caused by missed deliveries
+    * caused by missed deliveries.
     * @param redeliveryCount the current redelivery count
     */
   final case class BackingOff(redeliveryCount: Int) extends MessageApi
@@ -176,10 +176,13 @@ object KafkaConsumerActor {
     * @param scheduleInterval   Poll Latency.
     * @param unconfirmedTimeout Seconds before unconfirmed messages is considered for redelivery.
     *                           To disable message redelivery provide a duration of 0.
+    * @param maxRedeliveries    Maximum number of times an unconfirmed message will be redelivered downstream.
+    *                           Redeliveries are only attempted if unconfirmedTimeout > 0.
     */
   final case class Conf(
     scheduleInterval: FiniteDuration = 1000.millis,
-    unconfirmedTimeout: FiniteDuration = 3.seconds
+    unconfirmedTimeout: FiniteDuration = 3.seconds,
+    maxRedeliveries: Int = 3
   ) {
 
     /**
@@ -189,7 +192,8 @@ object KafkaConsumerActor {
     def withConf(config: Config): Conf =
       copy(
         scheduleInterval = if (config.hasPath("schedule.interval")) Conf.durationFromConfig(config, "schedule.interval") else scheduleInterval,
-        unconfirmedTimeout = if (config.hasPath("unconfirmed.timeout")) Conf.durationFromConfig(config, "unconfirmed.timeout") else unconfirmedTimeout
+        unconfirmedTimeout = if (config.hasPath("unconfirmed.timeout")) Conf.durationFromConfig(config, "unconfirmed.timeout") else unconfirmedTimeout,
+        maxRedeliveries= if (config.hasPath("max.redeliveries")) config.getInt("max.redeliveries") else maxRedeliveries
       )
   }
 
@@ -359,10 +363,17 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   private sealed trait UnconfirmedRecordsStateData extends StateData {
     val unconfirmed: Records
 
+    /**
+      * Number of attempts that have been made to deliver the unconfirmed records downstream
+      */
     def redeliveryCount: Int
 
-    def noBackoffNeeded(): Boolean = redeliveryCount < 2
+    def noBackoffNeeded(): Boolean = redeliveryCount < actorConf.maxRedeliveries
 
+    /**
+      * Naive strategy to increment poll backoff when in redelivery.
+      * @return
+      */
     override def scheduleInterval: FiniteDuration = redeliveryCount * super.scheduleInterval + super.scheduleInterval
 
     def isCurrentOffset(offsets: Offsets): Boolean = unconfirmed.offsets == offsets
@@ -382,7 +393,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       copy(deliveryTime = LocalDateTime.now(), redeliveryCount = redeliveryCount + 1)
 
     def addToBuffer(buffered: Records): Buffered =
-      Buffered(subscription, lastConfirmedOffsets, unconfirmed, deliveryTime, buffered)
+      Buffered(subscription, lastConfirmedOffsets, unconfirmed, deliveryTime, buffered, redeliveryCount)
   }
 
   private final case class Buffered(
@@ -656,7 +667,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       effect
     } catch {
       case we: WakeupException =>
-        log.debug("Wakeup Exception. Ignoring.")
+        log.info("Wakeup Exception, ignoring.")
         None
       case error: Exception =>
         log.info("Exception thrown from Kafka Consumer")
