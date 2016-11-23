@@ -667,7 +667,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       effect
     } catch {
       case we: WakeupException =>
-        log.debug("Wakeup Exception. Ignoring.")
+        log.info("Wakeup Exception, ignoring.")
         None
       case error: Exception =>
         log.info("Exception thrown from Kafka Consumer")
