@@ -153,7 +153,6 @@ private final class TrackPartitionsManualOffset(
   def reset(): Unit = {
     _revoked = false
   }
-
 }
 
 private final class EmptyTrackPartitions extends TrackPartitions {

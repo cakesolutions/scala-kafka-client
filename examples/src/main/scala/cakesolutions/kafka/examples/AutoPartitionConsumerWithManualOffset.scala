@@ -12,7 +12,7 @@ import org.apache.kafka.common.serialization.StringDeserializer
 import scala.concurrent.duration._
 
 /**
-  * Simple Kafka Consumer using AutoPartition subscription mode, subscribing to topic: 'topic1'.
+  * Simple Kafka Consumer using AutoPartition subscription mode with manual offset control, subscribing to topic: 'topic1'.
   *
   * If the topic is configured in Kafka with multiple partitions, this app can be started multiple times (potentially on separate nodes)
   * and Kafka will balance the partitions to the instances providing parallel consumption of the topic.
@@ -55,6 +55,7 @@ class AutoPartitionConsumerWithManualOffset(
     KafkaConsumerActor.props(kafkaConfig, actorConfig, self)
   )
 
+  // Should be a datastore
   var storedOffsets: Offsets =
     Offsets(
       Map(
