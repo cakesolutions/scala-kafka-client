@@ -41,9 +41,7 @@ object AutoPartitionConsumerWithManualOffset {
     val actorConf = KafkaConsumerActor.Conf(1.seconds, 3.seconds)
 
     val system = ActorSystem()
-    system.actorOf(Props(new AutoPartitionConsumerWithManualOffset(consumerConf, actorConf)), "1")
-//    system.actorOf(Props(new AutoPartitionConsumerWithManualOffset(consumerConf, actorConf)), "2")
-//    system.actorOf(Props(new AutoPartitionConsumerWithManualOffset(consumerConf, actorConf)), "3")
+    system.actorOf(Props(new AutoPartitionConsumerWithManualOffset(consumerConf, actorConf)))
   }
 }
 

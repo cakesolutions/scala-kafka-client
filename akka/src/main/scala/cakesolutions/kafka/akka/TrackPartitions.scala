@@ -15,16 +15,6 @@ sealed trait TrackPartitions extends ConsumerRebalanceListener {
   def reset(): Unit
 }
 
-private final class EmptyTrackPartitions extends TrackPartitions {
-  override def isRevoked: Boolean = false
-
-  def reset(): Unit = {}
-
-  override def onPartitionsAssigned(partitions: JCollection[TopicPartition]): Unit = throw new UnsupportedOperationException
-
-  override def onPartitionsRevoked(partitions: JCollection[TopicPartition]): Unit = throw new UnsupportedOperationException
-}
-
 /**
   * Listens to partition change events coming from Kafka driver.  A best-effort is made to continue processing once
   * reassignment is complete without causing duplications.  Due to limitations in the driver it is not possible in all
@@ -120,7 +110,22 @@ private final class TrackPartitionsManualOffset(
   }
 
   override def onPartitionsAssigned(partitions: JCollection[TopicPartition]): Unit = {
+
     log.debug("onPartitionsAssigned: " + partitions.toString)
+
+    def offsetsToTopicPartitions(offsets: Map[TopicPartition, Long]): List[TopicPartition] =
+      offsets.map { case (tp, _) => tp }.toList
+
+    def assign(partitions: List[TopicPartition]) = {
+      val offsets = assignedListener(partitions)
+      for {
+        partition <- partitions
+        offset <- offsets.get(partition)
+      } {
+        log.info(s"Seeking partition: [{}] to offset [{}]", partition, offset)
+        consumer.seek(partition, offset)
+      }
+    }
 
     _revoked = false
 
@@ -130,30 +135,16 @@ private final class TrackPartitionsManualOffset(
     val allExisting = _offsets.forall { case (partition, _) => partitions.contains(partition) }
 
     if (allExisting) {
-      val newPartitions = partitions.toList.diff(_offsets.map { case (tp, _) => tp }.toList)
-      val offsets = assignedListener(newPartitions)
-      for {
-        partition <- partitions
-        offset <- offsets.get(partition)
-      } {
-        log.info(s"Seeking partition: [{}] to offset [{}]", partition, offset)
-        consumer.seek(partition, offset)
-      }
+      val newPartitions = partitions.toList.diff(offsetsToTopicPartitions(_offsets))
+      assign(newPartitions)
     } else {
       consumerActor ! KafkaConsumerActor.RevokeReset
 
       // Invoke client callback to notify revocation of all existing partitions.
-      revokedListener(_offsets.map { case (tp, _) => tp }.toList)
+      revokedListener(offsetsToTopicPartitions(_offsets))
 
       // Invoke client callback to notify the new assignments and seek to the provided offsets.
-      val offsets = assignedListener(partitions.toList)
-      for {
-        partition <- partitions
-        offset <- offsets.get(partition)
-      } {
-        log.info(s"Seeking partition: [{}] to offset [{}]", partition, offset)
-        consumer.seek(partition, offset)
-      }
+      assign(partitions.toList)
     }
   }
 
@@ -162,4 +153,15 @@ private final class TrackPartitionsManualOffset(
   def reset(): Unit = {
     _revoked = false
   }
+
+}
+
+private final class EmptyTrackPartitions extends TrackPartitions {
+  override def isRevoked: Boolean = false
+
+  def reset(): Unit = {}
+
+  override def onPartitionsAssigned(partitions: JCollection[TopicPartition]): Unit = throw new IllegalStateException("TrackPartitions not initialised")
+
+  override def onPartitionsRevoked(partitions: JCollection[TopicPartition]): Unit = throw new IllegalStateException("TrackPartitions not initialised")
 }

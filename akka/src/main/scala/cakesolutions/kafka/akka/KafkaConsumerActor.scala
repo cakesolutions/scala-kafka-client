@@ -334,9 +334,6 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
 
   // Handles partition reassignments in the kafka client
   private var trackPartitions:TrackPartitions = new EmptyTrackPartitions
-//  private lazy val trackPartitions = new TrackPartitionsCommitMode(consumer, context.self)
-//  private var trackPartitionsWithManualOffset:Option[TrackPartitionsManualOffset] = None
-
 
   private val isTimeoutUsed = actorConf.unconfirmedTimeout.toMillis > 0
   private val delayedPollTimeout = 200
@@ -504,7 +501,6 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
 
       // If the last commit caused a partition revocation,
       // we don't poll to allow the unconfirmed to flush through, prior to the rebalance completion.
-      //TODO interface!
       if (trackPartitions.isRevoked) {
         log.info("Partitions revoked. Not polling.")
         schedulePoll(stateData = state)
