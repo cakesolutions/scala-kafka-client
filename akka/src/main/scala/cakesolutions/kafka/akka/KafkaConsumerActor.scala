@@ -87,6 +87,10 @@ object KafkaConsumerActor {
       */
     final case class AutoPartition(topics: Iterable[String]) extends Subscribe
 
+    final case class AutoPartitionWithManualOffset(topics: Iterable[String],
+      assignedListener: List[TopicPartition] => Offsets,
+      revokedListener: List[TopicPartition] => Unit) extends Subscribe
+
     /**
       * Subscribe to topics in manually assigned partition mode.
       *
@@ -329,7 +333,11 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   private val consumer = KafkaConsumer[K, V](consumerConf)
 
   // Handles partition reassignments in the kafka client
-  private val trackPartitions = TrackPartitions(consumer, context.self)
+  private var trackPartitions:TrackPartitions = new EmptyTrackPartitions
+//  private lazy val trackPartitions = new TrackPartitionsCommitMode(consumer, context.self)
+//  private var trackPartitionsWithManualOffset:Option[TrackPartitionsManualOffset] = None
+
+
   private val isTimeoutUsed = actorConf.unconfirmedTimeout.toMillis > 0
   private val delayedPollTimeout = 200
 
@@ -344,9 +352,11 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
 
     def advanceSubscription: Subscribe = {
       def advance(offsets: Offsets) = subscription match {
-        case _: Subscribe.ManualOffset => Subscribe.ManualOffset(offsets)
-        case _: Subscribe.ManualPartition => Subscribe.ManualOffset(offsets)
         case s: Subscribe.AutoPartition => s
+        case s: Subscribe.AutoPartitionWithManualOffset =>
+          Subscribe.AutoPartitionWithManualOffset(s.topics, s.assignedListener, s.revokedListener)
+        case _: Subscribe.ManualPartition => Subscribe.ManualOffset(offsets)
+        case _: Subscribe.ManualOffset => Subscribe.ManualOffset(offsets)
       }
       lastConfirmedOffsets.map(advance).getOrElse(subscription)
     }
@@ -412,7 +422,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       copy(deliveryTime = LocalDateTime.now(), redeliveryCount = redeliveryCount + 1)
   }
 
-  override def receive = unsubscribed
+  override def receive: Receive = unsubscribed
 
   // Initial state
   private val unsubscribed: Receive = {
@@ -494,6 +504,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
 
       // If the last commit caused a partition revocation,
       // we don't poll to allow the unconfirmed to flush through, prior to the rebalance completion.
+      //TODO interface!
       if (trackPartitions.isRevoked) {
         log.info("Partitions revoked. Not polling.")
         schedulePoll(stateData = state)
@@ -616,6 +627,12 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   private def subscribe(s: Subscribe): Unit = s match {
     case Subscribe.AutoPartition(topics) =>
       log.info(s"Subscribing in auto partition assignment mode to topics [{}].", topics.mkString(","))
+      trackPartitions = new TrackPartitionsCommitMode(consumer, context.self)
+      consumer.subscribe(topics.toList, trackPartitions)
+
+    case Subscribe.AutoPartitionWithManualOffset(topics, assignedListener, revokedListener) =>
+      log.info(s"Subscribing in auto partition assignment with manual offset mode to topics [{}].", topics.mkString(","))
+      trackPartitions = new TrackPartitionsManualOffset(consumer, context.self, assignedListener, revokedListener)
       consumer.subscribe(topics.toList, trackPartitions)
 
     case Subscribe.ManualPartition(topicPartitions) =>

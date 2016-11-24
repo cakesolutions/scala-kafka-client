@@ -51,7 +51,6 @@ class ConsumerSelfManaged(
   val consumer = context.actorOf(
     KafkaConsumerActor.props(kafkaConfig, actorConfig, self)
   )
-  context.watch(consumer)
 
   consumer ! Subscribe.ManualOffset(Offsets(Map((new TopicPartition("topic1", 0), 1))))
 
