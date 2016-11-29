@@ -65,47 +65,86 @@ object KafkaConsumerActor {
   /**
     * Actor API - Initiate consumption from Kafka or reset an already started stream.
     *
-    * Subscription has three modes:
+    * Subscription has four modes which provide a combination of either auto or manual partition assignment and either Kafka
+    * managed or self managed commit offsets.
     *
-    *  - Auto partition: provide the topics to subscribe to, and let Kafka manage partition delegation between consumers.
-    *  - Manual partition: provide the topics with partitions, and let Kafka decide the point where to begin consuming messages from.
-    *  - Manual offset: provide the topics with partitions and offsets for precise control.
+    *  - Auto partition: Kafka manages partition assignments between members of a consumer group.  Offset commit points for each
+    *    partition are managed by Kafka.
+    *
+    *  - Auto partition with manual offset: Kafka manages partition assignments between members of a consumer group.  Offset commit
+    *    points are maintained by the client.
+    *
+    *  - Manual partition: Topic and partitions are specified by the client.  Offset commit points for each
+    *    partition are managed by Kafka.
+    *
+    *  - Manual offset: Topic and partitions are specified by the client.  Offset commit
+    *    points are maintained by the client.
     */
   sealed trait Subscribe extends MessageApi
 
   object Subscribe {
 
     /**
-      * Subscribe to topics in auto assigned partition mode.
+      * Subscribe to topics in auto assigned partition mode, relying on Kafka to manage the commit point for each partition.
+      * This is this simplest and most common subscription mode that provides a parallel streaming capability with at-least-once
+      * semantics.
       *
       * In auto assigned partition mode, the consumer partitions are managed by Kafka.
-      * This means that they can get automatically rebalanced with other consumers consuming from the same topic.
+      * This means that they can get automatically rebalanced with other consumers consuming from the same topic with the same group-id.
       *
       * The message consumption starting point will be decided by offset reset strategy in the consumer configuration.
+      *
+      * The client should ensure that received records are confirmed with 'commit = true' to ensure kafka tracks the commit point.
       *
       * @param topics the topics to subscribe to start consuming from
       */
     final case class AutoPartition(topics: Iterable[String]) extends Subscribe
 
     /**
-      * Subscribe to topics in manually assigned partition mode.
+      * Subscribe to topics in auto assigned partition mode with client managed offset commit positions for each partition.
+      * This subscription mode is typically used when performing some parallel stateful computation and storing the offset
+      * position along with the state in some kind of persistent store.  This allows for exactly-once state manipulation against
+      * an at-least-once delivery stream.
       *
-      * In manually assigned partition mode, the consumer partitions are managed by the client.
-      * This means that Kafka will not be automatically rebalance the partitions when new consumers appear in the consumer group.
+      * The client should provide callbacks to receive notifications of when partitions have been assigned or revoked.  When
+      * a partition has been assigned, the client should lookup the latest offsets for the given partitions from its store, and supply
+      * those.  The KafkaConsumerActor will seek to the specified positions.
+      *
+      * The client should ensure that received records are confirmed with 'commit = false' to ensure consumed records are
+      * not committed back to kafka.
+      *
+      * @param topics the topics to subscribe to start consuming from
+      * @param assignedListener a callback handler that should lookup the latest offsets for the provided topic/partitions.
+      * @param revokedListener a callback to provide the oppurtunity to cleanup any in memory state for revoked partitions.
+      */
+    final case class AutoPartitionWithManualOffset(topics: Iterable[String],
+      assignedListener: List[TopicPartition] => Offsets,
+      revokedListener: List[TopicPartition] => Unit) extends Subscribe
+
+    /**
+      * Subscribe to topics in manually assigned partition mode, relying on Kafka to manage the commit point for each partition.
+      *
+      * In manually assigned partition mode, the consumer will specify the partitions directly, this means that Kafka will not be automatically
+      * rebalance the partitions when new consumers appear in the consumer group.
       *
       * The message consumption starting point will be decided by offset reset strategy in the consumer configuration.
+      *
+      * The client should ensure that received records are confirmed with 'commit = true' to ensure kafka tracks the commit point.
       *
       * @param topicPartitions the topics with partitions to start consuming from
       */
     final case class ManualPartition(topicPartitions: Iterable[TopicPartition]) extends Subscribe
 
     /**
-      * Subscribe to topics in manually assigned partition mode, and set the offsets to consume from.
+      * Subscribe to topics in manually assigned partition mode, with client managed offset commit positions for each partition.
       *
-      * In manually assigned partition mode, the consumer partitions are managed by the client.
+      * In manually assigned partition mode, the consumer will specify the partitions directly,
       * This means that Kafka will not be automatically rebalance the partitions when new consumers appear in the consumer group.
       *
       * In addition to manually assigning the partitions, the partition offsets will be set to start from the given offsets.
+      *
+      * The client should ensure that received records are confirmed with 'commit = false' to ensure consumed records are
+      * not committed back to kafka.
       *
       * @param offsets the topics with partitions and offsets to start consuming from
       */
@@ -329,7 +368,8 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   private val consumer = KafkaConsumer[K, V](consumerConf)
 
   // Handles partition reassignments in the kafka client
-  private val trackPartitions = TrackPartitions(consumer, context.self)
+  private var trackPartitions:TrackPartitions = new EmptyTrackPartitions
+
   private val isTimeoutUsed = actorConf.unconfirmedTimeout.toMillis > 0
   private val delayedPollTimeout = 200
 
@@ -344,9 +384,11 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
 
     def advanceSubscription: Subscribe = {
       def advance(offsets: Offsets) = subscription match {
-        case _: Subscribe.ManualOffset => Subscribe.ManualOffset(offsets)
-        case _: Subscribe.ManualPartition => Subscribe.ManualOffset(offsets)
         case s: Subscribe.AutoPartition => s
+        case s: Subscribe.AutoPartitionWithManualOffset =>
+          Subscribe.AutoPartitionWithManualOffset(s.topics, s.assignedListener, s.revokedListener)
+        case _: Subscribe.ManualPartition => Subscribe.ManualOffset(offsets)
+        case _: Subscribe.ManualOffset => Subscribe.ManualOffset(offsets)
       }
       lastConfirmedOffsets.map(advance).getOrElse(subscription)
     }
@@ -412,7 +454,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       copy(deliveryTime = LocalDateTime.now(), redeliveryCount = redeliveryCount + 1)
   }
 
-  override def receive = unsubscribed
+  override def receive: Receive = unsubscribed
 
   // Initial state
   private val unsubscribed: Receive = {
@@ -616,6 +658,12 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   private def subscribe(s: Subscribe): Unit = s match {
     case Subscribe.AutoPartition(topics) =>
       log.info(s"Subscribing in auto partition assignment mode to topics [{}].", topics.mkString(","))
+      trackPartitions = new TrackPartitionsCommitMode(consumer, context.self)
+      consumer.subscribe(topics.toList, trackPartitions)
+
+    case Subscribe.AutoPartitionWithManualOffset(topics, assignedListener, revokedListener) =>
+      log.info(s"Subscribing in auto partition assignment with manual offset mode to topics [{}].", topics.mkString(","))
+      trackPartitions = new TrackPartitionsManualOffset(consumer, context.self, assignedListener, revokedListener)
       consumer.subscribe(topics.toList, trackPartitions)
 
     case Subscribe.ManualPartition(topicPartitions) =>
