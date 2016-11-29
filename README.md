@@ -37,7 +37,7 @@ For configuration and usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.10.1.0"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.10.1.1"
 ```
 
 ### Akka Integration
@@ -51,7 +51,7 @@ For configuration and usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.10.1.0"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.10.1.1"
 ```
 
 ### TestKit
@@ -65,7 +65,7 @@ For usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-testkit" % "0.10.1.0" % "test"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-testkit" % "0.10.1.1" % "test"
 ```
 
 ## Version Compatibility
@@ -86,13 +86,19 @@ Here is the full table of binary compatibilities between Scala Kafka client and 
 
  Scala Kafka client    | Kafka Java Driver
  --------------------- | -----------------
- 0.10.1.0              | 0.10.1.x
+ 0.10.1.x              | 0.10.1.x
  0.10.0.0              | 0.10.0.x
  0.9.0.0               | 0.9.0.x
  0.8.0                 | 0.10.0.0
  0.7.0                 | 0.9.0.1
 
 ## Change log
+
+### 0.10.1.1 - 11/2016
+
+* Added new subscription mode: AutoPartitionWithManualOffset.
+* Updated Akka to 2.4.14.
+* Added new Retry count config, to prevent overwhelming an unresponsive downstream client.
 
 ### 0.10.1.0 - 11/2016
 
