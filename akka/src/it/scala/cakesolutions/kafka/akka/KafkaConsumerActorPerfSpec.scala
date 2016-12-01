@@ -6,6 +6,7 @@ import akka.testkit.{ImplicitSender, TestActor, TestKit, TestProbe}
 import cakesolutions.kafka.akka.KafkaConsumerActor.Confirm
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord, Subscribe}
 import com.typesafe.config.ConfigFactory
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
@@ -45,7 +46,7 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
     KafkaConsumer.Conf(config.getConfig("consumer"),
       new StringDeserializer,
       new StringDeserializer
-    )
+    ).withProperty(ConsumerConfig.METADATA_MAX_AGE_CONFIG, "30000")
   }
 
   def actorConf: KafkaConsumerActor.Conf =

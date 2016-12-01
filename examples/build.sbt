@@ -1,17 +1,14 @@
 import Dependencies._
 
-name := "scala-kafka-client"
+name := "scala-kafka-client-examples"
 
 Defaults.itSettings
 
 libraryDependencies ++= Seq(
   "com.typesafe" % "config" % versions.typesafeConfig,
-
+  "com.typesafe.akka" %% "akka-slf4j" % versions.akka,
   "org.apache.kafka" % "kafka-clients" % versions.kafka,
+  "ch.qos.logback" % "logback-classic" % versions.logback,
   "org.slf4j" % "slf4j-api" % versions.slf4j,
-
-  //Test deps
-  "org.slf4j" % "log4j-over-slf4j" % versions.slf4j % "test",
-  "org.scalatest" %% "scalatest" % versions.scalaTest % "test",
-  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
+  "org.slf4j" % "log4j-over-slf4j" % versions.slf4j
 )

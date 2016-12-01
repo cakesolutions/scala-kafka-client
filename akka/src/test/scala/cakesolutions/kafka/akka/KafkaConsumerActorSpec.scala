@@ -1,12 +1,11 @@
 package cakesolutions.kafka.akka
 
 import akka.actor.ActorSystem
-import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Unsubscribe}
 import cakesolutions.kafka._
+import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Unsubscribe}
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
-import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
 import scala.util.Random
@@ -21,8 +20,6 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
   import KafkaConsumerActorSpec._
 
   def this() = this(ActorSystem("KafkaConsumerActorSpec"))
-
-  val log = LoggerFactory.getLogger(getClass)
 
   private def randomString: String = Random.alphanumeric.take(5).mkString("")
 
@@ -52,6 +49,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
       s"""
          | schedule.interval = 1 second
          | unconfirmed.timeout = 3 seconds
+         | max.redeliveries = 3
         """.stripMargin)
     )
 
@@ -64,7 +62,8 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
          | auto.offset.reset = "earliest"
          | schedule.interval = 1 second
          | unconfirmed.timeout = 3 seconds
-        """.  stripMargin
+         | max.redeliveries = 3
+        """.stripMargin
     )
 
   "KafkaConsumerActors with different configuration types" should "each consume a message successfully" in {
@@ -118,9 +117,47 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     producer.send(KafkaProducerRecord(topic, None, "value"))
     producer.flush()
 
-    // Consumer and actor config in same config file
     val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, KafkaConsumerActor.Conf(), testActor))
     consumer ! Subscribe.ManualPartition(List(topicPartition))
+
+    val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
+    consumer ! Confirm(rs.offsets, commit = true)
+    expectNoMsg(5.seconds)
+
+    consumer ! Unsubscribe
+    producer.close()
+  }
+
+  "KafkaConsumerActor configured in manual offset mode" should "consume a sequence of messages" in {
+    val topic = randomString
+    val offsets = Offsets(Map(KafkaTopicPartition(topic, 0) -> 0))
+
+    val producer = kafkaProducer("localhost", kafkaPort)
+    producer.send(KafkaProducerRecord(topic, None, "value"))
+    producer.flush()
+
+    val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, KafkaConsumerActor.Conf(), testActor))
+    consumer ! Subscribe.ManualOffset(offsets)
+
+    val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
+    consumer ! Confirm(rs.offsets)
+    expectNoMsg(5.seconds)
+
+    consumer ! Unsubscribe
+    producer.close()
+  }
+
+  "KafkaConsumerActor configured in Auto Partition with manual offset mode" should "consume a sequence of messages" in {
+    val topic = randomString
+
+    val producer = kafkaProducer("localhost", kafkaPort)
+    producer.send(KafkaProducerRecord(topic, None, "value"))
+    producer.flush()
+
+    val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, KafkaConsumerActor.Conf(), testActor))
+    consumer ! Subscribe.AutoPartitionWithManualOffset(Seq(topic),
+      tps => Offsets(tps.map { tp => tp -> 0l }.toMap),
+      _ => ())
 
     val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
     consumer ! Confirm(rs.offsets)

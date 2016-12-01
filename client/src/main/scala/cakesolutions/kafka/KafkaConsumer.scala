@@ -4,11 +4,12 @@ import cakesolutions.kafka.TypesafeConfigExtensions._
 import com.typesafe.config.Config
 import org.apache.kafka.clients.consumer.internals.NoOpConsumerRebalanceListener
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRebalanceListener, ConsumerRecords, OffsetResetStrategy, KafkaConsumer => JKafkaConsumer}
-import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.Deserializer
+import org.apache.kafka.common.TopicPartition
 
 import scala.collection.JavaConverters._
 import scala.util.Try
+import scala.language.implicitConversions
 
 /**
   * Utilities for creating a Kafka consumer.
@@ -17,6 +18,17 @@ import scala.util.Try
   * Unlike with [[KafkaProducer]], the consumer object is not wrapped in an object that provides a Scala-like API.
   */
 object KafkaConsumer {
+
+  /**
+    * Implicit conversion to support calling the org.apache.kafka.clients.consumer.KafkaConsumer.offsetsForTimes method with a Map[TopicPartition, scala.Long].
+    *
+    * @param offsetQuery
+    * @return
+    */
+  implicit def toJavaOffsetQuery(offsetQuery: Map[TopicPartition, scala.Long]): java.util.Map[TopicPartition, java.lang.Long] =
+    offsetQuery.map { case (tp, time) =>
+      tp -> new java.lang.Long(time)
+    }.asJava
 
   /**
     * Utilities for creating Kafka consumer configurations.
@@ -36,6 +48,7 @@ object KafkaConsumer {
       * @param sessionTimeoutMs the timeout used to detect failures when using Kafka's group management facilities
       * @param maxPartitionFetchBytes the maximum amount of data per-partition the server will return
       * @param maxPollRecords the maximum number of records returned in a single call to poll()
+      * @param maxPollInterval the maximum delay between invocations of poll() when using consumer group management
       * @param autoOffsetReset what to do when there is no initial offset in Kafka or if the current offset does not exist any more on the server
       * @tparam K key deserialiser type
       * @tparam V value deserialiser type
@@ -48,9 +61,10 @@ object KafkaConsumer {
       groupId: String,
       enableAutoCommit: Boolean = true,
       autoCommitInterval: Int = 1000,
-      sessionTimeoutMs: Int = 30000,
+      sessionTimeoutMs: Int = 10000,
       maxPartitionFetchBytes: Int = ConsumerConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES,
-      maxPollRecords: Int = Integer.MAX_VALUE,
+      maxPollRecords: Int = 500,
+      maxPollInterval: Int = 300000,
       autoOffsetReset: OffsetResetStrategy = OffsetResetStrategy.LATEST
     ): Conf[K, V] = {
 
@@ -62,6 +76,7 @@ object KafkaConsumer {
         ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG -> sessionTimeoutMs.toString,
         ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG -> maxPartitionFetchBytes.toString,
         ConsumerConfig.MAX_POLL_RECORDS_CONFIG -> maxPollRecords.toString,
+        ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG -> maxPollInterval.toString,
         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> autoOffsetReset.toString.toLowerCase
       )
 
@@ -111,7 +126,7 @@ object KafkaConsumer {
     /**
       * Extend the configuration with a single key-value pair.
       */
-    def withProperty(key: String, value: AnyRef) =
+    def withProperty(key: String, value: AnyRef): Conf[K, V] =
       copy(props = props + (key -> value))
   }
 
@@ -146,6 +161,10 @@ final class KafkaConsumer[K, V](val consumer: JKafkaConsumer[K, V]) {
     sub match {
       case Subscribe.AutoPartition(topics) =>
         consumer.subscribe(topics.toList.asJava, rebalanceListener)
+
+      case Subscribe.AutoPartitionWithManualOffset(topics, assignedListener, revokedListener) =>
+        //FIXME listeners dont fit!
+        consumer.subscribe(topics.toList.asJava)
 
       case Subscribe.ManualPartition(topicPartitions) =>
         consumer.assign(topicPartitions.toList.asJava)
