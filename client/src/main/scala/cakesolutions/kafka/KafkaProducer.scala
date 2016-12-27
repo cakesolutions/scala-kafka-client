@@ -10,6 +10,7 @@ import org.apache.kafka.common.serialization.Serializer
 
 import scala.collection.JavaConversions._
 import scala.concurrent.{Future, Promise}
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -151,11 +152,10 @@ final class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) {
     */
   def send(record: ProducerRecord[K, V]): Future[RecordMetadata] = {
     val promise = Promise[RecordMetadata]()
-    Try {
+    try {
       producer.send(record, producerCallback(promise))
-    } match {
-      case Failure(e: Exception) => promise.failure(e)
-      case x => x
+    } catch {
+      case NonFatal(e) => promise.failure(e)
     }
 
     promise.future
