@@ -1,5 +1,7 @@
 package cakesolutions.kafka
 
+import java.lang.Exception
+
 import cakesolutions.kafka.TypesafeConfigExtensions._
 import com.typesafe.config.Config
 import org.apache.kafka.clients.producer.{Callback, ProducerConfig, ProducerRecord, RecordMetadata, KafkaProducer => JKafkaProducer}
@@ -8,6 +10,7 @@ import org.apache.kafka.common.serialization.Serializer
 
 import scala.collection.JavaConversions._
 import scala.concurrent.{Future, Promise}
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -149,7 +152,12 @@ final class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) {
     */
   def send(record: ProducerRecord[K, V]): Future[RecordMetadata] = {
     val promise = Promise[RecordMetadata]()
-    producer.send(record, producerCallback(promise))
+    try {
+      producer.send(record, producerCallback(promise))
+    } catch {
+      case NonFatal(e) => promise.failure(e)
+    }
+
     promise.future
   }
 
