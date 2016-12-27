@@ -1,6 +1,7 @@
 package cakesolutions.kafka.akka
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorSystem, PoisonPill}
+import akka.testkit.TestProbe
 import cakesolutions.kafka.akka.KafkaConsumerActor.Subscribe.AutoPartition
 import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe, Unsubscribe}
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord, KafkaTopicPartition}
@@ -106,6 +107,31 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     expectNoMsg(5.seconds)
 
     consumer ! Unsubscribe
+    producer.close()
+  }
+
+  "KafkaConsumerActor configured via props" should "terminate itself if downstream actor terminates" in {
+    val topic = randomString
+
+    val producer = kafkaProducer("localhost", kafkaPort)
+    producer.send(KafkaProducerRecord(topic, None, "value"))
+    producer.flush()
+
+    val testProbe = TestProbe()
+    val downstreamActor = TestProbe().ref
+
+    // Consumer and actor config in same config file
+    val consumer = system.actorOf(KafkaConsumerActor.props(configuredActor(topic), new StringDeserializer(), new StringDeserializer(), downstreamActor))
+    consumer ! Subscribe.AutoPartition(List(topic))
+
+    // Initiate DeathWatch
+    testProbe.watch(consumer)
+    testProbe.watch(downstreamActor)
+
+    downstreamActor ! PoisonPill
+    testProbe.expectTerminated(downstreamActor)
+    testProbe.expectTerminated(consumer)
+
     producer.close()
   }
 
