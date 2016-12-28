@@ -615,7 +615,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     * from last committed offsets, which may result in some unavoidable redelivery.
     * @param offsets The offsets of the last delivered records that failed to commit to Kafka
     */
-  private def revokeAwait(state: StateData, offsets: Offsets): Receive = terminatedDownstreamReceive orElse terminatedDownstreamReceive orElse {
+  private def revokeAwait(state: StateData, offsets: Offsets): Receive = terminatedDownstreamReceive  orElse {
     case RevokeResume =>
       log.info("RevokeResume - Resuming processing post rebalance")
       state match {
