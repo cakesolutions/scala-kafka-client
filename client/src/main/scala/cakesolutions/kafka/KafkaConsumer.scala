@@ -74,7 +74,7 @@ object KafkaConsumer {
         ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG -> maxPartitionFetchBytes.toString,
         ConsumerConfig.MAX_POLL_RECORDS_CONFIG -> maxPollRecords.toString,
         ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG -> maxPollInterval.toString,
-        CommonClientConfigs.METADATA_MAX_AGE_CONFIG ->maxMetaDataAge.toString,
+        ConsumerConfig.METADATA_MAX_AGE_CONFIG ->maxMetaDataAge.toString,
         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> autoOffsetReset.toString.toLowerCase
       )
 
