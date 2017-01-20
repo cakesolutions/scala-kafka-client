@@ -37,7 +37,7 @@ For configuration and usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.10.1.1"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.10.1.2"
 ```
 
 ### Akka Integration
@@ -51,7 +51,7 @@ For configuration and usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.10.1.1"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.10.1.2"
 ```
 
 ### TestKit
@@ -65,7 +65,7 @@ For usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-testkit" % "0.10.1.1" % "test"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-testkit" % "0.10.1.2" % "test"
 ```
 
 ## Version Compatibility
@@ -93,6 +93,13 @@ Here is the full table of binary compatibilities between Scala Kafka client and 
  0.7.0                 | 0.9.0.1
 
 ## Change log
+
+### 0.10.1.2 - 01/2017
+
+* Crossbuild for Scala 2.11.8 and 2.12.1
+* Added maxMetaDataAge to KafkaConsumer (thanks @nitendragautam)
+* KafkaConsumerActor now terminates on downstream receiver actor termination (thanks @yoks)
+* Fixed bug related to Exception Handling in KafkaProducer (thanks @conniec)
 
 ### 0.10.1.1 - 11/2016
 
