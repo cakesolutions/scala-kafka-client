@@ -6,13 +6,14 @@ import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
-import org.slf4j.LoggerFactory
+
+import scala.util.Random
 
 class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_) {
 
   def this() = this(ActorSystem("KafkaProducerActorSpec"))
 
-  val log = LoggerFactory.getLogger(getClass)
+  private def randomString: String = Random.alphanumeric.take(5).mkString("")
 
   val deserializer = new StringDeserializer
   val consumerConf = KafkaConsumer.Conf(
@@ -27,7 +28,7 @@ class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
   val producerConf = KafkaProducer.Conf(serializer, serializer, bootstrapServers = s"localhost:$kafkaPort")
 
   "KafkaProducerActor" should "write a given batch to Kafka" in {
-    val topic = "sometopic"
+    val topic = randomString
     val probe = TestProbe()
     val producer = system.actorOf(KafkaProducerActor.props(producerConf))
     val batch: Seq[ProducerRecord[String, String]] = Seq(
@@ -50,7 +51,7 @@ class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
   "KafkaProducerActor" should "write a given batch to Kafka, requiring no response" in {
     import scala.concurrent.duration._
 
-    val topic = "sometopic"
+    val topic = randomString
     val probe = TestProbe()
     val producer = system.actorOf(KafkaProducerActor.props(producerConf))
     val batch: Seq[ProducerRecord[String, String]] = Seq(
