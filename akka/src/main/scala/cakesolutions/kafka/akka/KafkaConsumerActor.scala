@@ -396,7 +396,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     }
   }
 
-  private final case class Subscribed(
+  private case class Subscribed(
     subscription: Subscribe,
     lastConfirmedOffsets: Option[Offsets]
   ) extends StateData {
@@ -423,7 +423,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     def isCurrentOffset(offsets: Offsets): Boolean = unconfirmed.offsets == offsets
   }
 
-  private final case class Unconfirmed(
+  private case class Unconfirmed(
      subscription: Subscribe,
      lastConfirmedOffsets: Option[Offsets],
      unconfirmed: Records,
@@ -440,7 +440,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       Buffered(subscription, lastConfirmedOffsets, unconfirmed, deliveryTime, buffered, redeliveryCount)
   }
 
-  private final case class Buffered(
+  private case class Buffered(
     subscription: Subscribe,
     lastConfirmedOffsets: Option[Offsets],
     unconfirmed: Records,
