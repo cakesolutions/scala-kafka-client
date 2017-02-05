@@ -360,7 +360,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   override def receive: Receive = unsubscribed
 
   // Initial state
-  private val unsubscribed: Receive = {
+  private val unsubscribed: Receive = terminatedDownstreamReceive orElse {
     case Unsubscribe =>
       log.info("Already unsubscribed")
 
@@ -405,7 +405,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   }
 
   // No unconfirmed or buffered messages
-  private def ready(state: Subscribed): Receive = subscribedCommonReceive(state) orElse {
+  private def ready(state: Subscribed): Receive = subscribedCommonReceive(state) orElse terminatedDownstreamReceive orElse {
     case poll: Poll if isCurrentPoll(poll) =>
       pollKafka(state, poll.timeout) match {
         case Some(records) =>
@@ -473,7 +473,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   }
 
   // Buffered message and unconfirmed message with the client.  No need to poll until its confirmed, or timed out.
-  private def bufferFull(state: Buffered): Receive = unconfirmedCommonReceive(state) orElse {
+  private def bufferFull(state: Buffered): Receive = unconfirmedCommonReceive(state) orElse terminatedDownstreamReceive orElse {
     case poll: Poll if isCurrentPoll(poll) =>
       // If an confirmation timeout is set and has expired, the message is redelivered
       if (isConfirmationTimeout(state.deliveryTime)) {
@@ -518,7 +518,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     * from last committed offsets, which may result in some unavoidable redelivery.
     * @param offsets The offsets of the last delivered records that failed to commit to Kafka
     */
-  private def revokeAwait(state: StateData, offsets: Offsets): Receive = {
+  private def revokeAwait(state: StateData, offsets: Offsets): Receive = terminatedDownstreamReceive  orElse {
     case RevokeResume =>
       log.info("RevokeResume - Resuming processing post rebalance")
       state match {
@@ -582,6 +582,12 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       case Confirm(offsets, _) if !state.isCurrentOffset(offsets) =>
         log.warning("Received confirmation for unexpected offsets: {}", offsets)
     }
+
+  private def terminatedDownstreamReceive: Receive = {
+    case Terminated(`downstreamActor`) =>
+      log.info("Downstream Actor terminated")
+      context stop self
+  }
 
   private def sendRecords(records: Records): Unit = {
     downstreamActor ! records
@@ -688,6 +694,10 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   override def postStop(): Unit = {
     log.info("KafkaConsumerActor stopping")
     close()
+  }
+
+  override def preStart(): Unit = {
+    context.watch(downstreamActor)
   }
 
   private def close(): Unit = try {

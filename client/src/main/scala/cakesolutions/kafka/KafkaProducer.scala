@@ -9,6 +9,7 @@ import org.apache.kafka.common.serialization.Serializer
 import scala.collection.JavaConversions._
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Try
+import scala.util.control.NonFatal
 
 /**
   * Utilities for creating a Kafka producer.
@@ -105,7 +106,7 @@ object KafkaProducer {
     /**
       * Extend the configuration with a single key-value pair.
       */
-    def withProperty(key: String, value: AnyRef) = {
+    def withProperty(key: String, value: AnyRef): Conf[K, V] = {
       copy(props = props + (key -> value))
     }
   }
@@ -153,7 +154,12 @@ final class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) {
     */
   def send(record: ProducerRecord[K, V]): Future[RecordMetadata] = {
     val promise = Promise[RecordMetadata]()
-    producer.send(record, WriteCallback(promise))
+    try {
+      producer.send(record, WriteCallback(promise))
+    } catch {
+      case NonFatal(e) => promise.failure(e)
+    }
+
     promise.future
   }
 
