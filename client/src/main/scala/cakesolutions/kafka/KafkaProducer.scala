@@ -1,14 +1,12 @@
 package cakesolutions.kafka
 
-import java.lang.Exception
-
 import cakesolutions.kafka.TypesafeConfigExtensions._
 import com.typesafe.config.Config
 import org.apache.kafka.clients.producer.{Callback, ProducerConfig, ProducerRecord, RecordMetadata, KafkaProducer => JKafkaProducer}
 import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.serialization.Serializer
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
@@ -41,14 +39,16 @@ object KafkaProducer {
       * @tparam V value serialiser type
       * @return producer configuration consisting of all the given values
       */
-    def apply[K, V](keySerializer: Serializer[K],
-                    valueSerializer: Serializer[V],
-                    bootstrapServers: String = "localhost:9092",
-                    acks: String = "all",
-                    retries: Int = 0,
-                    batchSize: Int = 16384,
-                    lingerMs: Int = 1,
-                    bufferMemory: Int = 33554432): Conf[K, V] = {
+    def apply[K, V](
+      keySerializer: Serializer[K],
+      valueSerializer: Serializer[V],
+      bootstrapServers: String = "localhost:9092",
+      acks: String = "all",
+      retries: Int = 0,
+      batchSize: Int = 16384,
+      lingerMs: Int = 1,
+      bufferMemory: Int = 33554432
+    ): Conf[K, V] = {
 
       val configMap = Map[String, AnyRef](
         ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> bootstrapServers,
@@ -89,9 +89,11 @@ object KafkaProducer {
     * @tparam K key serializer type
     * @tparam V value serializer type
     */
-  final case class Conf[K, V](props: Map[String, AnyRef],
-                        keySerializer: Serializer[K],
-                        valueSerializer: Serializer[V]) {
+  final case class Conf[K, V](
+    props: Map[String, AnyRef],
+    keySerializer: Serializer[K],
+    valueSerializer: Serializer[V]
+  ) {
 
     /**
       * Extend the config with additional Typesafe config.
@@ -104,7 +106,7 @@ object KafkaProducer {
     /**
       * Extend the configuration with a single key-value pair.
       */
-    def withProperty(key: String, value: AnyRef) = {
+    def withProperty(key: String, value: AnyRef): Conf[K, V] = {
       copy(props = props + (key -> value))
     }
   }
@@ -117,9 +119,8 @@ object KafkaProducer {
     * @tparam V type of the value that the producer accepts
     * @return Kafka producer instance
     */
-  def apply[K, V](conf: Conf[K, V]): KafkaProducer[K, V] = {
-    apply(new JKafkaProducer[K, V](conf.props, conf.keySerializer, conf.valueSerializer))
-  }
+  def apply[K, V](conf: Conf[K, V]): KafkaProducer[K, V] =
+    apply(new JKafkaProducer[K, V](conf.props.asJava, conf.keySerializer, conf.valueSerializer))
 
   /**
     * Create [[KafkaProducer]] from a given Java `KafkaProducer` object.
@@ -185,14 +186,14 @@ final class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) {
     * @see Java `KafkaProducer` [[http://kafka.apache.org/090/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#partitionsFor(java.lang.String) partitionsFor]] method
     */
   def partitionsFor(topic: String): List[PartitionInfo] =
-    producer.partitionsFor(topic).toList
+    producer.partitionsFor(topic).asScala.toList
 
   /**
     * Close this producer.
     *
     * @see Java `KafkaProducer` [[http://kafka.apache.org/090/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#close() close]] method
     */
-  def close() =
+  def close(): Unit =
     producer.close()
 
   private def producerCallback(promise: Promise[RecordMetadata]): Callback =

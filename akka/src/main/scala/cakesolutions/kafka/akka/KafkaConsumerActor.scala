@@ -11,7 +11,7 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.serialization.Deserializer
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe.TypeTag
 import scala.util.{Failure, Success, Try}
@@ -117,9 +117,11 @@ object KafkaConsumerActor {
       * @param assignedListener a callback handler that should lookup the latest offsets for the provided topic/partitions.
       * @param revokedListener a callback to provide the oppurtunity to cleanup any in memory state for revoked partitions.
       */
-    final case class AutoPartitionWithManualOffset(topics: Iterable[String],
+    final case class AutoPartitionWithManualOffset(
+      topics: Iterable[String],
       assignedListener: List[TopicPartition] => Offsets,
-      revokedListener: List[TopicPartition] => Unit) extends Subscribe
+      revokedListener: List[TopicPartition] => Unit
+    ) extends Subscribe
 
     /**
       * Subscribe to topics in manually assigned partition mode, relying on Kafka to manage the commit point for each partition.
@@ -467,7 +469,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       become(ready(Subscribed(sub, None)))
       pollImmediate(delayedPollTimeout)
 
-    case Confirm(offsets, commit) =>
+    case Confirm(_, _) =>
       log.warning("Attempted to confirm offsets while consumer wasn't subscribed")
 
     case _: Poll => // Do nothing
@@ -659,20 +661,20 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     case Subscribe.AutoPartition(topics) =>
       log.info(s"Subscribing in auto partition assignment mode to topics [{}].", topics.mkString(","))
       trackPartitions = new TrackPartitionsCommitMode(consumer, context.self)
-      consumer.subscribe(topics.toList, trackPartitions)
+      consumer.subscribe(topics.toList.asJava, trackPartitions)
 
     case Subscribe.AutoPartitionWithManualOffset(topics, assignedListener, revokedListener) =>
       log.info(s"Subscribing in auto partition assignment with manual offset mode to topics [{}].", topics.mkString(","))
       trackPartitions = new TrackPartitionsManualOffset(consumer, context.self, assignedListener, revokedListener)
-      consumer.subscribe(topics.toList, trackPartitions)
+      consumer.subscribe(topics.toList.asJava, trackPartitions)
 
     case Subscribe.ManualPartition(topicPartitions) =>
       log.info("Subscribing in manual partition assignment mode to topic/partitions [{}].", topicPartitions.mkString(","))
-      consumer.assign(topicPartitions.toList)
+      consumer.assign(topicPartitions.toList.asJava)
 
     case Subscribe.ManualOffset(offsets) =>
       log.info("Subscribing in manual partition assignment mode to partitions with offsets [{}]", offsets)
-      consumer.assign(offsets.topicPartitions.toList)
+      consumer.assign(offsets.topicPartitions.toList.asJava)
       seekOffsets(offsets)
   }
 
@@ -747,7 +749,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
 
   private def tryCommit(offsetsToCommit: Offsets, state: StateData): Try[Unit] = {
     try {
-      consumer.commitSync(offsetsToCommit.toCommitMap)
+      consumer.commitSync(offsetsToCommit.toCommitMap.asJava)
       Success({})
     } catch {
       case we: WakeupException =>
@@ -768,7 +770,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   private def schedulePoll(stateData: StateData): Unit = schedulePoll(stateData.scheduleInterval)
 
   private def currentConsumerOffsets: Offsets = {
-    val offsetsMap = consumer.assignment()
+    val offsetsMap = consumer.assignment().asScala
       .map(p => p -> consumer.position(p))
       .toMap
     Offsets(offsetsMap)
