@@ -283,13 +283,17 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   private val delayedPollTimeout = 200
 
   // Receive states
-  private sealed trait StateData {
+  private sealed abstract class StateData {
     val subscription: Subscribe
     val lastConfirmedOffsets: Option[Offsets]
 
     def scheduleInterval: FiniteDuration = actorConf.scheduleInterval
 
-    def toSubscribed: Subscribed = Subscribed(subscription, lastConfirmedOffsets)
+    def toSubscribed: Subscribed =
+      new Subscribed(
+        subscription = subscription,
+        lastConfirmedOffsets = lastConfirmedOffsets
+      )
 
     def advanceSubscription: Subscribe =
       lastConfirmedOffsets
@@ -297,15 +301,20 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
         .getOrElse(subscription)
   }
 
-  private final case class Subscribed(
-    subscription: Subscribe,
-    lastConfirmedOffsets: Option[Offsets]
+  private final class Subscribed(
+    val subscription: Subscribe,
+    val lastConfirmedOffsets: Option[Offsets]
   ) extends StateData {
 
-    def toUnconfirmed(unconfirmed: Records): Unconfirmed = Unconfirmed(subscription, lastConfirmedOffsets, unconfirmed)
+    def toUnconfirmed(unconfirmed: Records): Unconfirmed =
+      new Unconfirmed(
+        subscription = subscription,
+        lastConfirmedOffsets = lastConfirmedOffsets,
+        unconfirmed = unconfirmed
+      )
   }
 
-  private sealed trait UnconfirmedRecordsStateData extends StateData {
+  private sealed abstract class UnconfirmedRecordsStateData extends StateData {
     val unconfirmed: Records
 
     /**
@@ -324,37 +333,62 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     def isCurrentOffset(offsets: Offsets): Boolean = unconfirmed.offsets == offsets
   }
 
-  private final case class Unconfirmed(
-     subscription: Subscribe,
-     lastConfirmedOffsets: Option[Offsets],
-     unconfirmed: Records,
-     deliveryTime: LocalDateTime = LocalDateTime.now(),
-     redeliveryCount: Int = 0
+  private final class Unconfirmed(
+     val subscription: Subscribe,
+     val lastConfirmedOffsets: Option[Offsets],
+     val unconfirmed: Records,
+     val deliveryTime: LocalDateTime = LocalDateTime.now(),
+     val redeliveryCount: Int = 0
   ) extends UnconfirmedRecordsStateData {
 
-    def confirm(offsets: Offsets): Subscribed = Subscribed(subscription, Some(offsets))
+    def confirm(offsets: Offsets): Subscribed = new Subscribed(subscription, Some(offsets))
 
     def redelivered: Unconfirmed =
-      copy(deliveryTime = LocalDateTime.now(), redeliveryCount = redeliveryCount + 1)
+      new Unconfirmed(
+        deliveryTime = LocalDateTime.now(),
+        redeliveryCount = redeliveryCount + 1,
+        subscription = subscription,
+        lastConfirmedOffsets = lastConfirmedOffsets,
+        unconfirmed = unconfirmed
+      )
 
     def addToBuffer(buffered: Records): Buffered =
-      Buffered(subscription, lastConfirmedOffsets, unconfirmed, deliveryTime, buffered, redeliveryCount)
+      new Buffered(
+        subscription = subscription,
+        lastConfirmedOffsets = lastConfirmedOffsets,
+        unconfirmed = unconfirmed,
+        deliveryTime = deliveryTime,
+        buffered = buffered,
+        redeliveryCount = redeliveryCount
+      )
   }
 
-  private final case class Buffered(
-    subscription: Subscribe,
-    lastConfirmedOffsets: Option[Offsets],
-    unconfirmed: Records,
-    deliveryTime: LocalDateTime = LocalDateTime.now(),
-    buffered: Records,
-    redeliveryCount: Int = 0
+  private final class Buffered(
+    val subscription: Subscribe,
+    val lastConfirmedOffsets: Option[Offsets],
+    val unconfirmed: Records,
+    val deliveryTime: LocalDateTime = LocalDateTime.now(),
+    val buffered: Records,
+    val redeliveryCount: Int = 0
   ) extends UnconfirmedRecordsStateData {
 
     def confirm(offsets: Offsets): Unconfirmed =
-      Unconfirmed(subscription, Some(offsets), buffered, LocalDateTime.now())
+      new Unconfirmed(
+        subscription = subscription,
+        lastConfirmedOffsets = Some(offsets),
+        unconfirmed = buffered,
+        deliveryTime = LocalDateTime.now()
+      )
 
     def redelivered: Buffered =
-      copy(deliveryTime = LocalDateTime.now(), redeliveryCount = redeliveryCount + 1)
+      new Buffered(
+        deliveryTime = LocalDateTime.now(),
+        redeliveryCount = redeliveryCount + 1,
+        subscription = subscription,
+        lastConfirmedOffsets = lastConfirmedOffsets,
+        unconfirmed = unconfirmed,
+        buffered = buffered
+      )
   }
 
   override def receive: Receive = unsubscribed
@@ -367,7 +401,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     case sub: Subscribe =>
       subscribe(sub)
       log.debug("To Ready state")
-      become(ready(Subscribed(sub, None)))
+      become(ready(new Subscribed(sub, None)))
       pollImmediate(delayedPollTimeout)
 
     case Confirm(offsets, commit) =>
@@ -534,7 +568,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
 
     case RevokeReset =>
       log.warning("RevokeReset - Resetting state to Committed offsets")
-      become(ready(Subscribed(state.subscription, None)))
+      become(ready(new Subscribed(state.subscription, None)))
 
     case poll: Poll if isCurrentPoll(poll) =>
       log.debug("Poll in Revoke")

@@ -2,10 +2,11 @@ package cakesolutions.kafka
 
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.scalatest.concurrent.Waiters.Waiter
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.slf4j.LoggerFactory
 
-import scala.util.Random
+import scala.util.{Failure, Random, Success}
 
 class KafkaConsumerSpec extends KafkaIntSpec {
 
@@ -69,8 +70,9 @@ class KafkaConsumerSpec extends KafkaIntSpec {
     log.info("Kafka producer connecting on port: [{}]", kafkaPort)
     val future = producer.send(KafkaProducerRecord(topic, Some("key"), "value"))
 
-    future.onFailure {
-      case e: Exception => w.dismiss()
+    future.onComplete {
+      case Success(_) =>
+      case Failure(e) => w.dismiss()
     }
 
     w.await()

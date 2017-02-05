@@ -6,7 +6,7 @@ import org.apache.kafka.clients.producer.{ProducerConfig, ProducerRecord, Record
 import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.serialization.Serializer
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -120,7 +120,7 @@ object KafkaProducer {
     * @return Kafka producer instance
     */
   def apply[K, V](conf: Conf[K, V]): KafkaProducer[K, V] = {
-    apply(new JKafkaProducer[K, V](conf.props, conf.keySerializer, conf.valueSerializer))
+    apply(new JKafkaProducer[K, V](conf.props.asJava, conf.keySerializer, conf.valueSerializer))
   }
 
   /**
@@ -197,7 +197,7 @@ final class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) {
     * @see Java `KafkaProducer` [[http://kafka.apache.org/090/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#partitionsFor(java.lang.String) partitionsFor]] method
     */
   def partitionsFor(topic: String): List[PartitionInfo] =
-    producer.partitionsFor(topic).toList
+    producer.partitionsFor(topic).asScala.toList
 
   /**
     * Close this producer.
