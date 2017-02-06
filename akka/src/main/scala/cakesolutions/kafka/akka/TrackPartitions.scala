@@ -7,7 +7,7 @@ import org.apache.kafka.clients.consumer.{ConsumerRebalanceListener, KafkaConsum
 import org.apache.kafka.common.TopicPartition
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 sealed trait TrackPartitions extends ConsumerRebalanceListener {
   def isRevoked: Boolean
@@ -39,8 +39,8 @@ private final class TrackPartitionsCommitMode(consumer: KafkaConsumer[_, _], con
     _revoked = true
 
     // If partitions have been revoked, keep a record of our current position within them.
-    if (partitions.nonEmpty) {
-      _offsets = partitions.map(partition => partition -> consumer.position(partition)).toMap
+    if (!partitions.isEmpty) {
+      _offsets = partitions.asScala.map(partition => partition -> consumer.position(partition)).toMap
     }
   }
 
@@ -56,7 +56,7 @@ private final class TrackPartitionsCommitMode(consumer: KafkaConsumer[_, _], con
 
     if (allExisting) {
       for {
-        partition <- partitions
+        partition <- partitions.asScala
         offset <- _offsets.get(partition)
       } {
         log.info(s"Seeking partition: [{}] to offset [{}]", partition, offset)
@@ -104,8 +104,8 @@ private final class TrackPartitionsManualOffset(
 
     _revoked = true
 
-    if (partitions.nonEmpty) {
-      _offsets = partitions.map(partition => partition -> consumer.position(partition)).toMap
+    if (!partitions.isEmpty) {
+      _offsets = partitions.asScala.map(partition => partition -> consumer.position(partition)).toMap
     }
   }
 
@@ -135,7 +135,7 @@ private final class TrackPartitionsManualOffset(
     val allExisting = _offsets.forall { case (partition, _) => partitions.contains(partition) }
 
     if (allExisting) {
-      val newPartitions = partitions.toList.diff(offsetsToTopicPartitions(_offsets))
+      val newPartitions = partitions.asScala.toList.diff(offsetsToTopicPartitions(_offsets))
       assign(newPartitions)
     } else {
       consumerActor ! KafkaConsumerActor.RevokeReset
@@ -144,7 +144,7 @@ private final class TrackPartitionsManualOffset(
       revokedListener(offsetsToTopicPartitions(_offsets))
 
       // Invoke client callback to notify the new assignments and seek to the provided offsets.
-      assign(partitions.toList)
+      assign(partitions.asScala.toList)
     }
   }
 

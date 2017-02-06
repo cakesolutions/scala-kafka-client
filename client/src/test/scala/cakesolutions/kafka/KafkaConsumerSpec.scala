@@ -2,20 +2,21 @@ package cakesolutions.kafka
 
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.scalatest.concurrent.Waiters.Waiter
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConversions._
-import scala.util.Random
+import scala.collection.JavaConverters._
+import scala.util.{Failure, Random, Success}
 
 class KafkaConsumerSpec extends KafkaIntSpec {
 
   private def randomString: String = Random.alphanumeric.take(5).mkString("")
 
-  val log = LoggerFactory.getLogger(getClass)
+  private val log = LoggerFactory.getLogger(getClass)
 
-  val serializer = (msg: String) => msg.getBytes
-  val deserializer = (bytes: Array[Byte]) => new String(bytes)
+  private val serializer = (msg: String) => msg.getBytes
+  private val deserializer = (bytes: Array[Byte]) => new String(bytes)
 
   val consumerConfig: KafkaConsumer.Conf[String, String] = {
     KafkaConsumer.Conf(KafkaDeserializer(deserializer),
@@ -37,7 +38,7 @@ class KafkaConsumerSpec extends KafkaIntSpec {
 
     val producer = KafkaProducer(producerConfig)
     val consumer = KafkaConsumer(consumerConfig)
-    consumer.subscribe(List(topic))
+    consumer.subscribe(List(topic).asJava)
 
     val records1 = consumer.poll(1000)
     records1.count() shouldEqual 0
@@ -62,16 +63,19 @@ class KafkaConsumerSpec extends KafkaIntSpec {
       throw new Exception("Serialization failed")
     }
 
-    val producerConfig = KafkaProducer.Conf(KafkaSerializer(serializer),
+    val producerConfig = KafkaProducer.Conf(
+      KafkaSerializer(serializer),
       KafkaSerializer(badSerializer),
-      bootstrapServers = s"localhost:$kafkaPort")
+      bootstrapServers = s"localhost:$kafkaPort"
+    )
     val producer = KafkaProducer(producerConfig)
 
     log.info("Kafka producer connecting on port: [{}]", kafkaPort)
     val future = producer.send(KafkaProducerRecord(topic, Some("key"), "value"))
 
-    future.onFailure {
-      case e: Exception => w.dismiss()
+    future.onComplete {
+      case Success(_) =>
+      case Failure(_) => w.dismiss()
     }
 
     w.await()

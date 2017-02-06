@@ -5,7 +5,7 @@ import com.typesafe.config.Config
 import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetResetStrategy, KafkaConsumer => JKafkaConsumer}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.Deserializer
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
 /**
@@ -18,14 +18,11 @@ object KafkaConsumer {
 
   /**
     * Implicit conversion to support calling the org.apache.kafka.clients.consumer.KafkaConsumer.offsetsForTimes method with a Map[TopicPartition, scala.Long].
-    *
-    * @param offsetQuery
-    * @return
     */
   implicit def toJavaOffsetQuery(offsetQuery: Map[TopicPartition, scala.Long]): java.util.Map[TopicPartition, java.lang.Long] =
-    offsetQuery.map { case (tp, time) =>
-      tp -> new java.lang.Long(time)
-    }
+    offsetQuery
+      .map { case (tp, time) => tp -> new java.lang.Long(time) }
+      .asJava
 
   /**
     * Utilities for creating Kafka consumer configurations.
@@ -63,7 +60,8 @@ object KafkaConsumer {
       maxPollRecords: Int = 500,
       maxPollInterval: Int = 300000,
       maxMetaDataAge : Long = 300000,             
-      autoOffsetReset: OffsetResetStrategy = OffsetResetStrategy.LATEST): Conf[K, V] = {
+      autoOffsetReset: OffsetResetStrategy = OffsetResetStrategy.LATEST
+    ): Conf[K, V] = {
 
       val configMap = Map[String, AnyRef](
         ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> bootstrapServers,
@@ -130,7 +128,7 @@ object KafkaConsumer {
     /**
       * Extend the configuration with a single key-value pair.
       */
-    def withProperty(key: String, value: AnyRef) =
+    def withProperty(key: String, value: AnyRef): Conf[K, V] =
       copy(props = props + (key -> value))
   }
 
@@ -143,5 +141,5 @@ object KafkaConsumer {
     * @return Kafka consumer client
     */
   def apply[K, V](conf: Conf[K, V]): JKafkaConsumer[K, V] =
-    new JKafkaConsumer[K, V](conf.props, conf.keyDeserializer, conf.valueDeserializer)
+    new JKafkaConsumer[K, V](conf.props.asJava, conf.keyDeserializer, conf.valueDeserializer)
 }
