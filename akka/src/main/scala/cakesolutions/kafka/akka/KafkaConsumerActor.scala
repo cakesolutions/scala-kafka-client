@@ -176,6 +176,48 @@ object KafkaConsumerActor {
   private[akka] case object TriggerConsumerFailure extends InternalMessageApi
 
   /**
+    * Actor API - Response for subscription attempt.
+    *
+    * See [[SubscribeSuccess]] and [[SubscribeFail]]
+    */
+  sealed trait SubscribeResponse
+
+  /**
+    * Actor API - Response sent on successful subscription.
+    *
+    * This message is sent back to the sender when subscribing to an unsubscribed consumer actor.
+    */
+  case object SubscribeSuccess extends SubscribeResponse
+
+  /**
+    * Actor API - Response sent on failed subscription.
+    *
+    * This message is sent back to the sender when subscribing to an already subscribed consumer actor.
+    */
+  case object SubscribeFail extends SubscribeResponse
+
+  /**
+    * Actor API - Response for unsubscription attempt.
+    *
+    * See [[UnsubscribeSuccess]] and [[UnsubscribeFail]]
+    */
+  sealed trait UnsubscribeResponse
+
+  /**
+    * Actor API - Response sent on successful unsubscription.
+    *
+    * This message is sent back to the sender when unsubscribing to a subscribed consumer actor.
+    */
+  case object UnsubscribeSuccess extends UnsubscribeResponse
+
+  /**
+    * Actor API - Response sent on failed unsubscription.
+    *
+    * This message is sent back to the sender when unsubscribing to an unsubscribed consumer actor.
+    */
+  case object UnsubscribeFail extends UnsubscribeResponse
+
+  /**
     * Exception type escalated through supervision to indicate an unrecoverable error.
     *
     * The last known subscription is included as part of the exception to support resubscription attempt on actor restart.
@@ -462,12 +504,14 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   private val unsubscribed: Receive = terminatedDownstreamReceive orElse {
     case Unsubscribe =>
       log.info("Already unsubscribed")
+      sender () ! UnsubscribeFail
 
     case sub: Subscribe =>
       subscribe(sub)
       log.debug("To Ready state")
       become(ready(Subscribed(sub, None)))
       pollImmediate(delayedPollTimeout)
+      sender() ! SubscribeSuccess
 
     case Confirm(_, _) =>
       log.warning("Attempted to confirm offsets while consumer wasn't subscribed")
@@ -481,6 +525,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       cancelPoll()
       unsubscribe()
       become(unsubscribed)
+      sender() ! UnsubscribeSuccess
 
     case RevokeReset =>
       log.info("Revoking Assignments - resetting state!")
@@ -488,6 +533,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
 
     case _: Subscribe =>
       log.warning("Attempted to subscribe while consumer was already subscribed")
+      sender() ! SubscribeFail
 
     case TriggerConsumerFailure =>
       log.info("Triggering consumer failure!")
