@@ -19,6 +19,7 @@ object ProducerRecords {
     * @param successResponse optional response message to the sender on successful delivery
     * @param failureResponse optional response message to the sender on failed delivery
     */
+  @deprecated("Use fromValuesWithKey instead.", "0.10.1.3")
   def fromValues[Value: TypeTag](
     topic: String,
     values: Seq[Value],
