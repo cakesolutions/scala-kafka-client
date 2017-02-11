@@ -3,7 +3,7 @@ package cakesolutions.kafka.akka
 import cakesolutions.kafka.KafkaProducerRecord
 import org.apache.kafka.clients.producer.ProducerRecord
 
-import scala.reflect.runtime.universe.TypeTag
+import scala.reflect.runtime.universe._
 
 /**
   * Helper functions for [[ProducerRecords]].
@@ -153,4 +153,13 @@ final case class ProducerRecords[Key: TypeTag, Value: TypeTag](
   records: Iterable[ProducerRecord[Key, Value]],
   successResponse: Option[Any] = None,
   failureResponse: Option[Any] = None
-) extends TypeTagged[ProducerRecords[Key, Value]]
+) extends TypeTagged[ProducerRecords[Key, Value]] {
+
+  /** @inheritdoc */
+  override def toString: String = {
+    val name = getClass.getSimpleName
+    val keyName = typeOf[Key]
+    val valueName = typeOf[Value]
+    s"$name[$keyName,$valueName]($records,$successResponse,$failureResponse)"
+  }
+}

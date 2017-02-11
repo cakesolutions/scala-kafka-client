@@ -6,7 +6,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 
 import scala.collection.JavaConverters._
-import scala.reflect.runtime.universe.TypeTag
+import scala.reflect.runtime.universe._
 
 /**
   * Helper functions for [[ConsumerRecords]].
@@ -146,4 +146,12 @@ final case class ConsumerRecords[Key: TypeTag, Value: TypeTag](
     * The number of records.
     */
   def size: Int = records.count()
+
+  /** @inheritdoc */
+  override def toString: String = {
+    val name = getClass.getSimpleName
+    val keyName = typeOf[Key]
+    val valueName = typeOf[Value]
+    s"$name[$keyName,$valueName]($offsets,$records)"
+  }
 }
