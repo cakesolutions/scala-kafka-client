@@ -6,6 +6,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 
 import scala.collection.JavaConverters._
+import scala.collection.immutable.{Iterable, Seq}
 import scala.reflect.runtime.universe.TypeTag
 
 /**
@@ -21,7 +22,7 @@ object ConsumerRecords {
     * The offsets will contain only one partition.
     * The partition offset will be set according to the size of the given sequence.
     */
-  def fromValues[Key >: Null : TypeTag, Value: TypeTag](partition: TopicPartition, values: Seq[Value]): ConsumerRecords[Key, Value] =
+  def fromValues[Key >: Null : TypeTag, Value: TypeTag](partition: TopicPartition, values: Iterable[Value]): ConsumerRecords[Key, Value] =
     fromPairs(partition, values.map(None -> _))
 
   /**
@@ -33,7 +34,7 @@ object ConsumerRecords {
     * The offsets will contain only one partition.
     * The partition offset will be set according to size of the given sequence.
     */
-  def fromPairs[Key >: Null : TypeTag, Value: TypeTag](partition: TopicPartition, pairs: Seq[(Option[Key], Value)]): ConsumerRecords[Key, Value] =
+  def fromPairs[Key >: Null : TypeTag, Value: TypeTag](partition: TopicPartition, pairs: Iterable[(Option[Key], Value)]): ConsumerRecords[Key, Value] =
     fromMap(Map(partition -> pairs))
 
   /**
@@ -44,8 +45,8 @@ object ConsumerRecords {
     *
     * The partition offsets will be set according to the number of messages in a partition.
     */
-  def fromMap[Key >: Null : TypeTag, Value: TypeTag](values: Map[TopicPartition, Seq[(Option[Key], Value)]]): ConsumerRecords[Key, Value] = {
-    def createConsumerRecords(topicPartition: TopicPartition, pairs: Seq[(Option[Key], Value)]) =
+  def fromMap[Key >: Null : TypeTag, Value: TypeTag](values: Map[TopicPartition, Iterable[(Option[Key], Value)]]): ConsumerRecords[Key, Value] = {
+    def createConsumerRecords(topicPartition: TopicPartition, pairs: Iterable[(Option[Key], Value)]) =
       pairs.zipWithIndex.map {
         case ((key, value), offset) =>
           new JConsumerRecord[Key, Value](topicPartition.topic(), topicPartition.partition(), offset, key.orNull, value)
@@ -59,7 +60,7 @@ object ConsumerRecords {
 
     val offsets = Offsets(recordsMap.mapValues(_.maxBy(_.offset()).offset()))
 
-    val records = new JConsumerRecords(recordsMap.mapValues(_.asJava).asJava)
+    val records = new JConsumerRecords(recordsMap.mapValues(_.toList.asJava).asJava)
 
     ConsumerRecords(offsets, records)
   }

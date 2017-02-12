@@ -6,6 +6,7 @@ import com.typesafe.config.Config
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 import org.apache.kafka.common.serialization.Serializer
 
+import scala.collection.immutable.Iterable
 import scala.concurrent.Future
 import scala.reflect.runtime.universe.TypeTag
 import scala.util.{Failure, Success}

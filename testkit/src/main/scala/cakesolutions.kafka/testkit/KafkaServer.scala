@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
+import scala.collection.immutable.{Iterable, Seq}
 import scala.util.{Random, Try}
 
 object KafkaServer {
@@ -165,7 +166,7 @@ final class KafkaServer(
         sys.error(s"Did not receive expected amount records. Expected $expectedNumOfRecords but got ${collected.size}.")
       }
 
-      collected.toVector
+      collected.toList
     } finally {
       consumer.close()
     }

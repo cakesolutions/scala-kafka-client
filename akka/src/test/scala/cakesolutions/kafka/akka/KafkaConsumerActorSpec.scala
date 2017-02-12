@@ -80,7 +80,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
           producer.flush()
 
           val consumer = KafkaConsumerActor(consumerConfig, actorConf, testActor)
-          consumer.subscribe(AutoPartition(Seq(topic)))
+          consumer.subscribe(AutoPartition(List(topic)))
 
           val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
           consumer.confirm(rs.offsets)
@@ -181,9 +181,11 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     producer.flush()
 
     val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, KafkaConsumerActor.Conf(), testActor))
-    consumer ! Subscribe.AutoPartitionWithManualOffset(Seq(topic),
-      tps => Offsets(tps.map { tp => tp -> 0l }.toMap),
-      _ => ())
+    consumer ! Subscribe.AutoPartitionWithManualOffset(
+      topics = List(topic),
+      assignedListener = tps => Offsets(tps.map { tp => tp -> 0l }.toMap),
+      revokedListener = _ => ()
+    )
 
     val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
     consumer ! Confirm(rs.offsets)

@@ -12,6 +12,7 @@ import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.serialization.Deserializer
 
 import scala.collection.JavaConverters._
+import scala.collection.immutable.Iterable
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe.TypeTag
 import scala.util.{Failure, Success, Try}

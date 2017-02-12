@@ -6,7 +6,7 @@ import org.scalatest.{FlatSpecLike, Inside, Matchers}
 class ConsumerRecordsSpec extends FlatSpecLike with Matchers with Inside {
 
   val partition = KafkaTopicPartition("sometopic", 0)
-  val knownInput: ConsumerRecords[String, Int] = ConsumerRecords.fromPairs(partition, Seq(Some("foo") -> 1))
+  val knownInput: ConsumerRecords[String, Int] = ConsumerRecords.fromPairs(partition, List(Some("foo") -> 1))
   val partiallyKnownInput: ConsumerRecords[_, _] = knownInput
   val anyInput: Any = knownInput
 

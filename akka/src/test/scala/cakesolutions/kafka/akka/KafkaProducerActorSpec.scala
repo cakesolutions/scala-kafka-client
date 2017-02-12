@@ -31,10 +31,11 @@ class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     val topic = randomString
     val probe = TestProbe()
     val producer = system.actorOf(KafkaProducerActor.props(producerConf))
-    val batch: Seq[ProducerRecord[String, String]] = Seq(
+    val batch: List[ProducerRecord[String, String]] = List(
       KafkaProducerRecord(topic, "foo"),
       KafkaProducerRecord(topic, "key", "value"),
-      KafkaProducerRecord(topic, "bar"))
+      KafkaProducerRecord(topic, "bar")
+    )
     val message = ProducerRecords(batch, Some('response))
 
     probe.send(producer, message)
@@ -54,7 +55,7 @@ class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     val topic = randomString
     val probe = TestProbe()
     val producer = system.actorOf(KafkaProducerActor.props(producerConf))
-    val batch: Seq[ProducerRecord[String, String]] = Seq(
+    val batch: List[ProducerRecord[String, String]] = List(
       KafkaProducerRecord(topic, "foo"),
       KafkaProducerRecord(topic, "key", "value"),
       KafkaProducerRecord(topic, "bar")
