@@ -78,7 +78,7 @@ class KafkaE2EActorPerfSpec(system_ : ActorSystem)
     testProducer.flush()
     log.info("Delivered {} messages to topic {}", totalMessages, sourceTopic)
 
-    consumer.subscribe(AutoPartition(Seq(sourceTopic)))
+    consumer.subscribe(AutoPartition(List(sourceTopic)))
 
     whenReady(pilot.future) { case (totalTime, messagesPerSec) =>
       log.info("Total Time millis : {}", totalTime)

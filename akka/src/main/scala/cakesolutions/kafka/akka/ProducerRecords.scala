@@ -3,6 +3,7 @@ package cakesolutions.kafka.akka
 import cakesolutions.kafka.KafkaProducerRecord
 import org.apache.kafka.clients.producer.ProducerRecord
 
+import scala.collection.immutable.Seq
 import scala.reflect.runtime.universe.TypeTag
 
 /**
@@ -150,7 +151,7 @@ object ProducerRecords {
   * @param failureResponse optional message that is to be sent back to the sender when messages were not successfully written to Kafka
   */
 final case class ProducerRecords[Key: TypeTag, Value: TypeTag](
-  records: Iterable[ProducerRecord[Key, Value]],
+  records: Seq[ProducerRecord[Key, Value]],
   successResponse: Option[Any] = None,
   failureResponse: Option[Any] = None
 ) extends TypeTagged[ProducerRecords[Key, Value]]

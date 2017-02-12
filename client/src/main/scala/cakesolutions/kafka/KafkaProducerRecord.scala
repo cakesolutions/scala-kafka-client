@@ -3,6 +3,7 @@ package cakesolutions.kafka
 import cakesolutions.kafka.KafkaTopicPartition.{Partition, Topic}
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
+import scala.collection.immutable.Seq
 
 /**
   * Helper functions for creating Kafka's `ProducerRecord`s.
@@ -158,7 +159,7 @@ object KafkaProducerRecord {
     *
     * @param keyValuesWithTopic a sequence of topic, key, and value triples.
     */
-  def fromKeyValuesWithTopic[Key, Value](keyValuesWithTopic: Iterable[(String, Option[Key], Value)]): Iterable[ProducerRecord[Key, Value]] =
+  def fromKeyValuesWithTopic[Key, Value](keyValuesWithTopic: Seq[(String, Option[Key], Value)]): Seq[ProducerRecord[Key, Value]] =
     keyValuesWithTopic.map {
       case (topic, key, value) => KafkaProducerRecord(topic, key, value)
     }
