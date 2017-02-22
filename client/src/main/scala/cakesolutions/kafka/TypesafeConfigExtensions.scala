@@ -2,7 +2,7 @@ package cakesolutions.kafka
 
 import java.util.Properties
 import com.typesafe.config.Config
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.immutable._
 import scala.collection.mutable
 
@@ -18,7 +18,7 @@ private[kafka] object TypesafeConfigExtensions {
       */
     def toProperties: Properties = {
       val props = new Properties()
-      config.entrySet().foreach(entry => props.put(entry.getKey, entry.getValue.unwrapped().toString))
+      config.entrySet().asScala.foreach(entry => props.put(entry.getKey, entry.getValue.unwrapped().toString))
       props
     }
 
@@ -27,7 +27,7 @@ private[kafka] object TypesafeConfigExtensions {
       */
     def toPropertyMap: Map[String, AnyRef] = {
       val map = mutable.Map[String, AnyRef]()
-      config.entrySet().foreach(entry => map.put(entry.getKey, entry.getValue.unwrapped().toString))
+      config.entrySet().asScala.foreach(entry => map.put(entry.getKey, entry.getValue.unwrapped().toString))
       map.toMap
     }
   }

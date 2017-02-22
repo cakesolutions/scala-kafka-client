@@ -11,7 +11,7 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.serialization.Deserializer
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe.TypeTag
 import scala.util.{Failure, Success, Try}
@@ -117,9 +117,11 @@ object KafkaConsumerActor {
       * @param assignedListener a callback handler that should lookup the latest offsets for the provided topic/partitions.
       * @param revokedListener a callback to provide the oppurtunity to cleanup any in memory state for revoked partitions.
       */
-    final case class AutoPartitionWithManualOffset(topics: Iterable[String],
+    final case class AutoPartitionWithManualOffset(
+      topics: Iterable[String],
       assignedListener: List[TopicPartition] => Offsets,
-      revokedListener: List[TopicPartition] => Unit) extends Subscribe
+      revokedListener: List[TopicPartition] => Unit
+    ) extends Subscribe
 
     /**
       * Subscribe to topics in manually assigned partition mode, relying on Kafka to manage the commit point for each partition.
@@ -394,7 +396,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     }
   }
 
-  private final case class Subscribed(
+  private case class Subscribed(
     subscription: Subscribe,
     lastConfirmedOffsets: Option[Offsets]
   ) extends StateData {
@@ -421,7 +423,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     def isCurrentOffset(offsets: Offsets): Boolean = unconfirmed.offsets == offsets
   }
 
-  private final case class Unconfirmed(
+  private case class Unconfirmed(
      subscription: Subscribe,
      lastConfirmedOffsets: Option[Offsets],
      unconfirmed: Records,
@@ -438,7 +440,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       Buffered(subscription, lastConfirmedOffsets, unconfirmed, deliveryTime, buffered, redeliveryCount)
   }
 
-  private final case class Buffered(
+  private case class Buffered(
     subscription: Subscribe,
     lastConfirmedOffsets: Option[Offsets],
     unconfirmed: Records,
@@ -459,7 +461,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   // Initial state
   private val unsubscribed: Receive = terminatedDownstreamReceive orElse {
     case Unsubscribe =>
-      log.info("Already unsubscribed")
+      log.debug("Already unsubscribed")
 
     case sub: Subscribe =>
       subscribe(sub)
@@ -467,7 +469,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       become(ready(Subscribed(sub, None)))
       pollImmediate(delayedPollTimeout)
 
-    case Confirm(offsets, commit) =>
+    case Confirm(_, _) =>
       log.warning("Attempted to confirm offsets while consumer wasn't subscribed")
 
     case _: Poll => // Do nothing
@@ -488,7 +490,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       log.warning("Attempted to subscribe while consumer was already subscribed")
 
     case TriggerConsumerFailure =>
-      log.info("Triggering consumer failure!")
+      log.info("Triggering consumer failed!")
       throw consumerFailure(state)
 
     case RevokeResume => //Do nothing
@@ -523,12 +525,12 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   private def unconfirmed(state: Unconfirmed): Receive = unconfirmedCommonReceive(state) orElse {
     case poll: Poll if isCurrentPoll(poll) =>
       if (isConfirmationTimeout(state.deliveryTime)) {
-        log.info("In unconfirmed: records timed out while waiting for a confirmation.")
+        log.debug("In unconfirmed: records timed out while waiting for a confirmation.")
         if (state.noBackoffNeeded()) {
-          log.info("In unconfirmed: redelivering.")
+          log.debug("In unconfirmed: redelivering.")
           sendRecords(state.unconfirmed)
         } else {
-          log.info("In unconfirmed: backing off.")
+          log.debug("In unconfirmed: backing off.")
           downstreamActor ! BackingOff(state.redeliveryCount)
         }
         become(unconfirmed(state.redelivered))
@@ -537,7 +539,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       // If the last commit caused a partition revocation,
       // we don't poll to allow the unconfirmed to flush through, prior to the rebalance completion.
       if (trackPartitions.isRevoked) {
-        log.info("Partitions revoked. Not polling.")
+        log.debug("Partitions revoked. Not polling.")
         schedulePoll(stateData = state)
       } else {
         pollKafka(state, poll.timeout) match {
@@ -574,12 +576,12 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     case poll: Poll if isCurrentPoll(poll) =>
       // If an confirmation timeout is set and has expired, the message is redelivered
       if (isConfirmationTimeout(state.deliveryTime)) {
-        log.info("In bufferFull: records timed out while waiting for a confirmation.")
+        log.debug("In bufferFull: records timed out while waiting for a confirmation.")
         if (state.noBackoffNeeded()) {
-          log.info("In bufferFull: redelivering.")
+          log.debug("In bufferFull: redelivering.")
           sendRecords(state.unconfirmed)
         } else {
-          log.info("In bufferFull: backing off.")
+          log.debug("In bufferFull: backing off.")
           downstreamActor ! BackingOff(state.redeliveryCount)
         }
         become(bufferFull(state.redelivered))
@@ -659,20 +661,20 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     case Subscribe.AutoPartition(topics) =>
       log.info(s"Subscribing in auto partition assignment mode to topics [{}].", topics.mkString(","))
       trackPartitions = new TrackPartitionsCommitMode(consumer, context.self)
-      consumer.subscribe(topics.toList, trackPartitions)
+      consumer.subscribe(topics.toList.asJava, trackPartitions)
 
     case Subscribe.AutoPartitionWithManualOffset(topics, assignedListener, revokedListener) =>
       log.info(s"Subscribing in auto partition assignment with manual offset mode to topics [{}].", topics.mkString(","))
       trackPartitions = new TrackPartitionsManualOffset(consumer, context.self, assignedListener, revokedListener)
-      consumer.subscribe(topics.toList, trackPartitions)
+      consumer.subscribe(topics.toList.asJava, trackPartitions)
 
     case Subscribe.ManualPartition(topicPartitions) =>
       log.info("Subscribing in manual partition assignment mode to topic/partitions [{}].", topicPartitions.mkString(","))
-      consumer.assign(topicPartitions.toList)
+      consumer.assign(topicPartitions.toList.asJava)
 
     case Subscribe.ManualOffset(offsets) =>
       log.info("Subscribing in manual partition assignment mode to partitions with offsets [{}]", offsets)
-      consumer.assign(offsets.topicPartitions.toList)
+      consumer.assign(offsets.topicPartitions.toList.asJava)
       seekOffsets(offsets)
   }
 
@@ -721,10 +723,10 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       effect
     } catch {
       case we: WakeupException =>
-        log.info("Wakeup Exception, ignoring.")
+        log.debug("Wakeup Exception, ignoring.")
         None
       case error: Exception =>
-        log.info("Exception thrown from Kafka Consumer")
+        log.debug("Exception thrown from Kafka Consumer")
         throw consumerFailure(state, error)
     }
   }
@@ -747,7 +749,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
 
   private def tryCommit(offsetsToCommit: Offsets, state: StateData): Try[Unit] = {
     try {
-      consumer.commitSync(offsetsToCommit.toCommitMap)
+      consumer.commitSync(offsetsToCommit.toCommitMap.asJava)
       Success({})
     } catch {
       case we: WakeupException =>
@@ -757,7 +759,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
         log.warning("Exception while committing {}", cfe.getMessage)
         Failure(cfe)
       case error: Exception =>
-        log.info("Exception thrown from Kafka Consumer")
+        log.debug("Exception thrown from Kafka Consumer")
         throw consumerFailure(state, error)
     }
   }
@@ -768,7 +770,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   private def schedulePoll(stateData: StateData): Unit = schedulePoll(stateData.scheduleInterval)
 
   private def currentConsumerOffsets: Offsets = {
-    val offsetsMap = consumer.assignment()
+    val offsetsMap = consumer.assignment().asScala
       .map(p => p -> consumer.position(p))
       .toMap
     Offsets(offsetsMap)
@@ -798,11 +800,6 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
 
   private def timeoutTime(deliveryTime: LocalDateTime) =
     deliveryTime.plus(actorConf.unconfirmedTimeout.toMillis, ChronoUnit.MILLIS)
-
-  override def unhandled(message: Any): Unit = {
-    super.unhandled(message)
-    log.warning("Unknown message: {}", message)
-  }
 
   override def postStop(): Unit = {
     log.info("KafkaConsumerActor stopping")
