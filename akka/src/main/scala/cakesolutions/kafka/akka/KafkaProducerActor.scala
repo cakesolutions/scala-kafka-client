@@ -34,7 +34,10 @@ object KafkaProducerActor {
 
   /**
     * The default [[Matcher]] that is used for extracting Kafka records from incoming messages.
+    *
     * Accepts all [[ProducerRecords]] messages which have matching key and value types.
+    * Note that the key and value types in incoming producer messages must match '''exactly'''
+    * the key and value types of the matcher.
     *
     * @tparam K Kafka message key type
     * @tparam V Kafka message value type
@@ -139,14 +142,9 @@ private class KafkaProducerActor[K, V](producerConf: KafkaProducer.Conf[K, V], m
     log.info("KafkaProducerActor stopping")
     producer.close()
   }
-
-  override def unhandled(message: Any): Unit = {
-    super.unhandled(message)
-    log.warning("Unknown message: {}", message)
-  }
 }
 
 final class KafkaProducerInitFail(
   message: String = "Error occurred while initializing Kafka producer!",
-  cause: Throwable = null)
-  extends Exception(message, cause)
+  cause: Throwable = null
+) extends Exception(message, cause)

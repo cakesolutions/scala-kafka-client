@@ -3,7 +3,7 @@ package cakesolutions.kafka.akka
 import cakesolutions.kafka.KafkaProducerRecord
 import org.apache.kafka.clients.producer.ProducerRecord
 
-import scala.reflect.runtime.universe.TypeTag
+import scala.reflect.runtime.universe._
 
 /**
   * Helper functions for [[ProducerRecords]].
@@ -19,6 +19,7 @@ object ProducerRecords {
     * @param successResponse optional response message to the sender on successful delivery
     * @param failureResponse optional response message to the sender on failed delivery
     */
+  @deprecated("Use fromValuesWithKey instead.", "0.10.1.3")
   def fromValues[Value: TypeTag](
     topic: String,
     values: Seq[Value],
@@ -153,4 +154,13 @@ final case class ProducerRecords[Key: TypeTag, Value: TypeTag](
   records: Iterable[ProducerRecord[Key, Value]],
   successResponse: Option[Any] = None,
   failureResponse: Option[Any] = None
-) extends TypeTagged[ProducerRecords[Key, Value]]
+) extends TypeTagged[ProducerRecords[Key, Value]] {
+
+  /** @inheritdoc */
+  override def toString: String = {
+    val name = getClass.getSimpleName
+    val keyName = typeOf[Key]
+    val valueName = typeOf[Value]
+    s"$name[$keyName,$valueName]($records,$successResponse,$failureResponse)"
+  }
+}
