@@ -2,7 +2,7 @@ package cakesolutions.kafka
 
 import cakesolutions.kafka.TypesafeConfigExtensions._
 import com.typesafe.config.Config
-import org.apache.kafka.clients.producer.{Callback, ProducerConfig, ProducerRecord, RecordMetadata, KafkaProducer => JKafkaProducer}
+import org.apache.kafka.clients.producer.{Callback, ProducerConfig, ProducerRecord, RecordMetadata, KafkaProducer => JKafkaProducer, Producer => JProducer}
 import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.serialization.Serializer
 
@@ -130,7 +130,7 @@ object KafkaProducer {
     * @tparam V type of the value that the producer accepts
     * @return Kafka producer instance
     */
-  def apply[K, V](producer: JKafkaProducer[K, V]): KafkaProducer[K, V] =
+  def apply[K, V](producer: JProducer[K, V]): KafkaProducer[K, V] =
     new KafkaProducer(producer)
 }
 
@@ -143,7 +143,7 @@ object KafkaProducer {
   * @tparam K type of the key that the producer accepts
   * @tparam V type of the value that the producer accepts
   */
-final class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) {
+final class KafkaProducer[K, V](val producer: JProducer[K, V]) {
 
   /**
     * Asynchronously send a record to a topic, providing a `Future` to contain the result of the operation.
