@@ -11,6 +11,46 @@ import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
+trait KafkaProducerLike[K, V] {
+
+  /**
+   * Asynchronously send a record to a topic, providing a `Future` to contain the result of the operation.
+   *
+   * @param record `ProducerRecord` to sent
+   * @return the results of the sent records as a `Future`
+   */
+  def send(record: ProducerRecord[K, V]): Future[RecordMetadata]
+
+  /**
+   * Asynchronously send a record to a topic and invoke the provided callback when the send has been acknowledged.
+   *
+   * @param record `ProducerRecord` to sent
+   * @param callback callback that is called when the send has been acknowledged
+   */
+  def sendWithCallback(record: ProducerRecord[K, V])(callback: Try[RecordMetadata] => Unit): Unit
+
+  /**
+   * Make all buffered records immediately available to send and wait until records have been sent.
+   *
+   * @see Java `KafkaProducer` [[http://kafka.apache.org/090/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#flush() flush]] method
+   */
+  def flush(): Unit
+
+  /**
+   * Get the partition metadata for the give topic.
+   *
+   * @see Java `KafkaProducer` [[http://kafka.apache.org/090/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#partitionsFor(java.lang.String) partitionsFor]] method
+   */
+  def partitionsFor(topic: String): List[PartitionInfo]
+
+  /**
+   * Close this producer.
+   *
+   * @see Java `KafkaProducer` [[http://kafka.apache.org/090/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#close() close]] method
+   */
+  def close(): Unit
+}
+
 /**
   * Utilities for creating a Kafka producer.
   *
@@ -143,15 +183,9 @@ object KafkaProducer {
   * @tparam K type of the key that the producer accepts
   * @tparam V type of the value that the producer accepts
   */
-final class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) {
+final class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) extends KafkaProducerLike[K,V] {
 
-  /**
-    * Asynchronously send a record to a topic, providing a `Future` to contain the result of the operation.
-    *
-    * @param record `ProducerRecord` to sent
-    * @return the results of the sent records as a `Future`
-    */
-  def send(record: ProducerRecord[K, V]): Future[RecordMetadata] = {
+  override def send(record: ProducerRecord[K, V]): Future[RecordMetadata] = {
     val promise = Promise[RecordMetadata]()
     try {
       producer.send(record, producerCallback(promise))
@@ -162,38 +196,17 @@ final class KafkaProducer[K, V](val producer: JKafkaProducer[K, V]) {
     promise.future
   }
 
-  /**
-    * Asynchronously send a record to a topic and invoke the provided callback when the send has been acknowledged.
-    *
-    * @param record `ProducerRecord` to sent
-    * @param callback callback that is called when the send has been acknowledged
-    */
-  def sendWithCallback(record: ProducerRecord[K, V])(callback: Try[RecordMetadata] => Unit): Unit = {
+  override def sendWithCallback(record: ProducerRecord[K, V])(callback: Try[RecordMetadata] => Unit): Unit = {
     producer.send(record, producerCallback(callback))
   }
 
-  /**
-    * Make all buffered records immediately available to send and wait until records have been sent.
-    *
-    * @see Java `KafkaProducer` [[http://kafka.apache.org/090/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#flush() flush]] method
-    */
-  def flush(): Unit =
+  override def flush(): Unit =
     producer.flush()
 
-  /**
-    * Get the partition metadata for the give topic.
-    *
-    * @see Java `KafkaProducer` [[http://kafka.apache.org/090/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#partitionsFor(java.lang.String) partitionsFor]] method
-    */
-  def partitionsFor(topic: String): List[PartitionInfo] =
+  override def partitionsFor(topic: String): List[PartitionInfo] =
     producer.partitionsFor(topic).asScala.toList
 
-  /**
-    * Close this producer.
-    *
-    * @see Java `KafkaProducer` [[http://kafka.apache.org/090/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#close() close]] method
-    */
-  def close(): Unit =
+  override def close(): Unit =
     producer.close()
 
   private def producerCallback(promise: Promise[RecordMetadata]): Callback =
