@@ -1,5 +1,7 @@
 package cakesolutions.kafka
 
+import java.util.concurrent.TimeUnit
+
 import cakesolutions.kafka.TypesafeConfigExtensions._
 import com.typesafe.config.Config
 import org.apache.kafka.clients.producer.{Callback, ProducerConfig, ProducerRecord, RecordMetadata, KafkaProducer => JKafkaProducer, Producer => JProducer}
@@ -7,6 +9,7 @@ import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.serialization.Serializer
 
 import scala.collection.JavaConverters._
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
@@ -49,6 +52,13 @@ trait KafkaProducerLike[K, V] {
    * @see Java `KafkaProducer` [[http://kafka.apache.org/090/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#close() close]] method
    */
   def close(): Unit
+
+  /**
+   * Close this producer.
+   *
+   * @see Java `KafkaProducer` [[http://kafka.apache.org/090/javadoc/org/apache/kafka/clients/producer/Producer.html#close(long,%20java.util.concurrent.TimeUnit) close]] method
+   */
+  def close(timeout: FiniteDuration): Unit
 }
 
 /**
@@ -207,6 +217,9 @@ final class KafkaProducer[K, V](val producer: JProducer[K, V]) extends KafkaProd
 
   override def close(): Unit =
     producer.close()
+
+  override def close(timeout: FiniteDuration): Unit =
+    producer.close(timeout.toMillis, TimeUnit.MILLISECONDS)
 
   private def producerCallback(promise: Promise[RecordMetadata]): Callback =
     producerCallback(result => promise.complete(result))
