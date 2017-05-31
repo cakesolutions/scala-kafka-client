@@ -38,7 +38,7 @@ For configuration and usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.10.2.1"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "0.10.2.2"
 ```
 
 ### Akka Integration
@@ -52,7 +52,7 @@ For configuration and usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.10.2.1"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "0.10.2.2"
 ```
 
 ### TestKit
@@ -66,7 +66,7 @@ For usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-testkit" % "0.10.2.1" % "test"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-testkit" % "0.10.2.2" % "test"
 ```
 
 ## Version Compatibility
@@ -95,6 +95,9 @@ Here is the full table of binary compatibilities between Scala Kafka client and 
  0.7.0                 | 0.9.0.1
 
 ## Change log
+
+### 0.10.2.2 - 05/2017
+* Minor improvements to producer API
 
 ### 0.10.2.1 - 05/2017
 
@@ -157,6 +160,6 @@ innovative and intelligent tools for profiling Java and .NET applications.
 
 ## License
 
-Copyright 2016, Cake Solutions.
+Copyright 2016-2017, Cake Solutions.
 
 Licensed under the MIT License
