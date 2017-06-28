@@ -60,7 +60,8 @@ object KafkaServer {
     val baseConfig = Map(
       "port" -> port.toString,
       "zookeeper.connect" -> ("localhost:" + zookeeperPort.toString),
-      "log.dir" -> logDir.getAbsolutePath
+      "log.dir" -> logDir.getAbsolutePath,
+      "offsets.topic.replication.factor" -> "1"
     )
 
     val extendedConfig = otherOptions ++ baseConfig
