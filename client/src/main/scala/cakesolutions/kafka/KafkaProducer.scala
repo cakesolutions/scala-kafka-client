@@ -286,10 +286,12 @@ final class KafkaProducer[K, V](val producer: JProducer[K, V]) extends KafkaProd
     producerCallback(result => promise.complete(result))
 
   private def producerCallback(callback: Try[RecordMetadata] => Unit): Callback =
-    (metadata: RecordMetadata, exception: Exception) => {
-      val result =
-        if (exception == null) Success(metadata)
-        else Failure(exception)
-      callback(result)
+    new Callback {
+      override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit = {
+        val result =
+          if (exception == null) Success(metadata)
+          else Failure(exception)
+        callback(result)
+      }
     }
 }
