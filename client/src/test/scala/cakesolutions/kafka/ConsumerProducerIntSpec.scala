@@ -10,11 +10,11 @@ import scala.util.Random
 
 class ConsumerProducerIntSpec extends KafkaIntSpec {
 
-  private def randomString: String = Random.alphanumeric.take(5).mkString("")
-
   private val log = LoggerFactory.getLogger(getClass)
 
-  val producerFromTypesafeConfig: KafkaProducer.Conf[String, String] = {
+  private def randomString: String = Random.alphanumeric.take(5).mkString("")
+
+  val producerFromTypesafeConfig: KafkaProducer.Conf[String, String] =
     KafkaProducer.Conf(
       ConfigFactory.parseString(
         s"""
@@ -22,9 +22,8 @@ class ConsumerProducerIntSpec extends KafkaIntSpec {
          """.stripMargin
       ), new StringSerializer, new StringSerializer
     )
-  }
 
-  val consumerFromTypesafeConfig: KafkaConsumer.Conf[String, String] = {
+  val consumerFromTypesafeConfig: KafkaConsumer.Conf[String, String] =
     KafkaConsumer.Conf(
       ConfigFactory.parseString(
         s"""
@@ -33,30 +32,26 @@ class ConsumerProducerIntSpec extends KafkaIntSpec {
            | enable.auto.commit = false
            | auto.offset.reset = "earliest"
         """.stripMargin), new StringDeserializer, new StringDeserializer)
-  }
 
-  val producerFromDirectConfig: KafkaProducer.Conf[String, String] = {
+  val producerFromDirectConfig: KafkaProducer.Conf[String, String] =
     KafkaProducer.Conf(new StringSerializer(),
       new StringSerializer(),
       bootstrapServers = s"localhost:$kafkaPort")
-  }
 
-  val consumerFromDirectConfig: KafkaConsumer.Conf[String, String] = {
+  val consumerFromDirectConfig: KafkaConsumer.Conf[String, String] =
     KafkaConsumer.Conf(new StringDeserializer(),
       new StringDeserializer(),
       bootstrapServers = s"localhost:$kafkaPort",
       groupId = randomString,
       enableAutoCommit = false)
-  }
 
-  val consumerConfigWithEarliest: KafkaConsumer.Conf[String, String] = {
+  val consumerConfigWithEarliest: KafkaConsumer.Conf[String, String] =
     KafkaConsumer.Conf(new StringDeserializer(),
       new StringDeserializer(),
       bootstrapServers = s"localhost:$kafkaPort",
       groupId = randomString,
       enableAutoCommit = false,
       autoOffsetReset = OffsetResetStrategy.EARLIEST)
-  }
 
   "KafkaConsumer and KafkaProducer from direct config" should "deliver and consume a message" in {
     val topic = randomString
@@ -93,7 +88,7 @@ class ConsumerProducerIntSpec extends KafkaIntSpec {
 
     consumer.subscribe(List(topic).asJava)
 
-    val records2: ConsumerRecords[String, String] = consumer.poll(1000)
+    val records2: ConsumerRecords[String, String] = consumer.poll(5000)
     records2.count() shouldEqual 1
 
     producer.close()

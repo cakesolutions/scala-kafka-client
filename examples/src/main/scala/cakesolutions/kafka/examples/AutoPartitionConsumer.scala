@@ -48,9 +48,9 @@ class AutoPartitionConsumer(
   kafkaConfig: KafkaConsumer.Conf[String, String],
   actorConfig: KafkaConsumerActor.Conf) extends Actor with ActorLogging {
 
-  val recordsExt = ConsumerRecords.extractor[String, String]
+  private val recordsExt = ConsumerRecords.extractor[String, String]
 
-  val consumer = context.actorOf(
+  private val consumer = context.actorOf(
     KafkaConsumerActor.props(kafkaConfig, actorConfig, self)
   )
   context.watch(consumer)

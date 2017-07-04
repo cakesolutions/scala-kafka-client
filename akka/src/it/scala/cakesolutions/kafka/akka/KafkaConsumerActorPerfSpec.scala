@@ -3,8 +3,7 @@ package cakesolutions.kafka.akka
 import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.TestActor.AutoPilot
 import akka.testkit.{ImplicitSender, TestActor, TestKit, TestProbe}
-import cakesolutions.kafka.akka.KafkaConsumerActor.Confirm
-import cakesolutions.kafka.akka.KafkaConsumerActor.Subscribe.AutoPartition
+import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe}
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -73,7 +72,7 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
     producer.flush()
     log.info("Delivered {} messages to topic {}", totalMessages, topic)
 
-    consumer.subscribe(AutoPartition(Seq(topic)))
+    consumer.subscribe(Subscribe.AutoPartition(Seq(topic)))
 
     whenReady(pilot.future) { case (totalTime, messagesPerSec) =>
       log.info("Total Time millis : {}", totalTime)

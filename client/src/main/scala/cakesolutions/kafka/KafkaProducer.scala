@@ -4,11 +4,13 @@ import java.util.concurrent.TimeUnit
 
 import cakesolutions.kafka.TypesafeConfigExtensions._
 import com.typesafe.config.Config
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.clients.producer.{Callback, ProducerConfig, ProducerRecord, RecordMetadata, KafkaProducer => JKafkaProducer, Producer => JProducer}
-import org.apache.kafka.common.PartitionInfo
+import org.apache.kafka.common.{PartitionInfo, TopicPartition}
 import org.apache.kafka.common.serialization.Serializer
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
@@ -17,47 +19,82 @@ import scala.util.{Failure, Success, Try}
 trait KafkaProducerLike[K, V] {
 
   /**
-   * Asynchronously send a record to a topic, providing a `Future` to contain the result of the operation.
-   *
-   * @param record `ProducerRecord` to sent
-   * @return the results of the sent records as a `Future`
-   */
+    * Asynchronously send a record to a topic.
+    *
+    * @param record `ProducerRecord` to sent
+    * @return the result of the sent records as a `Future`
+    */
   def send(record: ProducerRecord[K, V]): Future[RecordMetadata]
 
   /**
-   * Asynchronously send a record to a topic and invoke the provided callback when the send has been acknowledged.
-   *
-   * @param record `ProducerRecord` to sent
-   * @param callback callback that is called when the send has been acknowledged
-   */
+    * Asynchronously send a record to a topic and invoke the provided callback when the send has been acknowledged.
+    *
+    * @param record   `ProducerRecord` to sent
+    * @param callback callback that is called when the send has been acknowledged
+    */
   def sendWithCallback(record: ProducerRecord[K, V])(callback: Try[RecordMetadata] => Unit): Unit
 
   /**
-   * Make all buffered records immediately available to send and wait until records have been sent.
-   *
-   * @see Java `KafkaProducer` [[http://kafka.apache.org/090/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#flush() flush]] method
-   */
+    * Make all buffered records immediately available to send and wait until records have been sent.
+    *
+    * @see Java `KafkaProducer` [[http://kafka.apache.org/0110/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#flush() flush]] method
+    */
   def flush(): Unit
 
   /**
-   * Get the partition metadata for the give topic.
-   *
-   * @see Java `KafkaProducer` [[http://kafka.apache.org/090/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#partitionsFor(java.lang.String) partitionsFor]] method
-   */
+    * Get the partition metadata for the give topic.
+    *
+    * @see Java `KafkaProducer` [[http://kafka.apache.org/0110/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#partitionsFor(java.lang.String) partitionsFor]] method
+    */
   def partitionsFor(topic: String): List[PartitionInfo]
 
   /**
-   * Close this producer.
-   *
-   * @see Java `KafkaProducer` [[http://kafka.apache.org/090/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#close() close]] method
-   */
+    * Initialise a transaction.
+    *
+    * @see Java `KafkaProducer` [[http://kafka.apache.org/0110/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#initTransactions() initTransactions]] method
+    */
+  def initTransactions(): Unit
+
+  /**
+    * Begin the transaction.
+    *
+    * @see Java `KafkaProducer` [[http://kafka.apache.org/0110/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#beginTransaction() beginTransactions]] method
+    */
+  def beginTransaction(): Unit
+
+  /**
+    * Sends a list of consumed offsets to the consumer group coordinator, and also marks those offsets as part of the current transaction.
+    *
+    * @see Java `KafkaProducer` [[http://kafka.apache.org/0110/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#sendOffsetsToTransaction(java.util.Map,%20java.lang.String) sendOffsetsToTransaction]] method
+    */
+  def sendOffsetsToTransaction(offsets: Map[TopicPartition, OffsetAndMetadata], consumerGroupId: String): Unit
+
+  /**
+    * Commits the transaction.
+    *
+    * @see Java `KafkaProducer` [[http://kafka.apache.org/0110/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#commitTransaction() commitTransaction]] method
+    */
+  def commitTransaction(): Unit
+
+  /**
+    * Aborts the transaction.
+    *
+    * @see Java `KafkaProducer` [[http://kafka.apache.org/0110/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#abortTransaction() abortTransaction]] method
+    */
+  def abortTransaction(): Unit
+
+  /**
+    * Close this producer.
+    *
+    * @see Java `KafkaProducer` [[http://kafka.apache.org/0110/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#close() close]] method
+    */
   def close(): Unit
 
   /**
-   * Close this producer.
-   *
-   * @see Java `KafkaProducer` [[http://kafka.apache.org/090/javadoc/org/apache/kafka/clients/producer/Producer.html#close(long,%20java.util.concurrent.TimeUnit) close]] method
-   */
+    * Close this producer.
+    *
+    * @see Java `KafkaProducer` [[http://kafka.apache.org/0110/javadoc/org/apache/kafka/clients/producer/Producer.html#close(long,%20java.util.concurrent.TimeUnit) close]] method
+    */
   def close(timeout: FiniteDuration): Unit
 }
 
@@ -77,14 +114,15 @@ object KafkaProducer {
       * Kafka producer configuration constructor with common configurations as parameters.
       * For more detailed configuration, use the other [[Conf]] constructors.
       *
-      * @param keySerializer the serialiser for the key
-      * @param valueSerializer the serialiser for the value
-      * @param bootstrapServers a list of host/port pairs to use for establishing the initial connection to the Kafka cluster.
-      * @param acks the number of acknowledgments the producer requires the leader to have received before considering a request complete
-      * @param retries how many times sending is retried
-      * @param batchSize the size of the batch of sent messages in bytes
-      * @param lingerMs how long will the producer wait for additional messages before it sends a batch
-      * @param bufferMemory the total bytes of memory the producer can use to buffer records waiting to be sent to the server
+      * @param keySerializer     the serialiser for the key
+      * @param valueSerializer   the serialiser for the value
+      * @param bootstrapServers  a list of host/port pairs to use for establishing the initial connection to the Kafka cluster.
+      * @param acks              the number of acknowledgments the producer requires the leader to have received before considering a request complete
+      * @param retries           how many times sending is retried
+      * @param batchSize         the size of the batch of sent messages in bytes
+      * @param lingerMs          how long will the producer wait for additional messages before it sends a batch
+      * @param bufferMemory      the total bytes of memory the producer can use to buffer records waiting to be sent to the server
+      * @param enableIdempotence when set to true, the producer will ensure that exactly one copy of each message is written in the stream.
       * @tparam K key serialiser type
       * @tparam V value serialiser type
       * @return producer configuration consisting of all the given values
@@ -97,19 +135,30 @@ object KafkaProducer {
       retries: Int = 0,
       batchSize: Int = 16384,
       lingerMs: Int = 1,
-      bufferMemory: Int = 33554432
+      bufferMemory: Int = 33554432,
+      enableIdempotence: Boolean = false,
+      transactionalId: Option[String] = None
     ): Conf[K, V] = {
 
-      val configMap = Map[String, AnyRef](
+      val configMap = mutable.Map[String, AnyRef](
         ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> bootstrapServers,
         ProducerConfig.ACKS_CONFIG -> acks,
-        ProducerConfig.RETRIES_CONFIG -> retries.toString,
         ProducerConfig.BATCH_SIZE_CONFIG -> batchSize.toString,
         ProducerConfig.LINGER_MS_CONFIG -> lingerMs.toString,
-        ProducerConfig.BUFFER_MEMORY_CONFIG -> bufferMemory.toString
+        ProducerConfig.BUFFER_MEMORY_CONFIG -> bufferMemory.toString,
+        ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG -> enableIdempotence.toString
       )
 
-      apply(configMap, keySerializer, valueSerializer)
+      // Must only explicitly set if differs from default
+      if (retries != 0) {
+        configMap.put(ProducerConfig.RETRIES_CONFIG, retries.toString)
+      }
+
+      transactionalId.foreach(tid =>
+        configMap.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, tid.toString)
+      )
+
+      apply(configMap.toMap, keySerializer, valueSerializer)
     }
 
     /**
@@ -117,8 +166,8 @@ object KafkaProducer {
       *
       * The configuration names and values must match the Kafka's `ProducerConfig` style.
       *
-      * @param config a Typesafe config to build configuration from
-      * @param keySerializer serialiser for the key
+      * @param config          a Typesafe config to build configuration from
+      * @param keySerializer   serialiser for the key
       * @param valueSerializer serialiser for the value
       * @tparam K key serialiser type
       * @tparam V value serialiser type
@@ -149,16 +198,14 @@ object KafkaProducer {
       * Extend the config with additional Typesafe config.
       * The supplied config overrides existing properties.
       */
-    def withConf(config: Config): Conf[K, V] = {
+    def withConf(config: Config): Conf[K, V] =
       copy(props = props ++ config.toPropertyMap)
-    }
 
     /**
       * Extend the configuration with a single key-value pair.
       */
-    def withProperty(key: String, value: AnyRef): Conf[K, V] = {
+    def withProperty(key: String, value: AnyRef): Conf[K, V] =
       copy(props = props + (key -> value))
-    }
   }
 
   /**
@@ -193,7 +240,7 @@ object KafkaProducer {
   * @tparam K type of the key that the producer accepts
   * @tparam V type of the value that the producer accepts
   */
-final class KafkaProducer[K, V](val producer: JProducer[K, V]) extends KafkaProducerLike[K,V] {
+final class KafkaProducer[K, V](val producer: JProducer[K, V]) extends KafkaProducerLike[K, V] {
   override def send(record: ProducerRecord[K, V]): Future[RecordMetadata] = {
     val promise = Promise[RecordMetadata]()
     try {
@@ -205,15 +252,29 @@ final class KafkaProducer[K, V](val producer: JProducer[K, V]) extends KafkaProd
     promise.future
   }
 
-  override def sendWithCallback(record: ProducerRecord[K, V])(callback: Try[RecordMetadata] => Unit): Unit = {
+  override def sendWithCallback(record: ProducerRecord[K, V])(callback: Try[RecordMetadata] => Unit): Unit =
     producer.send(record, producerCallback(callback))
-  }
 
   override def flush(): Unit =
     producer.flush()
 
   override def partitionsFor(topic: String): List[PartitionInfo] =
     producer.partitionsFor(topic).asScala.toList
+
+  override def initTransactions(): Unit =
+    producer.initTransactions()
+
+  override def beginTransaction(): Unit =
+    producer.beginTransaction()
+
+  override def sendOffsetsToTransaction(offsets: Map[TopicPartition, OffsetAndMetadata], consumerGroupId: String): Unit =
+    producer.sendOffsetsToTransaction(offsets.asJava, consumerGroupId)
+
+  override def commitTransaction(): Unit =
+    producer.commitTransaction()
+
+  override def abortTransaction(): Unit =
+    producer.abortTransaction()
 
   override def close(): Unit =
     producer.close()
@@ -224,14 +285,11 @@ final class KafkaProducer[K, V](val producer: JProducer[K, V]) extends KafkaProd
   private def producerCallback(promise: Promise[RecordMetadata]): Callback =
     producerCallback(result => promise.complete(result))
 
-  private def producerCallback(callback: Try[RecordMetadata] => Unit): Callback = {
-    new Callback {
-      override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit = {
-        val result =
-          if (exception == null) Success(metadata)
-          else Failure(exception)
-        callback(result)
-      }
+  private def producerCallback(callback: Try[RecordMetadata] => Unit): Callback =
+    (metadata: RecordMetadata, exception: Exception) => {
+      val result =
+        if (exception == null) Success(metadata)
+        else Failure(exception)
+      callback(result)
     }
-  }
 }

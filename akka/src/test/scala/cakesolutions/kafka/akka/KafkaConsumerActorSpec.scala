@@ -2,7 +2,6 @@ package cakesolutions.kafka.akka
 
 import akka.actor.{ActorSystem, PoisonPill}
 import akka.testkit.TestProbe
-import cakesolutions.kafka.akka.KafkaConsumerActor.Subscribe.AutoPartition
 import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe, Unsubscribe}
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord, KafkaTopicPartition}
 import com.typesafe.config.{Config, ConfigFactory}
@@ -80,7 +79,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
           producer.flush()
 
           val consumer = KafkaConsumerActor(consumerConfig, actorConf, testActor)
-          consumer.subscribe(AutoPartition(Seq(topic)))
+          consumer.subscribe(Subscribe.AutoPartition(Seq(topic)))
 
           val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
           consumer.confirm(rs.offsets)
