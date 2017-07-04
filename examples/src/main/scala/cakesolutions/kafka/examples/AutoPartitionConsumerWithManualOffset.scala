@@ -55,17 +55,6 @@ class AutoPartitionConsumerWithManualOffset(
     KafkaConsumerActor.props(kafkaConfig, actorConfig, self)
   )
 
-  // Should be a datastore
-  private var storedOffsets: Offsets =
-    Offsets(
-      Map(
-        (new TopicPartition("topic1", 0), 0),
-        (new TopicPartition("topic1", 1), 0),
-        (new TopicPartition("topic1", 2), 0),
-        (new TopicPartition("topic1", 3), 0)
-      )
-    )
-
   consumer ! Subscribe.AutoPartitionWithManualOffset(List("topic1"), assignedListener, revokedListener)
 
   override def receive: Receive = {
