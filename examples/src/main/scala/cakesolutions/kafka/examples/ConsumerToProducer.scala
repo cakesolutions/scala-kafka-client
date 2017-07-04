@@ -57,16 +57,16 @@ class ConsumerToProducer(
   actorConfig: KafkaConsumerActor.Conf,
   producerConf: KafkaProducer.Conf[String, String]) extends Actor with ActorLogging {
 
-  val recordsExt = ConsumerRecords.extractor[String, String]
+  private val recordsExt = ConsumerRecords.extractor[String, String]
 
   // The KafkaConsumerActor
-  val consumer = context.actorOf(
+  private val consumer = context.actorOf(
     KafkaConsumerActor.props(kafkaConfig, actorConfig, self)
   )
   context.watch(consumer)
 
   // The KafkaProducerActor
-  val producer = context.actorOf(KafkaProducerActor.props(producerConf))
+  private val producer = context.actorOf(KafkaProducerActor.props(producerConf))
 
   consumer ! Subscribe.AutoPartition(List("topic1"))
 

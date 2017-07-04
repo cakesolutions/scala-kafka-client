@@ -3,7 +3,7 @@ package cakesolutions.kafka.examples
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import cakesolutions.kafka.KafkaConsumer
 import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe}
-import cakesolutions.kafka.akka.{ConsumerRecords, KafkaConsumerActor, Offsets}
+import cakesolutions.kafka.akka.{ConsumerRecords, Extractor, KafkaConsumerActor, Offsets}
 import com.typesafe.config.Config
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.TopicPartition
@@ -46,9 +46,9 @@ class ConsumerSelfManaged(
   kafkaConfig: KafkaConsumer.Conf[String, String],
   actorConfig: KafkaConsumerActor.Conf) extends Actor with ActorLogging {
 
-  val recordsExt = ConsumerRecords.extractor[String, String]
+  val recordsExt: Extractor[Any, ConsumerRecords[String, String]] = ConsumerRecords.extractor[String, String]
 
-  val consumer = context.actorOf(
+  val consumer: ActorRef = context.actorOf(
     KafkaConsumerActor.props(kafkaConfig, actorConfig, self)
   )
 
@@ -59,7 +59,7 @@ class ConsumerSelfManaged(
     // Records from Kafka
     case recordsExt(records) =>
       processRecords(records)
-      sender() ! Confirm(records.offsets, commit = false)
+      sender() ! Confirm(records.offsets)
   }
 
   private def processRecords(records: ConsumerRecords[String, String]) = {

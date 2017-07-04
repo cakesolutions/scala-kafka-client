@@ -19,10 +19,10 @@ import scala.util.{Failure, Success, Try}
 trait KafkaProducerLike[K, V] {
 
   /**
-    * Asynchronously send a record to a topic, providing a `Future` to contain the result of the operation.
+    * Asynchronously send a record to a topic.
     *
     * @param record `ProducerRecord` to sent
-    * @return the results of the sent records as a `Future`
+    * @return the result of the sent records as a `Future`
     */
   def send(record: ProducerRecord[K, V]): Future[RecordMetadata]
 
@@ -146,8 +146,7 @@ object KafkaProducer {
         ProducerConfig.BATCH_SIZE_CONFIG -> batchSize.toString,
         ProducerConfig.LINGER_MS_CONFIG -> lingerMs.toString,
         ProducerConfig.BUFFER_MEMORY_CONFIG -> bufferMemory.toString,
-        ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG -> enableIdempotence.toString,
-        ProducerConfig.TRANSACTIONAL_ID_CONFIG -> transactionalId.orNull
+        ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG -> enableIdempotence.toString
       )
 
       // Must only explicitly set if differs from default
@@ -155,8 +154,8 @@ object KafkaProducer {
         configMap.put(ProducerConfig.RETRIES_CONFIG, retries.toString)
       }
 
-      transactionalId.foreach(id =>
-        configMap.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, id.toString)
+      transactionalId.foreach(tid =>
+        configMap.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, tid.toString)
       )
 
       apply(configMap.toMap, keySerializer, valueSerializer)

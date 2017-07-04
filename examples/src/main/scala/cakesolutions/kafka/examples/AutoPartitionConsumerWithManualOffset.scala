@@ -49,14 +49,14 @@ class AutoPartitionConsumerWithManualOffset(
   kafkaConfig: KafkaConsumer.Conf[String, String],
   actorConfig: KafkaConsumerActor.Conf) extends Actor with ActorLogging {
 
-  val recordsExt = ConsumerRecords.extractor[String, String]
+  private val recordsExt = ConsumerRecords.extractor[String, String]
 
-  val consumer = context.actorOf(
+  private val consumer = context.actorOf(
     KafkaConsumerActor.props(kafkaConfig, actorConfig, self)
   )
 
   // Should be a datastore
-  var storedOffsets: Offsets =
+  private var storedOffsets: Offsets =
     Offsets(
       Map(
         (new TopicPartition("topic1", 0), 0),
