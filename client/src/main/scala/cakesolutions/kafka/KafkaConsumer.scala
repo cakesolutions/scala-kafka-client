@@ -4,7 +4,9 @@ import cakesolutions.kafka.TypesafeConfigExtensions._
 import com.typesafe.config.Config
 import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetResetStrategy, KafkaConsumer => JKafkaConsumer}
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.requests.IsolationLevel
 import org.apache.kafka.common.serialization.Deserializer
+
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
@@ -60,7 +62,8 @@ object KafkaConsumer {
       maxPollRecords: Int = 500,
       maxPollInterval: Int = 300000,
       maxMetaDataAge : Long = 300000,             
-      autoOffsetReset: OffsetResetStrategy = OffsetResetStrategy.LATEST
+      autoOffsetReset: OffsetResetStrategy = OffsetResetStrategy.LATEST,
+      isolationLevel: IsolationLevel = IsolationLevel.READ_UNCOMMITTED
     ): Conf[K, V] = {
 
       val configMap = Map[String, AnyRef](
@@ -73,7 +76,8 @@ object KafkaConsumer {
         ConsumerConfig.MAX_POLL_RECORDS_CONFIG -> maxPollRecords.toString,
         ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG -> maxPollInterval.toString,
         ConsumerConfig.METADATA_MAX_AGE_CONFIG ->maxMetaDataAge.toString,
-        ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> autoOffsetReset.toString.toLowerCase
+        ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> autoOffsetReset.toString.toLowerCase,
+        ConsumerConfig.ISOLATION_LEVEL_CONFIG -> isolationLevel.toString.toLowerCase()
       )
 
       apply(configMap, keyDeserializer, valueDeserializer)

@@ -19,10 +19,10 @@ import scala.util.{Failure, Success, Try}
 trait KafkaProducerLike[K, V] {
 
   /**
-    * Asynchronously send a record to a topic, providing a `Future` to contain the result of the operation.
+    * Asynchronously send a record to a topic.
     *
     * @param record `ProducerRecord` to sent
-    * @return the results of the sent records as a `Future`
+    * @return the result of the sent records as a `Future`
     */
   def send(record: ProducerRecord[K, V]): Future[RecordMetadata]
 
@@ -60,7 +60,7 @@ trait KafkaProducerLike[K, V] {
     *
     * @see Java `KafkaProducer` [[http://kafka.apache.org/0110/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#beginTransaction() beginTransactions]] method
     */
-  def beginTransactions(): Unit
+  def beginTransaction(): Unit
 
   /**
     * Sends a list of consumed offsets to the consumer group coordinator, and also marks those offsets as part of the current transaction.
@@ -146,8 +146,7 @@ object KafkaProducer {
         ProducerConfig.BATCH_SIZE_CONFIG -> batchSize.toString,
         ProducerConfig.LINGER_MS_CONFIG -> lingerMs.toString,
         ProducerConfig.BUFFER_MEMORY_CONFIG -> bufferMemory.toString,
-        ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG -> enableIdempotence.toString,
-        ProducerConfig.TRANSACTIONAL_ID_CONFIG -> transactionalId.orNull
+        ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG -> enableIdempotence.toString
       )
 
       // Must only explicitly set if differs from default
@@ -155,8 +154,8 @@ object KafkaProducer {
         configMap.put(ProducerConfig.RETRIES_CONFIG, retries.toString)
       }
 
-      transactionalId.foreach(id =>
-        configMap.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, id.toString)
+      transactionalId.foreach(tid =>
+        configMap.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, tid.toString)
       )
 
       apply(configMap.toMap, keySerializer, valueSerializer)
@@ -265,7 +264,7 @@ final class KafkaProducer[K, V](val producer: JProducer[K, V]) extends KafkaProd
   override def initTransactions(): Unit =
     producer.initTransactions()
 
-  override def beginTransactions(): Unit =
+  override def beginTransaction(): Unit =
     producer.beginTransaction()
 
   override def sendOffsetsToTransaction(offsets: Map[TopicPartition, OffsetAndMetadata], consumerGroupId: String): Unit =
@@ -287,10 +286,12 @@ final class KafkaProducer[K, V](val producer: JProducer[K, V]) extends KafkaProd
     producerCallback(result => promise.complete(result))
 
   private def producerCallback(callback: Try[RecordMetadata] => Unit): Callback =
-    (metadata: RecordMetadata, exception: Exception) => {
-      val result =
-        if (exception == null) Success(metadata)
-        else Failure(exception)
-      callback(result)
+    new Callback {
+      override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit = {
+        val result =
+          if (exception == null) Success(metadata)
+          else Failure(exception)
+        callback(result)
+      }
     }
 }

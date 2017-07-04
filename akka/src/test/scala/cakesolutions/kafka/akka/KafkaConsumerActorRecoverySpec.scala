@@ -1,7 +1,6 @@
 package cakesolutions.kafka.akka
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, OneForOneStrategy, Props, SupervisorStrategy}
-import cakesolutions.kafka.akka.KafkaConsumerActor.Subscribe.{ManualOffset, ManualPartition}
 import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe, TriggerConsumerFailure, Unsubscribe}
 import cakesolutions.kafka.{KafkaConsumer, KafkaProducerRecord, KafkaTopicPartition}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
@@ -119,7 +118,7 @@ class KafkaConsumerActorRecoverySpec(_system: ActorSystem) extends KafkaIntSpec(
     producer.flush()
 
     val consumer = KafkaConsumerActor(consumerConf, KafkaConsumerActor.Conf(), testActor)
-    consumer.subscribe(ManualPartition(List(topicPartition)))
+    consumer.subscribe(Subscribe.ManualPartition(List(topicPartition)))
 
     val rec1 = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
     rec1.offsets.get(topicPartition) shouldBe Some(1)
@@ -141,7 +140,7 @@ class KafkaConsumerActorRecoverySpec(_system: ActorSystem) extends KafkaIntSpec(
 
     // Reset subscription
     consumer.unsubscribe()
-    consumer.subscribe(ManualOffset(offsets))
+    consumer.subscribe(Subscribe.ManualOffset(offsets))
 
     // New subscription starts from specified offset
     val rec3 = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])

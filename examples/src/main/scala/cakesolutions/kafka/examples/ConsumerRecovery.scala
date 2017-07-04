@@ -3,7 +3,7 @@ package cakesolutions.kafka.examples
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, OneForOneStrategy, Props, SupervisorStrategy}
 import cakesolutions.kafka.KafkaConsumer
 import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe}
-import cakesolutions.kafka.akka.{ConsumerRecords, KafkaConsumerActor}
+import cakesolutions.kafka.akka.{ConsumerRecords, Extractor, KafkaConsumerActor}
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.serialization.StringDeserializer
@@ -51,9 +51,9 @@ class ConsumerRecovery(
       SupervisorStrategy.Escalate
   }
 
-  val recordsExt = ConsumerRecords.extractor[String, String]
+  val recordsExt: Extractor[Any, ConsumerRecords[String, String]] = ConsumerRecords.extractor[String, String]
 
-  val consumer = context.actorOf(
+  val consumer: ActorRef = context.actorOf(
     KafkaConsumerActor.props(kafkaConfig, actorConfig, self)
   )
 
