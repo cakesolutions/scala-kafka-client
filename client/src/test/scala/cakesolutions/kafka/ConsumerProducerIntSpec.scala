@@ -10,9 +10,9 @@ import scala.util.Random
 
 class ConsumerProducerIntSpec extends KafkaIntSpec {
 
-  private def randomString: String = Random.alphanumeric.take(5).mkString("")
-
   private val log = LoggerFactory.getLogger(getClass)
+
+  private def randomString: String = Random.alphanumeric.take(5).mkString("")
 
   val producerFromTypesafeConfig: KafkaProducer.Conf[String, String] =
     KafkaProducer.Conf(

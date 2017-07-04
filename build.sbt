@@ -5,7 +5,7 @@ lazy val commonSettings = Seq(
   publishMavenStyle := true,
   bintrayOrganization := Some("cakesolutions"),
   bintrayPackageLabels := Seq("scala", "kafka"),
-  resolvers += "Apache Staging" at "https://repository.apache.org/content/groups/staging/",
+//  resolvers += "Apache Staging" at "https://repository.apache.org/content/groups/staging/",
   scalacOptions in Compile ++= Seq(
     "-encoding", "UTF-8",
     "-target:jvm-1.8",
