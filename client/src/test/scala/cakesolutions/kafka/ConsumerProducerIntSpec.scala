@@ -19,7 +19,6 @@ class ConsumerProducerIntSpec extends KafkaIntSpec {
       ConfigFactory.parseString(
         s"""
            | bootstrap.servers = "localhost:$kafkaPort",
-           | enable.idempotence = true
          """.stripMargin
       ), new StringSerializer, new StringSerializer
     )
@@ -37,8 +36,7 @@ class ConsumerProducerIntSpec extends KafkaIntSpec {
   val producerFromDirectConfig: KafkaProducer.Conf[String, String] =
     KafkaProducer.Conf(new StringSerializer(),
       new StringSerializer(),
-      bootstrapServers = s"localhost:$kafkaPort",
-      enableIdempotence = true)
+      bootstrapServers = s"localhost:$kafkaPort")
 
   val consumerFromDirectConfig: KafkaConsumer.Conf[String, String] =
     KafkaConsumer.Conf(new StringDeserializer(),

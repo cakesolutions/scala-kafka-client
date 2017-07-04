@@ -60,7 +60,7 @@ trait KafkaProducerLike[K, V] {
     *
     * @see Java `KafkaProducer` [[http://kafka.apache.org/0110/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#beginTransaction() beginTransactions]] method
     */
-  def beginTransactions(): Unit
+  def beginTransaction(): Unit
 
   /**
     * Sends a list of consumed offsets to the consumer group coordinator, and also marks those offsets as part of the current transaction.
@@ -264,7 +264,7 @@ final class KafkaProducer[K, V](val producer: JProducer[K, V]) extends KafkaProd
   override def initTransactions(): Unit =
     producer.initTransactions()
 
-  override def beginTransactions(): Unit =
+  override def beginTransaction(): Unit =
     producer.beginTransaction()
 
   override def sendOffsetsToTransaction(offsets: Map[TopicPartition, OffsetAndMetadata], consumerGroupId: String): Unit =
