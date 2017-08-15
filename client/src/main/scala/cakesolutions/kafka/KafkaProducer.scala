@@ -265,9 +265,7 @@ final class KafkaProducer[K, V](val producer: JProducer[K, V]) extends KafkaProd
     producer.initTransactions()
     Future.fromTry(Try {
       producer.beginTransaction()
-      val result = Future.traverse(records) {
-        record => send(record)
-      }
+      val result = Future.sequence(records.map(send))
       producer.commitTransaction()
       result
     }).flatten.recoverWith {
