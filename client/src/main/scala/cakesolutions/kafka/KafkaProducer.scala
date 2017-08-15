@@ -6,7 +6,8 @@ import cakesolutions.kafka.TypesafeConfigExtensions._
 import com.typesafe.config.Config
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.clients.producer.{Callback, ProducerConfig, ProducerRecord, RecordMetadata, KafkaProducer => JKafkaProducer, Producer => JProducer}
-import org.apache.kafka.common.{PartitionInfo, TopicPartition}
+import org.apache.kafka.common.errors.ProducerFencedException
+import org.apache.kafka.common.{KafkaException, PartitionInfo, TopicPartition}
 import org.apache.kafka.common.serialization.Serializer
 
 import scala.collection.JavaConverters._
@@ -25,6 +26,13 @@ trait KafkaProducerLike[K, V] {
     * @return the result of the sent records as a `Future`
     */
   def send(record: ProducerRecord[K, V]): Future[RecordMetadata]
+
+  /**
+    * Asynchronously send all records transactionally
+    * @param records
+    * @return
+    */
+  def sendBatch(records: List[ProducerRecord[K, V]]): Future[List[RecordMetadata]]
 
   /**
     * Asynchronously send a record to a topic and invoke the provided callback when the send has been acknowledged.
@@ -250,6 +258,26 @@ final class KafkaProducer[K, V](val producer: JProducer[K, V]) extends KafkaProd
     }
 
     promise.future
+  }
+
+
+  override def sendBatch(records: List[ProducerRecord[K, V]]): Future[List[RecordMetadata]] = {
+    producer.initTransactions()
+    Future.fromTry(Try {
+      producer.beginTransaction()
+      val result = Future.traverse(records) {
+        record => send(record)
+      }
+      producer.commitTransaction()
+      result
+    }).flatten.recoverWith {
+      case ex: ProducerFencedException =>
+        producer.close()
+        Future.failed(ex)
+      case ex: KafkaException =>
+        producer.abortTransaction()
+        Future.failed(ex)
+    }
   }
 
   override def sendWithCallback(record: ProducerRecord[K, V])(callback: Try[RecordMetadata] => Unit): Unit =
