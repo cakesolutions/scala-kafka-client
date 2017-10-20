@@ -13,6 +13,9 @@ sealed trait TrackPartitions extends ConsumerRebalanceListener {
   def isRevoked: Boolean
 
   def reset(): Unit
+
+  def offsetsToTopicPartitions(offsets: Map[TopicPartition, Long]): List[TopicPartition] =
+    offsets.map { case (tp, _) => tp }.toList
 }
 
 /**
@@ -25,8 +28,10 @@ sealed trait TrackPartitions extends ConsumerRebalanceListener {
   * @param consumer      The client driver
   * @param consumerActor Tha KafkaConsumerActor to notify of partition change events
   */
-private final class TrackPartitionsCommitMode(consumer: KafkaConsumer[_, _], consumerActor: ActorRef)
-  extends TrackPartitions {
+private final class TrackPartitionsCommitMode(
+  consumer: KafkaConsumer[_, _], consumerActor: ActorRef,
+  assignedListener: List[TopicPartition] => Unit = items => (),
+  revokedListener: List[TopicPartition] => Unit = items => ()) extends TrackPartitions {
 
   private val log = LoggerFactory.getLogger(getClass)
 
@@ -59,6 +64,7 @@ private final class TrackPartitionsCommitMode(consumer: KafkaConsumer[_, _], con
         partition <- partitions.asScala
         offset <- _offsets.get(partition)
       } {
+        assignedListener(partitions)
         log.info(s"Seeking partition: [{}] to offset [{}]", partition, offset)
         consumer.seek(partition, offset)
       }
@@ -66,6 +72,9 @@ private final class TrackPartitionsCommitMode(consumer: KafkaConsumer[_, _], con
 
     } else {
       consumerActor ! KafkaConsumerActor.RevokeReset
+
+      // Invoke client callback to notify revocation of all existing partitions.
+      revokedListener(offsetsToTopicPartitions(_offsets))
     }
   }
 
@@ -112,9 +121,6 @@ private final class TrackPartitionsManualOffset(
   override def onPartitionsAssigned(partitions: JCollection[TopicPartition]): Unit = {
 
     log.debug("onPartitionsAssigned: " + partitions.toString)
-
-    def offsetsToTopicPartitions(offsets: Map[TopicPartition, Long]): List[TopicPartition] =
-      offsets.map { case (tp, _) => tp }.toList
 
     def assign(partitions: List[TopicPartition]) = {
       val offsets = assignedListener(partitions)
