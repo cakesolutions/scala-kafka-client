@@ -172,6 +172,37 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     producer.close()
   }
 
+  "KafkaConsumerActor configured in manual offset mode for specific times" should
+    "consume a sequence of messages starting from provided timestamps" in {
+    val topic = randomString
+    val partition = KafkaTopicPartition(topic, 0)
+
+    val producer = kafkaProducer("localhost", kafkaPort)
+    producer.send(KafkaProducerRecord(topic, None, "first"))
+    producer.flush()
+
+    val interludeTimestamp = java.time.Instant.now().toEpochMilli
+
+    producer.send(KafkaProducerRecord(topic, None, "second"))
+    producer.flush()
+
+    val timeOffsets = Offsets(Map(partition -> interludeTimestamp))
+
+    val consumer = system.actorOf(KafkaConsumerActor.props(consumerConf, KafkaConsumerActor.Conf(), testActor))
+
+    consumer ! Subscribe.ManualOffsetForTimes(timeOffsets)
+
+    val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
+    consumer ! Confirm(rs.offsets)
+    expectNoMsg(5.seconds)
+
+    import scala.collection.JavaConverters._
+    val messages = rs.records.iterator().asScala.toList.map(_.value())
+    messages should be (List("second"))
+    consumer ! Unsubscribe
+    producer.close()
+  }
+
   "KafkaConsumerActor configured in Auto Partition with manual offset mode" should "consume a sequence of messages" in {
     val topic = randomString
 
