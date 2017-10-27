@@ -97,8 +97,18 @@ object KafkaConsumerActor {
       * The client should ensure that received records are confirmed with 'commit = true' to ensure kafka tracks the commit point.
       *
       * @param topics the topics to subscribe to start consuming from
+      * @param assignedListener Optionally provide a callback when partitions are assigned.  Can be used if any initialisation is
+      *                         required prior to receiving messages for the partition, such as to populate a cache.  Default implementation
+      *                         is to do nothing.
+      * @param revokedListener Optionally provide a callback when partitions are revoked.  Can be used if any cleanup is
+      *                         required after a partition assignment is revoked.  Default implementation
+      *                         is to do nothing.
       */
-    final case class AutoPartition(topics: Iterable[String]) extends Subscribe
+    final case class AutoPartition(
+      topics: Iterable[String] = List(),
+      assignedListener: List[TopicPartition] => Unit = _ => (),
+      revokedListener: List[TopicPartition] => Unit = _ => ()
+    ) extends Subscribe
 
     /**
       * Subscribe to topics in auto assigned partition mode with client managed offset commit positions for each partition.
@@ -658,9 +668,9 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   }
 
   private def subscribe(s: Subscribe): Unit = s match {
-    case Subscribe.AutoPartition(topics) =>
+    case Subscribe.AutoPartition(topics, assignedListener, revokedListener) =>
       log.info(s"Subscribing in auto partition assignment mode to topics [{}].", topics.mkString(","))
-      trackPartitions = new TrackPartitionsCommitMode(consumer, context.self)
+      trackPartitions = new TrackPartitionsCommitMode(consumer, context.self, assignedListener, revokedListener)
       consumer.subscribe(topics.toList.asJava, trackPartitions)
 
     case Subscribe.AutoPartitionWithManualOffset(topics, assignedListener, revokedListener) =>

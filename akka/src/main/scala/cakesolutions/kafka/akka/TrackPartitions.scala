@@ -30,8 +30,8 @@ sealed trait TrackPartitions extends ConsumerRebalanceListener {
   */
 private final class TrackPartitionsCommitMode(
   consumer: KafkaConsumer[_, _], consumerActor: ActorRef,
-  assignedListener: List[TopicPartition] => Unit = items => (),
-  revokedListener: List[TopicPartition] => Unit = items => ()) extends TrackPartitions {
+  assignedListener: List[TopicPartition] => Unit,
+  revokedListener: List[TopicPartition] => Unit) extends TrackPartitions {
 
   private val log = LoggerFactory.getLogger(getClass)
 
@@ -42,6 +42,8 @@ private final class TrackPartitionsCommitMode(
     log.debug("onPartitionsRevoked: " + partitions.toString)
 
     _revoked = true
+
+    revokedListener(partitions.asScala.toList)
 
     // If partitions have been revoked, keep a record of our current position within them.
     if (!partitions.isEmpty) {
@@ -64,7 +66,7 @@ private final class TrackPartitionsCommitMode(
         partition <- partitions.asScala
         offset <- _offsets.get(partition)
       } {
-        assignedListener(partitions)
+        assignedListener(partitions.asScala.toList)
         log.info(s"Seeking partition: [{}] to offset [{}]", partition, offset)
         consumer.seek(partition, offset)
       }
