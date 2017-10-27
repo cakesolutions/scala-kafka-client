@@ -158,7 +158,7 @@ final class KafkaServer(
       val collected = ArrayBuffer.empty[(Option[Key], Value)]
       val start = System.currentTimeMillis()
 
-      while (total <= expectedNumOfRecords && System.currentTimeMillis() < start + timeout) {
+      while (total < expectedNumOfRecords && System.currentTimeMillis() < start + timeout) {
         val records = consumer.poll(100)
         val kvs = records.asScala.map(r => (Option(r.key()), r.value()))
         collected ++= kvs
