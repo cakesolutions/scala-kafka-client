@@ -62,11 +62,11 @@ private final class TrackPartitionsCommitMode(
     val allExisting = _offsets.forall { case (partition, _) => partitions.contains(partition) }
 
     if (allExisting) {
+      assignedListener(partitions.asScala.toList)
       for {
         partition <- partitions.asScala
         offset <- _offsets.get(partition)
       } {
-        assignedListener(partitions.asScala.toList)
         log.info(s"Seeking partition: [{}] to offset [{}]", partition, offset)
         consumer.seek(partition, offset)
       }
