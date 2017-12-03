@@ -87,6 +87,7 @@ Here is the full table of binary compatibilities between Scala Kafka client and 
 
  Scala Kafka client    | Kafka Java Driver
  --------------------- | -----------------
+ 1.0.0                 | 1.0.0
  0.11.0.0              | 0.11.0.0
  0.10.2.x              | 0.10.2.x
  0.10.1.x              | 0.10.1.x
