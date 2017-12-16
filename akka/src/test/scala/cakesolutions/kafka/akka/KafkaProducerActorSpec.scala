@@ -63,7 +63,7 @@ class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
 
     probe.send(producer, message)
 
-    probe.expectNoMsg(3.seconds)
+    probe.expectNoMessage(3.seconds)
 
     val results = consumeFromTopic(topic, 3, 10000)
 

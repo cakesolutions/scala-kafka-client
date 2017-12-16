@@ -83,7 +83,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
 
           val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
           consumer.confirm(rs.offsets)
-          expectNoMsg(5.seconds)
+          expectNoMessage(5.seconds)
 
           consumer.unsubscribe()
           producer.close()
@@ -103,7 +103,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
 
     val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
     consumer ! Confirm(rs.offsets)
-    expectNoMsg(5.seconds)
+    expectNoMessage(5.seconds)
 
     consumer ! Unsubscribe
     producer.close()
@@ -147,7 +147,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
 
     val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
     consumer ! Confirm(rs.offsets, commit = true)
-    expectNoMsg(5.seconds)
+    expectNoMessage(5.seconds)
 
     consumer ! Unsubscribe
     producer.close()
@@ -166,7 +166,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
 
     val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
     consumer ! Confirm(rs.offsets)
-    expectNoMsg(5.seconds)
+    expectNoMessage(5.seconds)
 
     consumer ! Unsubscribe
     producer.close()
@@ -194,7 +194,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
 
     val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
     consumer ! Confirm(rs.offsets)
-    expectNoMsg(5.seconds)
+    expectNoMessage(5.seconds)
 
     import scala.collection.JavaConverters._
     val messages = rs.records.iterator().asScala.toList.map(_.value())
@@ -217,7 +217,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
 
     val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
     consumer ! Confirm(rs.offsets)
-    expectNoMsg(5.seconds)
+    expectNoMessage(5.seconds)
 
     consumer ! Unsubscribe
     producer.close()
