@@ -31,7 +31,8 @@ object KafkaServer {
   val defaultConfig: Map[String, String] = Map(
     KafkaConfig.BrokerIdProp  -> "1",
     KafkaConfig.ReplicaSocketTimeoutMsProp -> "1500",
-    KafkaConfig.ControlledShutdownEnableProp -> "true"
+    KafkaConfig.ControlledShutdownEnableProp -> "true",
+    KafkaConfig.AdvertisedHostNameProp -> "localhost"
   )
 
   /**
