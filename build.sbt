@@ -79,6 +79,6 @@ lazy val scalaKafkaClientExamples = project.in(file("examples"))
 
 lazy val root = project.in(file("."))
   .settings(commonSettings: _*)
-  .settings(unidocSettings: _*)
+  .enablePlugins(ScalaUnidocPlugin)
   .settings(name := "scala-kafka-client-root", publishArtifact := false, publish := {}, publishLocal := {})
   .aggregate(scalaKafkaClient, scalaKafkaClientAkka, kafkaTestkit)
