@@ -1,0 +1,3 @@
+-Xms2g
+-Xmx2g
+-XX:MaxGCPauseMillis=100
