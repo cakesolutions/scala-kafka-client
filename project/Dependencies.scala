@@ -4,7 +4,7 @@ object Dependencies {
     val logback = "1.2.3"
     val scalaTest = "3.0.4"
     val akka = "2.5.9"
-    val kafka = "1.0.0"
+    val kafka = "1.1.0"
     val typesafeConfig = "1.3.2"
   }
 }
