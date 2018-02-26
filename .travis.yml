@@ -1,13 +1,24 @@
 language: scala
 jdk: oraclejdk8
 scala:
-    - 2.11.8
-    - 2.12.1
+    - 2.11.12
+    - 2.12.4
 
 script:
-- sbt ++$TRAVIS_SCALA_VERSION clean coverage test coverageReport
+- sbt ++$TRAVIS_SCALA_VERSION -Dakka.test.timefactor=5 clean coverage test coverageReport
 - sbt coverageAggregate
 - '[ "${TRAVIS_PULL_REQUEST}" = "false" ] && sbt updateImpactSubmit || true'
 
 after_success:
 - bash <(curl -s https://codecov.io/bash)
+
+cache:
+  directories:
+  - $HOME/.sbt
+  - $HOME/.ivy2
+  - $HOME/.m2
+
+before_cache:
+  # Cleanup the cached directories to avoid unnecessary cache updates
+  - find $HOME/.ivy2/cache -name "ivydata-*.properties" -print -delete
+  - find $HOME/.sbt        -name "*.lock"               -print -delete
