@@ -216,8 +216,11 @@ object KafkaProducer {
     * @tparam V type of the value that the producer accepts
     * @return Kafka producer instance
     */
-  def apply[K, V](conf: Conf[K, V]): KafkaProducer[K, V] =
+  def apply[K, V](conf: Conf[K, V]): KafkaProducer[K, V] = {
+    conf.keySerializer.configure(conf.props.asJava, true)
+    conf.valueSerializer.configure(conf.props.asJava, false)
     apply(new JKafkaProducer[K, V](conf.props.asJava, conf.keySerializer, conf.valueSerializer))
+  }
 
   /**
     * Create [[KafkaProducer]] from a given Java `KafkaProducer` object.
