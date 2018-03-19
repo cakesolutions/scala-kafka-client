@@ -144,6 +144,9 @@ object KafkaConsumer {
     * @tparam V value serialiser type
     * @return Kafka consumer client
     */
-  def apply[K, V](conf: Conf[K, V]): JKafkaConsumer[K, V] =
+  def apply[K, V](conf: Conf[K, V]): JKafkaConsumer[K, V] = {
+    conf.keyDeserializer.configure(conf.props.asJava, true)
+    conf.valueDeserializer.configure(conf.props.asJava, false)
     new JKafkaConsumer[K, V](conf.props.asJava, conf.keyDeserializer, conf.valueDeserializer)
+  }
 }
