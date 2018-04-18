@@ -8,7 +8,7 @@
 This project comprises a few helper modules for operating the [Kafka Java Client Driver](https://kafka.apache.org/0100/javadoc/index.html) in a Scala codebase.
 
 * [Scala Kafka Client](#scala-kafka-client)
-* [Scala Kafka Client - Akka Integration](#scala-kafka-client---akka-integration)
+* [Scala Kafka Client - Akka Integration](#akka-integration)
 * [TestKit](#testkit)
 
 <img src="https://raw.githubusercontent.com/wiki/cakesolutions/scala-kafka-client/images/logo.png" align="sck" height="250" width="300">
