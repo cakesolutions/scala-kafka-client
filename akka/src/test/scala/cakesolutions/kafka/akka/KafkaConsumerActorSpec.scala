@@ -54,7 +54,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
         """.stripMargin)
     )
 
-  def configuredActor(topic: String): Config =
+  def configuredActor: Config =
     ConfigFactory.parseString(
       s"""
          | bootstrap.servers = "localhost:$kafkaPort",
@@ -98,7 +98,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     producer.flush()
 
     // Consumer and actor config in same config file
-    val consumer = system.actorOf(KafkaConsumerActor.props(configuredActor(topic), new StringDeserializer(), new StringDeserializer(), testActor))
+    val consumer = system.actorOf(KafkaConsumerActor.props(configuredActor, new StringDeserializer(), new StringDeserializer(), testActor))
     consumer ! Subscribe.AutoPartition(List(topic))
 
     val rs = expectMsgClass(30.seconds, classOf[ConsumerRecords[String, String]])
@@ -120,7 +120,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     val downstreamActor = TestProbe().ref
 
     // Consumer and actor config in same config file
-    val consumer = system.actorOf(KafkaConsumerActor.props(configuredActor(topic), new StringDeserializer(), new StringDeserializer(), downstreamActor))
+    val consumer = system.actorOf(KafkaConsumerActor.props(configuredActor, new StringDeserializer(), new StringDeserializer(), downstreamActor))
     consumer ! Subscribe.AutoPartition(List(topic))
 
     // Initiate DeathWatch
