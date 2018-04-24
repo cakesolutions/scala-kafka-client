@@ -773,7 +773,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     try {
       effect
     } catch {
-      case we: WakeupException =>
+      case _: WakeupException =>
         log.debug("Wakeup Exception, ignoring.")
         None
       case error: Exception =>
@@ -803,7 +803,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
       consumer.commitSync(offsetsToCommit.toCommitMap.asJava)
       Success({})
     } catch {
-      case we: WakeupException =>
+      case _: WakeupException =>
         log.debug("Wakeup Exception. Ignoring.")
         Success({})
       case cfe: CommitFailedException =>

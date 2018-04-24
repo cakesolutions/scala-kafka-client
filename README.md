@@ -1,4 +1,4 @@
-# Scala support for Apache Kafka's Java client library 0.9.0.x - 1.0.x
+# Scala support for Apache Kafka's Java client library 0.9.0.x - 1.1.x
 
 [![Join the chat at https://gitter.im/cakesolutions/scala-kafka-client](https://badges.gitter.im/cakesolutions/scala-kafka-client.svg)](https://gitter.im/cakesolutions/scala-kafka-client?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build status](https://travis-ci.org/cakesolutions/scala-kafka-client.svg?branch=master)](https://travis-ci.org/cakesolutions/scala-kafka-client)
@@ -38,7 +38,7 @@ For configuration and usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "1.0.0"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "1.1.0"
 ```
 
 ### Akka Integration
@@ -52,7 +52,7 @@ For configuration and usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "1.0.0"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "1.1.0"
 ```
 
 ### TestKit
@@ -66,7 +66,7 @@ For usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-testkit" % "1.0.0" % "test"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-testkit" % "1.1.0" % "test"
 ```
 
 ## Version Compatibility
@@ -87,6 +87,7 @@ Here is the full table of binary compatibilities between Scala Kafka client and 
 
  Scala Kafka client    | Kafka Java Driver
  --------------------- | -----------------
+ 1.1.0                 | 1.1.0
  1.0.0                 | 1.0.0
  0.11.0.0              | 0.11.0.0
  0.10.2.x              | 0.10.2.x
@@ -97,6 +98,9 @@ Here is the full table of binary compatibilities between Scala Kafka client and 
  0.7.0                 | 0.9.0.1
 
 ## Change log
+
+### 1.1.0 - 04/2018
+* Update to Kafka 1.1.0
 
 ### 1.0.0 - 12/2017
 * Update to Kafka 1.0.0
@@ -170,6 +174,6 @@ innovative and intelligent tools for profiling Java and .NET applications.
 
 ## License
 
-Copyright 2016-2017, Cake Solutions.
+Copyright 2016-2018, Cake Solutions.
 
 Licensed under the MIT License
