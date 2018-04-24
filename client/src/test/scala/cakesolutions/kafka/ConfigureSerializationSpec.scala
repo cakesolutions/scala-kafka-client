@@ -46,7 +46,8 @@ class ConfigureSerializationSpec extends KafkaIntSpec{
          """.stripMargin
       ), keySerializer, valueSerializer)
 
-    val _ = KafkaProducer(conf)
+    val producer = KafkaProducer(conf)
+    producer.close
 
     keySerializer.configuration shouldEqual "mock_value"
     keySerializer.isKeySerializer shouldEqual true
@@ -66,7 +67,8 @@ class ConfigureSerializationSpec extends KafkaIntSpec{
          """.stripMargin
       ), keyDeserializer, valueDeserializer)
 
-    val _ = KafkaConsumer(conf)
+    val consumer = KafkaConsumer(conf)
+    consumer.close
 
     keyDeserializer.configuration shouldEqual "mock_value"
     keyDeserializer.isKeyDeserializer shouldEqual true
