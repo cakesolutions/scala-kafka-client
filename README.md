@@ -5,7 +5,7 @@
 [![Dependencies](https://app.updateimpact.com/badge/748875216658239488/scala-kafka-client-root.svg?config=compile)](https://app.updateimpact.com/latest/748875216658239488/scala-kafka-client-root)
 [![codecov](https://codecov.io/gh/cakesolutions/scala-kafka-client/branch/master/graph/badge.svg)](https://codecov.io/gh/cakesolutions/scala-kafka-client)
 
-This project comprises a few helper modules for operating the [Kafka Java Client Driver](https://kafka.apache.org/0100/javadoc/index.html) in a Scala codebase.
+This project comprises a few helper modules for operating the [Kafka Java Client Driver](https://kafka.apache.org/11/javadoc/index.html?overview-summary.html) in a Scala codebase.
 
 * [Scala Kafka Client](#scala-kafka-client)
 * [Scala Kafka Client - Akka Integration](#akka-integration)
