@@ -1,4 +1,4 @@
-# Scala support for Apache Kafka's Java client library 0.9.0.x - 1.1.x
+# Scala support for Apache Kafka's Java client library 0.9.0.x - 2.0.0
 
 [![Join the chat at https://gitter.im/cakesolutions/scala-kafka-client](https://badges.gitter.im/cakesolutions/scala-kafka-client.svg)](https://gitter.im/cakesolutions/scala-kafka-client?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build status](https://travis-ci.org/cakesolutions/scala-kafka-client.svg?branch=master)](https://travis-ci.org/cakesolutions/scala-kafka-client)
@@ -89,6 +89,7 @@ Here is the full table of binary compatibilities between Scala Kafka client and 
 
  Scala Kafka client    | Kafka Java Driver
  --------------------- | -----------------
+ 2.0.0                 | 2.0.0
  1.1.1                 | 1.1.1
  1.0.0                 | 1.0.0
  0.11.0.0              | 0.11.0.0
@@ -100,6 +101,9 @@ Here is the full table of binary compatibilities between Scala Kafka client and 
  0.7.0                 | 0.9.0.1
 
 ## Change log
+
+### 2.0.0 - 08/2018
+* Update to Kafka 2.0.0
 
 ### 1.1.0 - 08/2018
 * Update to Kafka 1.1.1
