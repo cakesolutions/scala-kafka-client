@@ -21,7 +21,9 @@ These modules are production ready, actively maintained and are used in a large 
 
 To resolve any of the modules, add the following resolver to the build.sbt:
 
-    resolvers += Resolver.bintrayRepo("cakesolutions", "maven")
+```scala
+resolvers += Resolver.bintrayRepo("cakesolutions", "maven")
+```
 
 ## Components
 
