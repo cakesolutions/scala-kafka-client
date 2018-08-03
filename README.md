@@ -40,7 +40,7 @@ For configuration and usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "1.1.0"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client" % "1.1.1"
 ```
 
 ### Akka Integration
@@ -54,7 +54,7 @@ For configuration and usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "1.1.0"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-akka" % "1.1.1"
 ```
 
 ### TestKit
@@ -68,7 +68,7 @@ For usage, see the Wiki:
 SBT library dependency:
 
 ```scala
-libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-testkit" % "1.1.0" % "test"
+libraryDependencies += "net.cakesolutions" %% "scala-kafka-client-testkit" % "1.1.1" % "test"
 ```
 
 ## Version Compatibility
@@ -89,7 +89,7 @@ Here is the full table of binary compatibilities between Scala Kafka client and 
 
  Scala Kafka client    | Kafka Java Driver
  --------------------- | -----------------
- 1.1.0                 | 1.1.0
+ 1.1.1                 | 1.1.1
  1.0.0                 | 1.0.0
  0.11.0.0              | 0.11.0.0
  0.10.2.x              | 0.10.2.x
@@ -100,6 +100,9 @@ Here is the full table of binary compatibilities between Scala Kafka client and 
  0.7.0                 | 0.9.0.1
 
 ## Change log
+
+### 1.1.0 - 08/2018
+* Update to Kafka 1.1.1
 
 ### 1.1.0 - 04/2018
 * Update to Kafka 1.1.0
