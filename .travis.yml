@@ -2,7 +2,7 @@ language: scala
 jdk: oraclejdk8
 scala:
     - 2.11.12
-    - 2.12.4
+    - 2.12.6
 
 script:
 - sbt ++$TRAVIS_SCALA_VERSION -Dakka.test.timefactor=5 clean coverage test coverageReport

@@ -71,7 +71,7 @@ class KafkaE2EActorPerfSpec(system_ : ActorSystem)
 
     val consumer = KafkaConsumerActor(consumerConf, consumerActorConf, receiver.ref)
 
-    1 to totalMessages foreach { n =>
+    1 to totalMessages foreach { _ =>
       testProducer.send(KafkaProducerRecord(sourceTopic, None, msg1k))
     }
     testProducer.flush()
