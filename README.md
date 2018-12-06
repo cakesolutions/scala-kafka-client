@@ -1,4 +1,4 @@
-# Scala support for Apache Kafka's Java client library 0.9.0.x - 2.0.0
+# Scala support for Apache Kafka's Java client library 0.9.0.x - 2.1.0
 
 [![Join the chat at https://gitter.im/cakesolutions/scala-kafka-client](https://badges.gitter.im/cakesolutions/scala-kafka-client.svg)](https://gitter.im/cakesolutions/scala-kafka-client?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build status](https://travis-ci.org/cakesolutions/scala-kafka-client.svg?branch=master)](https://travis-ci.org/cakesolutions/scala-kafka-client)
