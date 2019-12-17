@@ -187,7 +187,6 @@ final class KafkaServer(
     * @param producerConfig custom configurations for Kafka producer
     */
   def produce[Key, Value](
-    topic: String,
     records: Iterable[ProducerRecord[Key, Value]],
     keySerializer: Serializer[Key],
     valueSerializer: Serializer[Value],
