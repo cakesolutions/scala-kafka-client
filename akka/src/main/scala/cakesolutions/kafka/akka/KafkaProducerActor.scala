@@ -107,7 +107,7 @@ private class KafkaProducerActor[K, V](producerConf: KafkaProducer.Conf[K, V], m
     try { KafkaProducer(producerConf) }
     catch { case ex: Exception => throw new KafkaProducerInitFail(cause = ex) }
 
-  override def receive: Receive = matcher.andThen(handleResult)
+  override def receive: Receive = matcher.andThen(handleResult _)
 
   private def handleResult(result: ProducerRecords[K, V]): Unit = {
     log.debug("Received a batch. Writing to Kafka.")

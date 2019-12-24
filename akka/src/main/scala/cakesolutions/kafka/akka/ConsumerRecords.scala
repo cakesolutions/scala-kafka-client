@@ -57,9 +57,9 @@ object ConsumerRecords {
         topicPartition -> rs
     }
 
-    val offsets = Offsets(recordsMap.mapValues(_.maxBy(_.offset()).offset()))
+    val offsets = Offsets(recordsMap.mapValues(_.maxBy(_.offset()).offset()).toMap)
 
-    val records = new JConsumerRecords(recordsMap.mapValues(_.asJava).asJava)
+    val records = new JConsumerRecords(recordsMap.mapValues(_.asJava).toMap.asJava)
 
     ConsumerRecords(offsets, records)
   }

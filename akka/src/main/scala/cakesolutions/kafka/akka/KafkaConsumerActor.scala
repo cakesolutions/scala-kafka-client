@@ -437,7 +437,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   private def timeOffsets2regularOffsets(timeOffsets: Offsets) : Offsets = {
     import scala.collection.JavaConverters._
     val javaOffsetsAndTimestamps = consumer.offsetsForTimes(timeOffsets.offsetsMap).asScala.toMap
-    val offsets = javaOffsetsAndTimestamps.mapValues(_.offset())
+    val offsets = javaOffsetsAndTimestamps.mapValues(_.offset()).toMap
     Offsets(offsets)
   }
 
