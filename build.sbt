@@ -1,11 +1,11 @@
 lazy val commonSettings = Seq(
   organization := "net.cakesolutions",
-  scalaVersion := "2.12.6",
-  crossScalaVersions := Seq("2.11.12", "2.12.6"),
+  scalaVersion := "2.12.10",
+  crossScalaVersions := Seq("2.11.12", "2.12.10", "2.13.1"),
   publishMavenStyle := true,
   bintrayOrganization := Some("cakesolutions"),
   bintrayPackageLabels := Seq("scala", "kafka"),
-//  resolvers += "Apache Staging" at "https://repository.apache.org/content/groups/staging/",
+  //  resolvers += "Apache Staging" at "https://repository.apache.org/content/groups/staging/",
   scalacOptions in Compile ++= Seq(
     "-encoding", "UTF-8",
     "-target:jvm-1.8",
@@ -13,14 +13,14 @@ lazy val commonSettings = Seq(
     "-deprecation",
     "-unchecked",
     "-Xlint",
-    "-Xfuture",
     "-Ywarn-dead-code",
-    "-Ywarn-unused-import",
-    "-Ywarn-unused",
-    "-Ywarn-nullary-unit"
-  ),
-  scalacOptions in (Compile, doc) ++= Seq("-groups", "-implicits"),
-  javacOptions in (Compile, doc) ++= Seq("-notimestamp", "-linksource"),
+    "-Ywarn-unused"
+  ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((2, 13)) => Seq()
+    case _ => Seq("-Xfuture", "-Ywarn-unused-import", "-Ywarn-nullary-unit")
+  }),
+  scalacOptions in(Compile, doc) ++= Seq("-groups", "-implicits"),
+  javacOptions in(Compile, doc) ++= Seq("-notimestamp", "-linksource"),
   autoAPIMappings := true,
 
   //  publishTo :=
