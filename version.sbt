@@ -1,1 +1,1 @@
-version in ThisBuild := "2.4.0-stale-offset-fix"
+version in ThisBuild := "2.4.0"
