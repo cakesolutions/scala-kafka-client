@@ -113,12 +113,12 @@ private final class TrackPartitionsCommitModeBasic(
     log.debug("onPartitionsRevoked: " + partitions.toString)
     _revoked = true
     revokedListener(partitions.asScala.toList)
+    consumerActor ! KafkaConsumerActor.RevokeReset
   }
 
   override def onPartitionsAssigned(partitions: JCollection[TopicPartition]): Unit = {
     log.debug("onPartitionsAssigned: " + partitions.toString)
     _revoked = false
-    consumerActor ! KafkaConsumerActor.RevokeReset
   }
 
   override def isRevoked: Boolean = _revoked
