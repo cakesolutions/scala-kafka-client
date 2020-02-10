@@ -48,6 +48,8 @@ private final class TrackPartitionsCommitMode(
     // If partitions have been revoked, keep a record of our current position within them.
     if (!partitions.isEmpty) {
       _offsets = partitions.asScala.map(partition => partition -> consumer.position(partition)).toMap
+    } else {
+      _offsets = Map.empty
     }
   }
 
