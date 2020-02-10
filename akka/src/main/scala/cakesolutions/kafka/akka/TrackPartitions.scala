@@ -91,8 +91,9 @@ private final class TrackPartitionsCommitMode(
 }
 
 /**
-  * Listens to partition change events coming from Kafka driver. Relies exclusively on Kafka for tracking
-  * offsets without attempting any optimizations for when same partitions are reassigned after a rebalance.
+  * Listens to partition change events coming from Kafka driver. Unlike [[TrackPartitionsCommitMode]], relies
+  * exclusively on Kafka for tracking offsets without attempting any optimizations for when same partitions
+  * are reassigned after a rebalance.
   *
   * This class is used when using commit mode, i.e. relying on Kafka to manage commit points.
   *
