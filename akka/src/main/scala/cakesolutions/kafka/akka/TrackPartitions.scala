@@ -48,6 +48,8 @@ private final class TrackPartitionsCommitMode(
     // If partitions have been revoked, keep a record of our current position within them.
     if (!partitions.isEmpty) {
       _offsets = partitions.asScala.map(partition => partition -> consumer.position(partition)).toMap
+    } else {
+      _offsets = Map.empty
     }
   }
 
@@ -84,6 +86,44 @@ private final class TrackPartitionsCommitMode(
 
   override def reset(): Unit = {
     _offsets = Map.empty
+    _revoked = false
+  }
+}
+
+/**
+  * Listens to partition change events coming from Kafka driver. Unlike [[TrackPartitionsCommitMode]], relies
+  * exclusively on Kafka for tracking offsets without attempting any optimizations for when same partitions
+  * are reassigned after a rebalance.
+  *
+  * This class is used when using commit mode, i.e. relying on Kafka to manage commit points.
+  *
+  * @param consumer      The client driver
+  * @param consumerActor Tha KafkaConsumerActor to notify of partition change events
+  */
+private final class TrackPartitionsCommitModeBasic(
+  consumer: KafkaConsumer[_, _], consumerActor: ActorRef,
+  assignedListener: List[TopicPartition] => Unit,
+  revokedListener: List[TopicPartition] => Unit) extends TrackPartitions {
+
+  private val log = LoggerFactory.getLogger(getClass)
+
+  private var _revoked = false
+
+  override def onPartitionsRevoked(partitions: JCollection[TopicPartition]): Unit = {
+    log.debug("onPartitionsRevoked: " + partitions.toString)
+    _revoked = true
+    revokedListener(partitions.asScala.toList)
+    consumerActor ! KafkaConsumerActor.RevokeReset
+  }
+
+  override def onPartitionsAssigned(partitions: JCollection[TopicPartition]): Unit = {
+    log.debug("onPartitionsAssigned: " + partitions.toString)
+    _revoked = false
+  }
+
+  override def isRevoked: Boolean = _revoked
+
+  override def reset(): Unit = {
     _revoked = false
   }
 }
