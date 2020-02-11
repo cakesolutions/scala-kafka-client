@@ -113,6 +113,35 @@ object KafkaConsumerActor {
     ) extends Subscribe
 
     /**
+      * Subscribe to topics in auto assigned partition mode, relying on Kafka to manage the commit point for each partition.
+      * This is this simplest and most common subscription mode that provides a parallel streaming capability with at-least-once
+      * semantics.
+      *
+      * Unlike [[AutoPartition]], this mode relies exclusively on Kafka for commit offset management and without attempting any
+      * optimizations for when same partitions are reassigned after a rebalance.
+      *
+      * In auto assigned partition mode, the consumer partitions are managed by Kafka.
+      * This means that they can get automatically rebalanced with other consumers consuming from the same topic with the same group-id.
+      *
+      * The message consumption starting point will be decided by offset reset strategy in the consumer configuration.
+      *
+      * The client should ensure that received records are confirmed with 'commit = true' to ensure kafka tracks the commit point.
+      *
+      * @param topics the topics to subscribe to start consuming from
+      * @param assignedListener Optionally provide a callback when partitions are assigned.  Can be used if any initialisation is
+      *                         required prior to receiving messages for the partition, such as to populate a cache.  Default implementation
+      *                         is to do nothing.
+      * @param revokedListener Optionally provide a callback when partitions are revoked.  Can be used if any cleanup is
+      *                         required after a partition assignment is revoked.  Default implementation
+      *                         is to do nothing.
+      */
+    final case class AutoPartitionBasic(
+      topics: Iterable[String] = List(),
+      assignedListener: List[TopicPartition] => Unit = _ => (),
+      revokedListener: List[TopicPartition] => Unit = _ => ()
+    ) extends Subscribe
+
+    /**
       * Subscribe to topics in auto assigned partition mode with client managed offset commit positions for each partition.
       * This subscription mode is typically used when performing some parallel stateful computation and storing the offset
       * position along with the state in some kind of persistent store.  This allows for exactly-once state manipulation against
@@ -422,6 +451,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     def advanceSubscription: Subscribe = {
       def advance(offsets: Offsets) = subscription match {
         case s: Subscribe.AutoPartition => s
+        case s: Subscribe.AutoPartitionBasic => s
         case s: Subscribe.AutoPartitionWithManualOffset =>
           Subscribe.AutoPartitionWithManualOffset(s.topics, s.assignedListener, s.revokedListener)
         case _: Subscribe.ManualPartition => Subscribe.ManualOffset(offsets)
@@ -706,6 +736,11 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     case Subscribe.AutoPartition(topics, assignedListener, revokedListener) =>
       log.info(s"Subscribing in auto partition assignment mode to topics [{}].", topics.mkString(","))
       trackPartitions = new TrackPartitionsCommitMode(consumer, context.self, assignedListener, revokedListener)
+      consumer.subscribe(topics.toList.asJava, trackPartitions)
+
+    case Subscribe.AutoPartitionBasic(topics, assignedListener, revokedListener) =>
+      log.info(s"Subscribing in basic auto partition assignment mode to topics [{}].", topics.mkString(","))
+      trackPartitions = new TrackPartitionsCommitModeBasic(consumer, context.self, assignedListener, revokedListener)
       consumer.subscribe(topics.toList.asJava, trackPartitions)
 
     case Subscribe.AutoPartitionWithManualOffset(topics, assignedListener, revokedListener) =>
