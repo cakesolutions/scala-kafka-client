@@ -3,8 +3,6 @@ lazy val commonSettings = Seq(
   scalaVersion := "2.12.10",
   crossScalaVersions := Seq("2.11.12", "2.12.10", "2.13.1"),
   publishMavenStyle := true,
-  bintrayOrganization := Some("cakesolutions"),
-  bintrayPackageLabels := Seq("scala", "kafka"),
   //  resolvers += "Apache Staging" at "https://repository.apache.org/content/groups/staging/",
   scalacOptions in Compile ++= Seq(
     "-encoding", "UTF-8",
