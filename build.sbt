@@ -1,3 +1,4 @@
+
 lazy val commonSettings = Seq(
   organization := "net.cakesolutions",
   scalaVersion := "2.12.10",
@@ -77,6 +78,6 @@ lazy val scalaKafkaClientExamples = project.in(file("examples"))
 
 lazy val root = project.in(file("."))
   .settings(commonSettings: _*)
-  .enablePlugins(ScalaUnidocPlugin)
+  .enablePlugins(ScalaUnidocPlugin, ArtifactoryPublisherPlugin)
   .settings(name := "scala-kafka-client-root", publishArtifact := false, publish := {}, publishLocal := {})
   .aggregate(scalaKafkaClient, scalaKafkaClientAkka, kafkaTestkit)
