@@ -6,7 +6,7 @@ import java.time.temporal.ChronoUnit
 import akka.actor._
 import cakesolutions.kafka.KafkaConsumer
 import com.typesafe.config.Config
-import org.apache.kafka.clients.consumer.CommitFailedException
+import org.apache.kafka.clients.consumer.{CommitFailedException, KafkaConsumer => JKafkaConsumer}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.serialization.Deserializer
@@ -314,7 +314,32 @@ object KafkaConsumerActor {
       KafkaConsumer.Conf[K, V](conf, keyDeserializer, valueDeserializer),
       KafkaConsumerActor.Conf(conf),
       downstreamActor
-    )
+  )
+
+  /**
+    * Create Akka `Props` for [[KafkaConsumerActor]] from a Typesafe config.
+    *
+    * @param conf              Typesafe config containing all the [[KafkaConsumer.Conf]] and [[KafkaConsumerActor.Conf]] related configurations.
+    * @param keyDeserializer   deserializer for the key
+    * @param valueDeserializer deserializer for the value
+    * @param downstreamActor   the actor where all the consumed messages will be sent to
+    * @param consumer          Kafka consumer to inject (in which case `consumerConf` is ignored)
+    * @tparam K key deserialiser type
+    * @tparam V value deserialiser type
+    */
+  def props[K: TypeTag, V: TypeTag](
+    conf: Config,
+    keyDeserializer: Deserializer[K],
+    valueDeserializer: Deserializer[V],
+    downstreamActor: ActorRef,
+    consumer: JKafkaConsumer[K, V]
+  ): Props =
+    props(
+      KafkaConsumer.Conf[K, V](conf, keyDeserializer, valueDeserializer),
+      KafkaConsumerActor.Conf(conf),
+      downstreamActor,
+      consumer
+  )
 
   /**
     * Create Akka `Props` for [[KafkaConsumerActor]].
@@ -331,6 +356,24 @@ object KafkaConsumerActor {
     downstreamActor: ActorRef
   ): Props =
     Props(new KafkaConsumerActorImpl[K, V](consumerConf, actorConf, downstreamActor))
+
+  /**
+    * Create Akka `Props` for [[KafkaConsumerActor]].
+    *
+    * @param consumerConf    configurations for the [[KafkaConsumer]]
+    * @param actorConf       configurations for the [[KafkaConsumerActor]]
+    * @param downstreamActor the actor where all the consumed messages will be sent to
+    * @param consumer        Kafka consumer to inject (in which case `consumerConf` is ignored)
+    * @tparam K key deserialiser type
+    * @tparam V value deserialiser type
+    */
+  def props[K: TypeTag, V: TypeTag](
+    consumerConf: KafkaConsumer.Conf[K, V],
+    actorConf: KafkaConsumerActor.Conf,
+    downstreamActor: ActorRef,
+    consumer: JKafkaConsumer[K, V]
+  ): Props =
+    Props(new KafkaConsumerActorImpl[K, V](consumerConf, actorConf, downstreamActor, Some(consumer)))
 
   /**
     * Create a [[KafkaConsumerActor]] from a Typesafe config.
@@ -355,6 +398,30 @@ object KafkaConsumerActor {
   }
 
   /**
+    * Create a [[KafkaConsumerActor]] from a Typesafe config.
+    *
+    * @param conf Typesafe config containing all the [[KafkaConsumer.Conf]] and [[KafkaConsumerActor.Conf]] related configurations.
+    * @param keyDeserializer deserializer for the key
+    * @param valueDeserializer deserializer for the value
+    * @param downstreamActor the actor where all the consumed messages will be sent to
+    * @param consumer Kafka consumer to inject (in which case `consumerConf` is ignored)
+    * @tparam K key deserialiser type
+    * @tparam V value deserialiser type
+    * @param actorFactory the actor factory to create the actor with
+    */
+  def apply[K: TypeTag, V: TypeTag](
+    conf: Config,
+    keyDeserializer: Deserializer[K],
+    valueDeserializer: Deserializer[V],
+    downstreamActor: ActorRef,
+    consumer: JKafkaConsumer[K, V]
+  )(implicit actorFactory: ActorRefFactory): KafkaConsumerActor = {
+    val p = props(conf, keyDeserializer, valueDeserializer, downstreamActor, consumer)
+    val ref = actorFactory.actorOf(p)
+    fromActorRef(ref)
+  }
+
+  /**
     * Create a [[KafkaConsumerActor]].
     *
     * @param consumerConf configurations for the [[KafkaConsumer]]
@@ -370,6 +437,28 @@ object KafkaConsumerActor {
     downstreamActor: ActorRef
   )(implicit actorFactory: ActorRefFactory): KafkaConsumerActor = {
     val p = props(consumerConf, actorConf, downstreamActor)
+    val ref = actorFactory.actorOf(p)
+    fromActorRef(ref)
+  }
+
+  /**
+    * Create a [[KafkaConsumerActor]].
+    *
+    * @param consumerConf configurations for the [[KafkaConsumer]]
+    * @param actorConf configurations for the [[KafkaConsumerActor]]
+    * @param downstreamActor the actor where all the consumed messages will be sent to
+    * @param consumer Kafka consumer to inject (in which case `consumerConf` is ignored)
+    * @tparam K key deserialiser type
+    * @tparam V value deserialiser type
+    * @param actorFactory the actor factory to create the actor with
+    */
+  def apply[K: TypeTag, V: TypeTag](
+    consumerConf: KafkaConsumer.Conf[K, V],
+    actorConf: KafkaConsumerActor.Conf,
+    downstreamActor: ActorRef,
+    consumer: JKafkaConsumer[K, V]
+  )(implicit actorFactory: ActorRefFactory): KafkaConsumerActor = {
+    val p = props(consumerConf, actorConf, downstreamActor, consumer)
     val ref = actorFactory.actorOf(p)
     fromActorRef(ref)
   }
@@ -414,7 +503,8 @@ final class KafkaConsumerActor private (val ref: ActorRef) {
 private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   consumerConf: KafkaConsumer.Conf[K, V],
   actorConf: KafkaConsumerActor.Conf,
-  downstreamActor: ActorRef
+  downstreamActor: ActorRef,
+  consumerOpt: Option[JKafkaConsumer[K, V]] = None
 ) extends Actor with ActorLogging with PollScheduling {
 
   import KafkaConsumerActor._
@@ -431,7 +521,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
 
   type Records = ConsumerRecords[K, V]
 
-  private val consumer = KafkaConsumer[K, V](consumerConf)
+  private val consumer = consumerOpt.getOrElse(KafkaConsumer[K, V](consumerConf))
 
   // Handles partition reassignments in the kafka client
   private var trackPartitions:TrackPartitions = new EmptyTrackPartitions
