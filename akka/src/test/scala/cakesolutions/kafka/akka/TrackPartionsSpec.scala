@@ -76,36 +76,41 @@ class TrackPartionsSpec(system_ : ActorSystem) extends TestKit(system_)
         """.stripMargin
     )
 
-  // Ignored initially since would fail per https://github.com/cakesolutions/scala-kafka-client/issues/157
-  "KafkaConsumerActor configured in Auto Partition mode" should "not seek to stale offset when re-assigned same partition after another consumer had partition" ignore {
-    val kConsumer = mock[JKafkaConsumer[String, String]]
-    val listenerCaptor = ArgumentCaptor.forClass(classOf[ConsumerRebalanceListener])
-    val consumerActor = system.actorOf(KafkaConsumerActor.props(consumerConf, KafkaConsumerActor.Conf(), testActor, kConsumer))
+  Seq(
+    (Subscribe.AutoPartition(Seq(topic)), "AutoPartition"),
+    (Subscribe.AutoPartitionBasic(Seq(topic)), "AutoPartitionBasic")
+  ).foreach { case (subType, label) =>
+    s"KafkaConsumerActor configured in $label mode" should "not seek to stale offset when re-assigned same partition after another consumer had partition" in {
+      val kConsumer = mock[JKafkaConsumer[String, String]]
+      val listenerCaptor = ArgumentCaptor.forClass(classOf[ConsumerRebalanceListener])
+      val consumerActor = system.actorOf(KafkaConsumerActor.props(consumerConf, KafkaConsumerActor.Conf(), testActor, kConsumer))
 
-    val tp = new TopicPartition(topic, partition)
-    val recList = List(new ConsumerRecord(topic, partition, 0, "1", "foo")).asJava
-    val recMap = new JConsumerRecords[String, String](Map(tp -> recList).asJava)
-    val recMapEmpty = JConsumerRecords.empty[String, String]()
+      val tp = new TopicPartition(topic, partition)
+      val recList = List(new ConsumerRecord(topic, partition, 0, "1", "foo")).asJava
+      val recMap = new JConsumerRecords[String, String](Map(tp -> recList).asJava)
+      val recMapEmpty = JConsumerRecords.empty[String, String]()
 
-    doNothing().when(kConsumer).subscribe(any[JCollection[String]](), listenerCaptor.capture())
-    when(kConsumer.poll(anyLong()))
-      .thenReturn(recMap)
-      .thenReturn(recMapEmpty)
-    when(kConsumer.position(tp)).thenReturn(recMap.count())
+      doNothing().when(kConsumer).subscribe(any[JCollection[String]](), listenerCaptor.capture())
+      when(kConsumer.poll(anyLong()))
+        .thenReturn(recMap)
+        .thenReturn(recMapEmpty)
+      when(kConsumer.position(tp)).thenReturn(recMap.count())
 
-    consumerActor ! Subscribe.AutoPartition(Seq("foo"))
+      consumerActor ! subType
 
-    Thread.sleep(1000)
-    verify(kConsumer).subscribe(any[JCollection[String]](), any[ConsumerRebalanceListener]())
-    val listener: ConsumerRebalanceListener = listenerCaptor.getValue
-    listener.onPartitionsAssigned(List(tp).asJava)
-    val rs = expectMsgClass(5.seconds, classOf[ConsumerRecords[String, String]])
+      Thread.sleep(1000)
+      verify(kConsumer).subscribe(any[JCollection[String]](), any[ConsumerRebalanceListener]())
+      val listener: ConsumerRebalanceListener = listenerCaptor.getValue
+      listener.onPartitionsAssigned(List(tp).asJava)
+      val rs = expectMsgClass(5.seconds, classOf[ConsumerRecords[String, String]])
 
-    consumerActor ! Confirm(rs.offsets, true)
+      consumerActor ! Confirm(rs.offsets, true)
 
-    listener.onPartitionsRevoked(List(tp).asJava)
-    listener.onPartitionsAssigned(List.empty.asJava)
-    listener.onPartitionsAssigned(List(tp).asJava)
-    verify(kConsumer, never).seek(any[TopicPartition](), any[Long]())
+      listener.onPartitionsRevoked(List(tp).asJava)
+      listener.onPartitionsAssigned(List.empty.asJava)
+      listener.onPartitionsRevoked(List.empty.asJava)
+      listener.onPartitionsAssigned(List(tp).asJava)
+      verify(kConsumer, never).seek(any[TopicPartition](), any[Long]())
+    }
   }
 }
