@@ -76,6 +76,7 @@ class TrackPartionsSpec(system_ : ActorSystem) extends TestKit(system_)
         """.stripMargin
     )
 
+  // Ignored initially since would fail per https://github.com/cakesolutions/scala-kafka-client/issues/157
   "KafkaConsumerActor configured in Auto Partition mode" should "not seek to stale offset when re-assigned same partition after another consumer had partition" ignore {
     val kConsumer = mock[JKafkaConsumer[String, String]]
     val listenerCaptor = ArgumentCaptor.forClass(classOf[ConsumerRebalanceListener])
