@@ -6,7 +6,7 @@ import java.time.temporal.ChronoUnit
 import akka.actor._
 import cakesolutions.kafka.KafkaConsumer
 import com.typesafe.config.Config
-import org.apache.kafka.clients.consumer.CommitFailedException
+import org.apache.kafka.clients.consumer.{CommitFailedException, KafkaConsumer => JKafkaConsumer}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.serialization.Deserializer
@@ -107,6 +107,35 @@ object KafkaConsumerActor {
       *                         is to do nothing.
       */
     final case class AutoPartition(
+      topics: Iterable[String] = List(),
+      assignedListener: List[TopicPartition] => Unit = _ => (),
+      revokedListener: List[TopicPartition] => Unit = _ => ()
+    ) extends Subscribe
+
+    /**
+      * Subscribe to topics in auto assigned partition mode, relying on Kafka to manage the commit point for each partition.
+      * This is this simplest and most common subscription mode that provides a parallel streaming capability with at-least-once
+      * semantics.
+      *
+      * Unlike [[AutoPartition]], this mode relies exclusively on Kafka for commit offset management and without attempting any
+      * optimizations for when same partitions are reassigned after a rebalance.
+      *
+      * In auto assigned partition mode, the consumer partitions are managed by Kafka.
+      * This means that they can get automatically rebalanced with other consumers consuming from the same topic with the same group-id.
+      *
+      * The message consumption starting point will be decided by offset reset strategy in the consumer configuration.
+      *
+      * The client should ensure that received records are confirmed with 'commit = true' to ensure kafka tracks the commit point.
+      *
+      * @param topics the topics to subscribe to start consuming from
+      * @param assignedListener Optionally provide a callback when partitions are assigned.  Can be used if any initialisation is
+      *                         required prior to receiving messages for the partition, such as to populate a cache.  Default implementation
+      *                         is to do nothing.
+      * @param revokedListener Optionally provide a callback when partitions are revoked.  Can be used if any cleanup is
+      *                         required after a partition assignment is revoked.  Default implementation
+      *                         is to do nothing.
+      */
+    final case class AutoPartitionBasic(
       topics: Iterable[String] = List(),
       assignedListener: List[TopicPartition] => Unit = _ => (),
       revokedListener: List[TopicPartition] => Unit = _ => ()
@@ -285,7 +314,32 @@ object KafkaConsumerActor {
       KafkaConsumer.Conf[K, V](conf, keyDeserializer, valueDeserializer),
       KafkaConsumerActor.Conf(conf),
       downstreamActor
-    )
+  )
+
+  /**
+    * Create Akka `Props` for [[KafkaConsumerActor]] from a Typesafe config.
+    *
+    * @param conf              Typesafe config containing all the [[KafkaConsumer.Conf]] and [[KafkaConsumerActor.Conf]] related configurations.
+    * @param keyDeserializer   deserializer for the key
+    * @param valueDeserializer deserializer for the value
+    * @param downstreamActor   the actor where all the consumed messages will be sent to
+    * @param consumer          Kafka consumer to inject (in which case `consumerConf` is ignored)
+    * @tparam K key deserialiser type
+    * @tparam V value deserialiser type
+    */
+  def props[K: TypeTag, V: TypeTag](
+    conf: Config,
+    keyDeserializer: Deserializer[K],
+    valueDeserializer: Deserializer[V],
+    downstreamActor: ActorRef,
+    consumer: JKafkaConsumer[K, V]
+  ): Props =
+    props(
+      KafkaConsumer.Conf[K, V](conf, keyDeserializer, valueDeserializer),
+      KafkaConsumerActor.Conf(conf),
+      downstreamActor,
+      consumer
+  )
 
   /**
     * Create Akka `Props` for [[KafkaConsumerActor]].
@@ -302,6 +356,24 @@ object KafkaConsumerActor {
     downstreamActor: ActorRef
   ): Props =
     Props(new KafkaConsumerActorImpl[K, V](consumerConf, actorConf, downstreamActor))
+
+  /**
+    * Create Akka `Props` for [[KafkaConsumerActor]].
+    *
+    * @param consumerConf    configurations for the [[KafkaConsumer]]
+    * @param actorConf       configurations for the [[KafkaConsumerActor]]
+    * @param downstreamActor the actor where all the consumed messages will be sent to
+    * @param consumer        Kafka consumer to inject (in which case `consumerConf` is ignored)
+    * @tparam K key deserialiser type
+    * @tparam V value deserialiser type
+    */
+  def props[K: TypeTag, V: TypeTag](
+    consumerConf: KafkaConsumer.Conf[K, V],
+    actorConf: KafkaConsumerActor.Conf,
+    downstreamActor: ActorRef,
+    consumer: JKafkaConsumer[K, V]
+  ): Props =
+    Props(new KafkaConsumerActorImpl[K, V](consumerConf, actorConf, downstreamActor, Some(consumer)))
 
   /**
     * Create a [[KafkaConsumerActor]] from a Typesafe config.
@@ -326,6 +398,30 @@ object KafkaConsumerActor {
   }
 
   /**
+    * Create a [[KafkaConsumerActor]] from a Typesafe config.
+    *
+    * @param conf Typesafe config containing all the [[KafkaConsumer.Conf]] and [[KafkaConsumerActor.Conf]] related configurations.
+    * @param keyDeserializer deserializer for the key
+    * @param valueDeserializer deserializer for the value
+    * @param downstreamActor the actor where all the consumed messages will be sent to
+    * @param consumer Kafka consumer to inject (in which case `consumerConf` is ignored)
+    * @tparam K key deserialiser type
+    * @tparam V value deserialiser type
+    * @param actorFactory the actor factory to create the actor with
+    */
+  def apply[K: TypeTag, V: TypeTag](
+    conf: Config,
+    keyDeserializer: Deserializer[K],
+    valueDeserializer: Deserializer[V],
+    downstreamActor: ActorRef,
+    consumer: JKafkaConsumer[K, V]
+  )(implicit actorFactory: ActorRefFactory): KafkaConsumerActor = {
+    val p = props(conf, keyDeserializer, valueDeserializer, downstreamActor, consumer)
+    val ref = actorFactory.actorOf(p)
+    fromActorRef(ref)
+  }
+
+  /**
     * Create a [[KafkaConsumerActor]].
     *
     * @param consumerConf configurations for the [[KafkaConsumer]]
@@ -341,6 +437,28 @@ object KafkaConsumerActor {
     downstreamActor: ActorRef
   )(implicit actorFactory: ActorRefFactory): KafkaConsumerActor = {
     val p = props(consumerConf, actorConf, downstreamActor)
+    val ref = actorFactory.actorOf(p)
+    fromActorRef(ref)
+  }
+
+  /**
+    * Create a [[KafkaConsumerActor]].
+    *
+    * @param consumerConf configurations for the [[KafkaConsumer]]
+    * @param actorConf configurations for the [[KafkaConsumerActor]]
+    * @param downstreamActor the actor where all the consumed messages will be sent to
+    * @param consumer Kafka consumer to inject (in which case `consumerConf` is ignored)
+    * @tparam K key deserialiser type
+    * @tparam V value deserialiser type
+    * @param actorFactory the actor factory to create the actor with
+    */
+  def apply[K: TypeTag, V: TypeTag](
+    consumerConf: KafkaConsumer.Conf[K, V],
+    actorConf: KafkaConsumerActor.Conf,
+    downstreamActor: ActorRef,
+    consumer: JKafkaConsumer[K, V]
+  )(implicit actorFactory: ActorRefFactory): KafkaConsumerActor = {
+    val p = props(consumerConf, actorConf, downstreamActor, consumer)
     val ref = actorFactory.actorOf(p)
     fromActorRef(ref)
   }
@@ -385,7 +503,8 @@ final class KafkaConsumerActor private (val ref: ActorRef) {
 private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   consumerConf: KafkaConsumer.Conf[K, V],
   actorConf: KafkaConsumerActor.Conf,
-  downstreamActor: ActorRef
+  downstreamActor: ActorRef,
+  consumerOpt: Option[JKafkaConsumer[K, V]] = None
 ) extends Actor with ActorLogging with PollScheduling {
 
   import KafkaConsumerActor._
@@ -402,7 +521,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
 
   type Records = ConsumerRecords[K, V]
 
-  private val consumer = KafkaConsumer[K, V](consumerConf)
+  private val consumer = consumerOpt.getOrElse(KafkaConsumer[K, V](consumerConf))
 
   // Handles partition reassignments in the kafka client
   private var trackPartitions:TrackPartitions = new EmptyTrackPartitions
@@ -422,6 +541,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     def advanceSubscription: Subscribe = {
       def advance(offsets: Offsets) = subscription match {
         case s: Subscribe.AutoPartition => s
+        case s: Subscribe.AutoPartitionBasic => s
         case s: Subscribe.AutoPartitionWithManualOffset =>
           Subscribe.AutoPartitionWithManualOffset(s.topics, s.assignedListener, s.revokedListener)
         case _: Subscribe.ManualPartition => Subscribe.ManualOffset(offsets)
@@ -706,6 +826,11 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     case Subscribe.AutoPartition(topics, assignedListener, revokedListener) =>
       log.info(s"Subscribing in auto partition assignment mode to topics [{}].", topics.mkString(","))
       trackPartitions = new TrackPartitionsCommitMode(consumer, context.self, assignedListener, revokedListener)
+      consumer.subscribe(topics.toList.asJava, trackPartitions)
+
+    case Subscribe.AutoPartitionBasic(topics, assignedListener, revokedListener) =>
+      log.info(s"Subscribing in basic auto partition assignment mode to topics [{}].", topics.mkString(","))
+      trackPartitions = new TrackPartitionsCommitModeBasic(consumer, context.self, assignedListener, revokedListener)
       consumer.subscribe(topics.toList.asJava, trackPartitions)
 
     case Subscribe.AutoPartitionWithManualOffset(topics, assignedListener, revokedListener) =>
