@@ -26,10 +26,9 @@ repo via PRs
    1. Check out `livongo-master-internal`
    1. Create a feature branch
    1. Update the version number to be published (in `version.sbt`)
-   1. Create PR to merge into `livongo-master-contrib` and merge
+   1. Create PR to merge into `livongo-master-internal` and merge
    1. Publish the artifacts
-1. Create PR from either the feature branch or the updated `livongo-master-contrib` branch against upstream repo
-if appropriate 
+1. Create PR from either the feature branch or the updated `livongo-master-contrib` branch against upstream repo if appropriate 
 
 ---
 
