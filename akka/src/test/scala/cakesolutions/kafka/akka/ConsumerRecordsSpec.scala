@@ -1,9 +1,11 @@
 package cakesolutions.kafka.akka
 
 import cakesolutions.kafka.KafkaTopicPartition
-import org.scalatest.{FlatSpecLike, Inside, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.Inside
+import org.scalatest.matchers.should.Matchers
 
-class ConsumerRecordsSpec extends FlatSpecLike with Matchers with Inside {
+class ConsumerRecordsSpec extends AnyFlatSpecLike with Matchers with Inside {
 
   val partition = KafkaTopicPartition("sometopic", 0)
   val knownInput: ConsumerRecords[String, Int] = ConsumerRecords.fromPairs(partition, Seq(Some("foo") -> 1))

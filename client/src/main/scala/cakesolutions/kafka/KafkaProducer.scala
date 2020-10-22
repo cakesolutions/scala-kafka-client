@@ -1,6 +1,6 @@
 package cakesolutions.kafka
 
-import java.util.concurrent.TimeUnit
+import java.time.Duration
 
 import cakesolutions.kafka.TypesafeConfigExtensions._
 import com.typesafe.config.Config
@@ -155,7 +155,7 @@ object KafkaProducer {
       }
 
       transactionalId.foreach(tid =>
-        configMap.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, tid.toString)
+        configMap.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, tid)
       )
 
       apply(configMap.toMap, keySerializer, valueSerializer)
@@ -283,7 +283,7 @@ final class KafkaProducer[K, V](val producer: JProducer[K, V]) extends KafkaProd
     producer.close()
 
   override def close(timeout: FiniteDuration): Unit =
-    producer.close(timeout.toMillis, TimeUnit.MILLISECONDS)
+    producer.close(Duration.ofNanos(timeout.toNanos))
 
   private def producerCallback(promise: Promise[RecordMetadata]): Callback =
     producerCallback(result => promise.complete(result))

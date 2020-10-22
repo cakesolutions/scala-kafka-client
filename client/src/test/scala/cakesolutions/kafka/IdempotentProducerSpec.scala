@@ -2,7 +2,7 @@ package cakesolutions.kafka
 
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.common.KafkaException
-import org.apache.kafka.common.requests.IsolationLevel
+import org.apache.kafka.common.IsolationLevel
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.slf4j.LoggerFactory
 

@@ -1,10 +1,11 @@
 package cakesolutions.kafka
 
+import java.lang
+
 import cakesolutions.kafka.TypesafeConfigExtensions._
-import com.typesafe.config.Config
+import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetResetStrategy, KafkaConsumer => JKafkaConsumer}
-import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.requests.IsolationLevel
+import org.apache.kafka.common.{IsolationLevel, TopicPartition}
 import org.apache.kafka.common.serialization.Deserializer
 
 import scala.collection.JavaConverters._
@@ -23,7 +24,7 @@ object KafkaConsumer {
     */
   implicit def toJavaOffsetQuery(offsetQuery: Map[TopicPartition, scala.Long]): java.util.Map[TopicPartition, java.lang.Long] =
     offsetQuery
-      .map { case (tp, time) => tp -> new java.lang.Long(time) }
+      .map { case (tp, time) => tp -> lang.Long.valueOf(time) }
       .asJava
 
   /**
@@ -66,7 +67,7 @@ object KafkaConsumer {
       isolationLevel: IsolationLevel = IsolationLevel.READ_UNCOMMITTED
     ): Conf[K, V] = {
 
-      val configMap = Map[String, AnyRef](
+      val configMap = ConfigFactory.parseMap(Map(
         ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> bootstrapServers,
         ConsumerConfig.GROUP_ID_CONFIG -> groupId,
         ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> enableAutoCommit.toString,
@@ -77,7 +78,7 @@ object KafkaConsumer {
         ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG -> maxPollInterval.toString,
         ConsumerConfig.METADATA_MAX_AGE_CONFIG ->maxMetaDataAge.toString,
         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> autoOffsetReset.toString.toLowerCase,
-        ConsumerConfig.ISOLATION_LEVEL_CONFIG -> isolationLevel.toString.toLowerCase()
+        ConsumerConfig.ISOLATION_LEVEL_CONFIG -> isolationLevel.toString.toLowerCase()).asJava
       )
 
       apply(configMap, keyDeserializer, valueDeserializer)
