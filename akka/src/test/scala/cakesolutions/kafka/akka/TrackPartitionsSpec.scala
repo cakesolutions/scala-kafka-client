@@ -13,7 +13,9 @@ import org.apache.kafka.common.serialization.StringDeserializer
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers._
 import org.mockito.Mockito._
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 
 import scala.collection.JavaConverters._
@@ -21,8 +23,8 @@ import scala.concurrent.duration._
 import scala.util.Random
 
 
-class TrackPartionsSpec(system_ : ActorSystem) extends TestKit(system_)
-  with FlatSpecLike
+class TrackPartitionsSpec(system_ : ActorSystem) extends TestKit(system_)
+  with AnyFlatSpecLike
   with Matchers
   with BeforeAndAfterAll with MockitoSugar {
 

@@ -2,6 +2,7 @@ package cakesolutions.kafka.testkit
 
 import java.io.File
 import java.net.ServerSocket
+import java.time.Duration
 
 import kafka.server.{KafkaConfig, KafkaServerStartable}
 import org.apache.curator.test.TestingServer
@@ -151,6 +152,7 @@ final class KafkaServer(
   ): Seq[(Option[Key], Value)] = {
     val extendedConfig: Map[String, Object] = consumerConfig + (ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> bootstrapServerAddress)
     val consumer = new KafkaConsumer(extendedConfig.asJava, keyDeserializer, valueDeserializer)
+    val pollingTimeout = Duration.ofMillis(100)
 
     try {
       consumer.subscribe(List(topic).asJava)
@@ -160,7 +162,7 @@ final class KafkaServer(
       val start = System.currentTimeMillis()
 
       while (total < expectedNumOfRecords && System.currentTimeMillis() < start + timeout) {
-        val records = consumer.poll(100)
+        val records = consumer.poll(pollingTimeout)
         val kvs = records.asScala.map(r => (Option(r.key()), r.value()))
         collected ++= kvs
         total += records.count()

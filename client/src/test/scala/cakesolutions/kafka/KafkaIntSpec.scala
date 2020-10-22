@@ -1,9 +1,11 @@
 package cakesolutions.kafka
 
 import cakesolutions.kafka.testkit.KafkaServer
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.matchers.should.Matchers
 
-class KafkaIntSpec extends FlatSpecLike with Matchers with BeforeAndAfterAll {
+class KafkaIntSpec extends AnyFlatSpecLike with Matchers with BeforeAndAfterAll {
   val kafkaServer = new KafkaServer()
   val kafkaPort = kafkaServer.kafkaPort
 

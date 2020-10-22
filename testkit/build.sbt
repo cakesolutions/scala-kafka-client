@@ -12,6 +12,6 @@ libraryDependencies ++= Seq(
     exclude("org.slf4j", "slf4j-log4j12"),
 
   //Test deps
-  "org.apache.curator" % "curator-test" % "2.7.0", //3.0.0
+  "org.apache.curator" % "curator-test" % "5.1.0",
   "ch.qos.logback" % "logback-classic" % versions.logback % "test"
 )

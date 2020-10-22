@@ -1,5 +1,7 @@
 package cakesolutions.kafka
 
+import java.time.Duration
+
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.scalatest.concurrent.Waiters.Waiter
 
@@ -40,14 +42,15 @@ class KafkaConsumerSpec extends KafkaIntSpec {
     val consumer = KafkaConsumer(consumerConfig)
     consumer.subscribe(List(topic).asJava)
 
-    val records1 = consumer.poll(1000)
+    val timeout = Duration.ofMillis(1000)
+    val records1 = consumer.poll(timeout)
     records1.count() shouldEqual 0
 
     log.info("Kafka producer connecting on port: [{}]", kafkaPort)
     producer.send(KafkaProducerRecord(topic, Some("key"), "value"))
     producer.flush()
 
-    val records2: ConsumerRecords[String, String] = consumer.poll(1000)
+    val records2: ConsumerRecords[String, String] = consumer.poll(timeout)
     records2.count() shouldEqual 1
 
     producer.close()
@@ -59,7 +62,7 @@ class KafkaConsumerSpec extends KafkaIntSpec {
     val topic = randomString
     log.info(s"Using topic [$topic] and kafka port [$kafkaPort]")
 
-    val badSerializer = (msg: String) => {
+    val badSerializer = (_: String) => {
       throw new Exception("Serialization failed")
     }
 

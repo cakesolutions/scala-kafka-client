@@ -1,7 +1,10 @@
 package cakesolutions.kafka.akka
 
+import java.lang
+
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
+import java.time.{Duration => JavaDuration}
 
 import akka.actor._
 import cakesolutions.kafka.KafkaConsumer
@@ -516,7 +519,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
     */
   implicit def toJavaOffsetQuery(offsetQuery: Map[TopicPartition, scala.Long]): java.util.Map[TopicPartition, java.lang.Long] =
     offsetQuery
-      .map { case (tp, time) => tp -> new java.lang.Long(time) }
+      .map { case (tp, time) => tp -> lang.Long.valueOf(time) }
       .asJava
 
   type Records = ConsumerRecords[K, V]
@@ -886,7 +889,7 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   private def pollKafka(state: StateData, timeout: Int): Option[Records] =
     tryWithConsumer(state) {
       log.debug("Poll Kafka for {} milliseconds", timeout)
-      val rs = consumer.poll(timeout)
+      val rs = consumer.poll(JavaDuration.ofMillis(timeout))
       log.debug("Poll Complete!")
       if (rs.count() > 0)
         Some(ConsumerRecords(currentConsumerOffsets, rs))

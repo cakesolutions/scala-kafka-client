@@ -18,5 +18,5 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % versions.scalaTest % "test",
   "org.scalatestplus" %% "mockito-1-10" % "3.1.0.0" % "test",
   "org.mockito" % "mockito-core" % "3.2.11" % "test",
-  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
+  "ch.qos.logback" % "logback-classic" % versions.logback % "test"
 )
