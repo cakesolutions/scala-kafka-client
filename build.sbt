@@ -1,7 +1,7 @@
 lazy val commonSettings = Seq(
   organization := "net.cakesolutions",
   scalaVersion := "2.12.13",
-  crossScalaVersions := Seq("2.11.12", "2.12.13", "2.13.5"),
+  crossScalaVersions := Seq("2.12.13", "2.13.5"),
   publishMavenStyle := true,
   bintrayOrganization := Some("cakesolutions"),
   bintrayPackageLabels := Seq("scala", "kafka"),
