@@ -8,6 +8,4 @@ addSbtPlugin("com.github.gseitz" % "sbt-release" % "1.0.10")
 
 addSbtPlugin("com.eed3si9n" % "sbt-unidoc" % "0.4.1")
 
-addSbtPlugin("com.updateimpact" % "updateimpact-sbt-plugin" % "2.1.3")
-
-addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.5.1")
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.6.1")
