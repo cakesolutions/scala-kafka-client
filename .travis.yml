@@ -7,7 +7,6 @@ scala:
 script:
 - sbt ++$TRAVIS_SCALA_VERSION -Dakka.test.timefactor=5 clean coverage test coverageReport
 - sbt coverageAggregate
-- '[ "${TRAVIS_PULL_REQUEST}" = "false" ] && sbt updateImpactSubmit || true'
 
 after_success:
 - bash <(curl -s https://codecov.io/bash)
