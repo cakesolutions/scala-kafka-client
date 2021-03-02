@@ -1,7 +1,7 @@
 language: scala
 jdk: openjdk8
 scala:
-    - 2.12.13
+    - 2.12.12
     - 2.13.5
 
 script:
