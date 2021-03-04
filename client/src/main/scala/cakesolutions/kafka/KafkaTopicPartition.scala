@@ -1,4 +1,4 @@
-package cakesolutions.kafka
+package com.pirum
 
 import com.typesafe.config.Config
 import org.apache.kafka.common.TopicPartition
@@ -7,13 +7,12 @@ object KafkaTopicPartition {
   type Topic = String
   type Partition = Int
 
-  /**
-    * Create a Kafka topic-partition from given topic and partition pair.
+  /** Create a Kafka topic-partition from given topic and partition pair.
     */
-  def apply(topic: Topic, partition: Partition): TopicPartition = new TopicPartition(topic, partition)
+  def apply(topic: Topic, partition: Partition): TopicPartition =
+    new TopicPartition(topic, partition)
 
-  /**
-    * Create a Kafka topic-partition from a given Typesafe config.
+  /** Create a Kafka topic-partition from a given Typesafe config.
     */
   def fromConfig(config: Config): TopicPartition =
     KafkaTopicPartition(

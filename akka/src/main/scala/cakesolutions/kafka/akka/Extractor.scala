@@ -1,7 +1,6 @@
-package cakesolutions.kafka.akka
+package com.pirum.akka
 
-/**
-  * Scala's extractor pattern (unapply) encapsulated in a trait.
+/** Scala's extractor pattern (unapply) encapsulated in a trait.
   *
   * @see [[http://danielwestheide.com/blog/2012/11/21/the-neophytes-guide-to-scala-part-1-extractors.html Neophyte's Guide to Scala on extractors]]
   * @tparam I the input value to extract a value from
@@ -13,16 +12,14 @@ trait Extractor[-I, +O] {
   def asPF: PartialFunction[I, O] = Extractor.asPF[I, O](this)
 }
 
-/**
-  * Helper functions for [[Extractor]].
+/** Helper functions for [[Extractor]].
   */
 object Extractor {
   private final class Ext[I, O](f: I => Option[O]) extends Extractor[I, O] {
     override def unapply(input: I): Option[O] = f(input)
   }
 
-  /**
-    * Create an [[Extractor]] from a function.
+  /** Create an [[Extractor]] from a function.
     *
     * @param f extractor function
     * @tparam I type of the input to extract from
@@ -31,7 +28,7 @@ object Extractor {
     */
   def apply[I, O](f: I => Option[O]): Extractor[I, O] = new Ext(f)
 
-  def asPF[I, O](ext: Extractor[I, O]): PartialFunction[I, O] = {
-    case ext(o) => o
+  def asPF[I, O](ext: Extractor[I, O]): PartialFunction[I, O] = { case ext(o) =>
+    o
   }
 }

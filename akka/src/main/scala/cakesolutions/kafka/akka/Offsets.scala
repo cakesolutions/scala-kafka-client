@@ -1,21 +1,18 @@
-package cakesolutions.kafka.akka
+package com.pirum.akka
 
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 
-/**
-  * Helper functions for [[Offsets]].
+/** Helper functions for [[Offsets]].
   */
 object Offsets {
 
-  /**
-    * Offsets map with no offset information.
+  /** Offsets map with no offset information.
     */
   def empty: Offsets = Offsets(Map.empty)
 }
 
-/**
-  * Map of partitions to partition offsets.
+/** Map of partitions to partition offsets.
   *
   * [[KafkaConsumerActor]] sends [[Offsets]] along with a batch of data related to the offsets.
   * The offsets in this case represent the point the Kafka consumer reached after consuming the batch.
@@ -24,22 +21,19 @@ object Offsets {
   */
 final case class Offsets(offsetsMap: Map[TopicPartition, Long]) extends AnyVal {
 
-  /**
-    * Get offset for a topic & partition pair.
+  /** Get offset for a topic & partition pair.
     *
     * @param topic topic + partition
     * @return offset or `None`
     */
   def get(topic: TopicPartition): Option[Long] = offsetsMap.get(topic)
 
-  /**
-    * Convert offsets to map of Kafka commit offsets
+  /** Convert offsets to map of Kafka commit offsets
     */
   def toCommitMap: Map[TopicPartition, OffsetAndMetadata] =
     offsetsMap.mapValues(offset => new OffsetAndMetadata(offset)).toMap
 
-  /**
-    * Keep only the offsets for partitions that are also in the given set of partitions.
+  /** Keep only the offsets for partitions that are also in the given set of partitions.
     *
     * @param tps partitions to filter the offsets with
     * @return filtered offsets
@@ -47,8 +41,7 @@ final case class Offsets(offsetsMap: Map[TopicPartition, Long]) extends AnyVal {
   def keepOnly(tps: Set[TopicPartition]): Offsets =
     copy(offsetsMap.filter { case (t, _) => tps(t) })
 
-  /**
-    * Remove the given partitions from the offsets.
+  /** Remove the given partitions from the offsets.
     *
     * @param tps partitions to remove
     * @return filtered offsets
@@ -56,18 +49,15 @@ final case class Offsets(offsetsMap: Map[TopicPartition, Long]) extends AnyVal {
   def remove(tps: Set[TopicPartition]): Offsets =
     copy(offsetsMap -- tps)
 
-  /**
-    * Whether there are no offsets.
+  /** Whether there are no offsets.
     */
   def isEmpty: Boolean = offsetsMap.isEmpty
 
-  /**
-    * Whether there are any offsets.
+  /** Whether there are any offsets.
     */
   def nonEmpty: Boolean = offsetsMap.nonEmpty
 
-  /**
-    * Set of partitions in the offsets.
+  /** Set of partitions in the offsets.
     */
   def topicPartitions: Set[TopicPartition] = offsetsMap.keySet
 
@@ -77,13 +67,11 @@ final case class Offsets(offsetsMap: Map[TopicPartition, Long]) extends AnyVal {
       .mkString("Offsets(", ", ", ")")
 }
 
-/**
-  * An object that contains [[Offsets]].
+/** An object that contains [[Offsets]].
   */
 trait HasOffsets {
 
-  /**
-    * The offsets assigned to the client after the records were pulled from Kafka.
+  /** The offsets assigned to the client after the records were pulled from Kafka.
     */
   val offsets: Offsets
 }

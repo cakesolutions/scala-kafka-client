@@ -1,7 +1,7 @@
-package cakesolutions.kafka.akka
+package com.pirum.akka
 
 import akka.actor._
-import cakesolutions.kafka.KafkaProducer
+import com.pirum.KafkaProducer
 import com.typesafe.config.Config
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 import org.apache.kafka.common.serialization.Serializer
@@ -10,8 +10,7 @@ import scala.concurrent.Future
 import scala.reflect.runtime.universe.TypeTag
 import scala.util.{Failure, Success}
 
-/**
-  * An actor that wraps [[KafkaProducer]].
+/** An actor that wraps [[KafkaProducer]].
   *
   * The actor takes incoming (batches of) Kafka records, writes them to Kafka, and optionally replies to the sender
   * once the message are confirmed to be written to Kafka.  The optional response message can be used to facilitate a
@@ -24,16 +23,14 @@ import scala.util.{Failure, Success}
   */
 object KafkaProducerActor {
 
-  /**
-    * A partial function that extracts producer records from messages sent to [[KafkaProducerActor]].
+  /** A partial function that extracts producer records from messages sent to [[KafkaProducerActor]].
     *
     * @tparam K Kafka message key type
     * @tparam V Kafka message value type
     */
   type Matcher[K, V] = PartialFunction[Any, ProducerRecords[K, V]]
 
-  /**
-    * The default [[Matcher]] that is used for extracting Kafka records from incoming messages.
+  /** The default [[Matcher]] that is used for extracting Kafka records from incoming messages.
     *
     * Accepts all [[ProducerRecords]] messages which have matching key and value types.
     * Note that the key and value types in incoming producer messages must match '''exactly'''
@@ -42,22 +39,23 @@ object KafkaProducerActor {
     * @tparam K Kafka message key type
     * @tparam V Kafka message value type
     */
-  def defaultMatcher[K: TypeTag, V: TypeTag]: Matcher[K, V] = ProducerRecords.extractor[K, V].asPF
+  def defaultMatcher[K: TypeTag, V: TypeTag]: Matcher[K, V] =
+    ProducerRecords.extractor[K, V].asPF
 
-  /**
-    * Create Akka `Props` for [[KafkaProducerActor]].
+  /** Create Akka `Props` for [[KafkaProducerActor]].
     *
     * @param producerConf configurations for the [[KafkaProducer]]
     * @tparam K key serializer type
     * @tparam V valu serializer type
     */
-  def props[K: TypeTag, V: TypeTag](producerConf: KafkaProducer.Conf[K, V]): Props = {
+  def props[K: TypeTag, V: TypeTag](
+      producerConf: KafkaProducer.Conf[K, V]
+  ): Props = {
     val matcher = defaultMatcher[K, V]
     propsWithMatcher(producerConf, matcher)
   }
 
-  /**
-    * Create Akka `Props` for [[KafkaProducerActor]] from a Typesafe config.
+  /** Create Akka `Props` for [[KafkaProducerActor]] from a Typesafe config.
     *
     * @param conf configurations for the [[KafkaProducer]]
     * @param keySerializer serializer for the key
@@ -65,23 +63,28 @@ object KafkaProducerActor {
     * @tparam K key serializer type
     * @tparam V value serializer type
     */
-  def props[K: TypeTag, V: TypeTag](conf: Config, keySerializer: Serializer[K], valueSerializer: Serializer[V]): Props = {
+  def props[K: TypeTag, V: TypeTag](
+      conf: Config,
+      keySerializer: Serializer[K],
+      valueSerializer: Serializer[V]
+  ): Props = {
     props(KafkaProducer.Conf(conf, keySerializer, valueSerializer))
   }
 
-  /**
-    * Create Akka `Props` for [[KafkaProducerActor]] with a custom [[Matcher]].
+  /** Create Akka `Props` for [[KafkaProducerActor]] with a custom [[Matcher]].
     *
     * @param producerConf configurations for the [[KafkaProducer]]
     * @param matcher custom matcher for mapping incoming messages to Kafka writable messages
     * @tparam K key serializer type
     * @tparam V value serializer type
     */
-  def propsWithMatcher[K, V](producerConf: KafkaProducer.Conf[K, V], matcher: Matcher[K, V]): Props =
+  def propsWithMatcher[K, V](
+      producerConf: KafkaProducer.Conf[K, V],
+      matcher: Matcher[K, V]
+  ): Props =
     Props(new KafkaProducerActor(producerConf, matcher))
 
-  /**
-    * Create Akka `Props` for [[KafkaProducerActor]] from a Typesafe config with a custom [[Matcher]].
+  /** Create Akka `Props` for [[KafkaProducerActor]] from a Typesafe config with a custom [[Matcher]].
     *
     * @param conf configurations for the [[KafkaProducer]]
     * @param keySerializer serializer for the key
@@ -90,13 +93,24 @@ object KafkaProducerActor {
     * @tparam K key serializer type
     * @tparam V value serializer type
     */
-  def propsWithMatcher[K, V](conf: Config, keySerializer: Serializer[K], valueSerializer: Serializer[V], matcher: Matcher[K, V]): Props = {
-    propsWithMatcher(KafkaProducer.Conf(conf, keySerializer, valueSerializer), matcher)
+  def propsWithMatcher[K, V](
+      conf: Config,
+      keySerializer: Serializer[K],
+      valueSerializer: Serializer[V],
+      matcher: Matcher[K, V]
+  ): Props = {
+    propsWithMatcher(
+      KafkaProducer.Conf(conf, keySerializer, valueSerializer),
+      matcher
+    )
   }
 }
 
-private class KafkaProducerActor[K, V](producerConf: KafkaProducer.Conf[K, V], matcher: KafkaProducerActor.Matcher[K, V])
-  extends Actor with ActorLogging {
+private class KafkaProducerActor[K, V](
+    producerConf: KafkaProducer.Conf[K, V],
+    matcher: KafkaProducerActor.Matcher[K, V]
+) extends Actor
+    with ActorLogging {
 
   import context.dispatcher
 
@@ -134,7 +148,12 @@ private class KafkaProducerActor[K, V](producerConf: KafkaProducer.Conf[K, V], m
   private def sendMany(records: Records) = Future.sequence(records.map(send))
 
   private def send(record: Record): Future[RecordMetadata] = {
-    log.debug("Sending message to Kafka topic {} with key {}: {}", record.topic, record.key, record.value)
+    log.debug(
+      "Sending message to Kafka topic {} with key {}: {}",
+      record.topic,
+      record.key,
+      record.value
+    )
     producer.send(record)
   }
 
@@ -145,6 +164,6 @@ private class KafkaProducerActor[K, V](producerConf: KafkaProducer.Conf[K, V], m
 }
 
 final class KafkaProducerInitFail(
-  message: String = "Error occurred while initializing Kafka producer!",
-  cause: Throwable = null
+    message: String = "Error occurred while initializing Kafka producer!",
+    cause: Throwable = null
 ) extends Exception(message, cause)

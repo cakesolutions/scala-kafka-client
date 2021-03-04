@@ -1,13 +1,16 @@
-package cakesolutions.kafka.akka
+package com.pirum.akka
 
 import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.TestActor.AutoPilot
 import akka.testkit.{ImplicitSender, TestActor, TestKit, TestProbe}
-import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe}
-import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
+import com.pirum.akka.KafkaConsumerActor.{Confirm, Subscribe}
+import com.pirum.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
+import org.apache.kafka.common.serialization.{
+  StringDeserializer,
+  StringSerializer
+}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
@@ -16,12 +19,11 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.Promise
 import scala.util.Random
 
-/**
-  * Ad hoc performance test for validating async consumer performance.  Pass environment variable KAFKA with contact point for
+/** Ad hoc performance test for validating async consumer performance.  Pass environment variable KAFKA with contact point for
   * Kafka server e.g. -DKAFKA=127.0.0.1:9092
   */
 class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
-  extends TestKit(system_)
+    extends TestKit(system_)
     with ImplicitSender
     with FlatSpecLike
     with Matchers
@@ -36,17 +38,23 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
     TestKit.shutdownActorSystem(system)
   }
 
-  override implicit val patienceConfig = PatienceConfig(Span(10L, Seconds), Span(100L, Millis))
+  override implicit val patienceConfig =
+    PatienceConfig(Span(10L, Seconds), Span(100L, Millis))
 
   val config = ConfigFactory.load()
 
-  val msg1k = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/1k.txt")).mkString
+  val msg1k = scala.io.Source
+    .fromInputStream(getClass.getResourceAsStream("/1k.txt"))
+    .mkString
 
   val consumerConf: KafkaConsumer.Conf[String, String] = {
-    KafkaConsumer.Conf(config.getConfig("consumer"),
-      new StringDeserializer,
-      new StringDeserializer
-    ).withProperty(ConsumerConfig.METADATA_MAX_AGE_CONFIG, "30000")
+    KafkaConsumer
+      .Conf(
+        config.getConfig("consumer"),
+        new StringDeserializer,
+        new StringDeserializer
+      )
+      .withProperty(ConsumerConfig.METADATA_MAX_AGE_CONFIG, "30000")
   }
 
   def actorConf: KafkaConsumerActor.Conf =
@@ -58,7 +66,11 @@ class KafkaConsumerActorPerfSpec(system_ : ActorSystem)
     val topic = randomString
     val totalMessages = 100000
 
-    val producerConf = KafkaProducer.Conf(config.getConfig("producer"), new StringSerializer, new StringSerializer)
+    val producerConf = KafkaProducer.Conf(
+      config.getConfig("producer"),
+      new StringSerializer,
+      new StringSerializer
+    )
     val producer = KafkaProducer[String, String](producerConf)
     val pilot = new ReceiverPilot(totalMessages)
     val receiver = TestProbe()
@@ -92,7 +104,7 @@ class ReceiverPilot(expectedMessages: Long) extends TestActor.AutoPilot {
   private val log = LoggerFactory.getLogger(getClass)
 
   private var total = 0
-  private var start = 0l
+  private var start = 0L
 
   private val finished = Promise[(Long, Long)]()
 

@@ -1,6 +1,6 @@
-package cakesolutions.kafka
+package com.pirum
 
-import cakesolutions.kafka.testkit.KafkaServer
+import com.pirum.testkit.KafkaServer
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
 class KafkaIntSpec extends FlatSpecLike with Matchers with BeforeAndAfterAll {

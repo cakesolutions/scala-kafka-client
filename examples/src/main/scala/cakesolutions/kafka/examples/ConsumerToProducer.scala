@@ -1,17 +1,19 @@
-package cakesolutions.kafka.examples
+package com.pirum.examples
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe}
-import cakesolutions.kafka.akka._
-import cakesolutions.kafka.{KafkaConsumer, KafkaProducer}
+import com.pirum.akka.KafkaConsumerActor.{Confirm, Subscribe}
+import com.pirum.akka._
+import com.pirum.{KafkaConsumer, KafkaProducer}
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
-import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
+import org.apache.kafka.common.serialization.{
+  StringDeserializer,
+  StringSerializer
+}
 
 import scala.concurrent.duration._
 
-/**
-  * This example demonstrates an At-Least-Once delivery pipeline from Kafka topic: 'topic1' to 'topic2'.
+/** This example demonstrates an At-Least-Once delivery pipeline from Kafka topic: 'topic1' to 'topic2'.
   * KafkaConsumerActor is used with an AutoPartition subscription, records are send via a KafkaProducerActor
   * and committed back to source when confirmed.
   *
@@ -34,28 +36,36 @@ object ConsumerToProducer {
   def apply(consumerConfig: Config, producerConfig: Config): ActorRef = {
 
     // Create KafkaConsumerActor config with bootstrap.servers specified in Typesafe config
-    val consumerConf = KafkaConsumer.Conf(
-      new StringDeserializer,
-      new StringDeserializer,
-      groupId = "test_group",
-      enableAutoCommit = false,
-      autoOffsetReset = OffsetResetStrategy.EARLIEST)
+    val consumerConf = KafkaConsumer
+      .Conf(
+        new StringDeserializer,
+        new StringDeserializer,
+        groupId = "test_group",
+        enableAutoCommit = false,
+        autoOffsetReset = OffsetResetStrategy.EARLIEST
+      )
       .withConf(consumerConfig)
 
     val actorConf = KafkaConsumerActor.Conf(1.seconds, 3.seconds, 5)
 
     // Create KafkaProducerActor config with defaults and bootstrap.servers specified in Typesafe config
-    val producerConf = KafkaProducer.Conf(new StringSerializer, new StringSerializer).withConf(producerConfig)
+    val producerConf = KafkaProducer
+      .Conf(new StringSerializer, new StringSerializer)
+      .withConf(producerConfig)
 
     val system = ActorSystem()
-    system.actorOf(Props(new ConsumerToProducer(consumerConf, actorConf, producerConf)))
+    system.actorOf(
+      Props(new ConsumerToProducer(consumerConf, actorConf, producerConf))
+    )
   }
 }
 
 class ConsumerToProducer(
-  kafkaConfig: KafkaConsumer.Conf[String, String],
-  actorConfig: KafkaConsumerActor.Conf,
-  producerConf: KafkaProducer.Conf[String, String]) extends Actor with ActorLogging {
+    kafkaConfig: KafkaConsumer.Conf[String, String],
+    actorConfig: KafkaConsumerActor.Conf,
+    producerConf: KafkaProducer.Conf[String, String]
+) extends Actor
+    with ActorLogging {
 
   private val recordsExt = ConsumerRecords.extractor[String, String]
 
@@ -88,7 +98,12 @@ class ConsumerToProducer(
     }
 
     // Send records to Topic2.  Offsets will be sent back to this actor once confirmed.
-    producer ! ProducerRecords.fromKeyValues[String, String]("topic2", transformedRecords, Some(records.offsets), None)
+    producer ! ProducerRecords.fromKeyValues[String, String](
+      "topic2",
+      transformedRecords,
+      Some(records.offsets),
+      None
+    )
 
     // Could have sent them like this if we didn't first transform:
     // producer ! ProducerRecords.fromConsumerRecords("topic2", records, None)

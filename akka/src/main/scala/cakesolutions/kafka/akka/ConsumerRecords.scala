@@ -1,19 +1,21 @@
-package cakesolutions.kafka.akka
+package com.pirum.akka
 
-import cakesolutions.kafka.KafkaProducerRecord
-import org.apache.kafka.clients.consumer.{ConsumerRecord => JConsumerRecord, ConsumerRecords => JConsumerRecords}
+import com.pirum.KafkaProducerRecord
+import org.apache.kafka.clients.consumer.{
+  ConsumerRecord => JConsumerRecord,
+  ConsumerRecords => JConsumerRecords
+}
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 
 import scala.collection.JavaConverters._
 import scala.reflect.runtime.universe._
 
-/**
-  * Helper functions for [[ConsumerRecords]].
+/** Helper functions for [[ConsumerRecords]].
   */
 object ConsumerRecords {
-  /**
-    * Create consumer records for a single partition from values only.
+
+  /** Create consumer records for a single partition from values only.
     *
     * This constructor function is not used by the library.
     * It's useful for generating data for testing purposes in cases where you don't want to involve the [[KafkaConsumerActor]].
@@ -21,11 +23,13 @@ object ConsumerRecords {
     * The offsets will contain only one partition.
     * The partition offset will be set according to the size of the given sequence.
     */
-  def fromValues[Key >: Null : TypeTag, Value: TypeTag](partition: TopicPartition, values: Seq[Value]): ConsumerRecords[Key, Value] =
+  def fromValues[Key >: Null: TypeTag, Value: TypeTag](
+      partition: TopicPartition,
+      values: Seq[Value]
+  ): ConsumerRecords[Key, Value] =
     fromPairs(partition, values.map(None -> _))
 
-  /**
-    * Create consumer records for a single partition from key-value pairs.
+  /** Create consumer records for a single partition from key-value pairs.
     *
     * This constructor function is not used by the library.
     * It's useful for generating data for testing purposes in cases where you don't want to involve the [[KafkaConsumerActor]].
@@ -33,39 +37,53 @@ object ConsumerRecords {
     * The offsets will contain only one partition.
     * The partition offset will be set according to size of the given sequence.
     */
-  def fromPairs[Key >: Null : TypeTag, Value: TypeTag](partition: TopicPartition, pairs: Seq[(Option[Key], Value)]): ConsumerRecords[Key, Value] =
+  def fromPairs[Key >: Null: TypeTag, Value: TypeTag](
+      partition: TopicPartition,
+      pairs: Seq[(Option[Key], Value)]
+  ): ConsumerRecords[Key, Value] =
     fromMap(Map(partition -> pairs))
 
-  /**
-    * Create consumer records from a map of partitions and key-value pairs.
+  /** Create consumer records from a map of partitions and key-value pairs.
     *
     * This constructor function is not used by the library.
     * It's useful for generating data for testing purposes in cases where you don't want to involve the [[KafkaConsumerActor]].
     *
     * The partition offsets will be set according to the number of messages in a partition.
     */
-  def fromMap[Key >: Null : TypeTag, Value: TypeTag](values: Map[TopicPartition, Seq[(Option[Key], Value)]]): ConsumerRecords[Key, Value] = {
-    def createConsumerRecords(topicPartition: TopicPartition, pairs: Seq[(Option[Key], Value)]) =
-      pairs.zipWithIndex.map {
-        case ((key, value), offset) =>
-          new JConsumerRecord[Key, Value](topicPartition.topic(), topicPartition.partition(), offset, key.orNull, value)
+  def fromMap[Key >: Null: TypeTag, Value: TypeTag](
+      values: Map[TopicPartition, Seq[(Option[Key], Value)]]
+  ): ConsumerRecords[Key, Value] = {
+    def createConsumerRecords(
+        topicPartition: TopicPartition,
+        pairs: Seq[(Option[Key], Value)]
+    ) =
+      pairs.zipWithIndex.map { case ((key, value), offset) =>
+        new JConsumerRecord[Key, Value](
+          topicPartition.topic(),
+          topicPartition.partition(),
+          offset,
+          key.orNull,
+          value
+        )
       }
 
-    val recordsMap = values.map {
-      case (topicPartition, pairs) =>
-        val rs = createConsumerRecords(topicPartition, pairs)
-        topicPartition -> rs
+    val recordsMap = values.map { case (topicPartition, pairs) =>
+      val rs = createConsumerRecords(topicPartition, pairs)
+      topicPartition -> rs
     }
 
-    val offsets = Offsets(recordsMap.mapValues(_.maxBy(_.offset()).offset()).toMap)
+    val offsets = Offsets(
+      recordsMap.mapValues(_.maxBy(_.offset()).offset()).toMap
+    )
 
-    val records = new JConsumerRecords(recordsMap.mapValues(_.asJava).toMap.asJava)
+    val records = new JConsumerRecords(
+      recordsMap.mapValues(_.asJava).toMap.asJava
+    )
 
     ConsumerRecords(offsets, records)
   }
 
-  /**
-    * Create an extractor for pattern matching any value with a specific [[ConsumerRecords]] type.
+  /** Create an extractor for pattern matching any value with a specific [[ConsumerRecords]] type.
     *
     * Example:
     * {{{
@@ -91,12 +109,12 @@ object ConsumerRecords {
     * @tparam Value the type of the value to match in the extractor
     * @return an extractor for given key and value types
     */
-  def extractor[Key: TypeTag, Value: TypeTag]: Extractor[Any, ConsumerRecords[Key, Value]] =
+  def extractor[Key: TypeTag, Value: TypeTag]
+      : Extractor[Any, ConsumerRecords[Key, Value]] =
     new TypeTaggedExtractor[ConsumerRecords[Key, Value]]
 }
 
-/**
-  * A batch of key-value records consumed from Kafka by the [[KafkaConsumerActor]].  The expected Key and Value types for
+/** A batch of key-value records consumed from Kafka by the [[KafkaConsumerActor]].  The expected Key and Value types for
   * the records are provided as type parameters.
   *
   * @param offsets the last offsets of all the subscribed partitions after consuming the records from Kafka
@@ -105,12 +123,12 @@ object ConsumerRecords {
   * @tparam Value Indicates the Type for the Values in the consumed Kafka records
   */
 final case class ConsumerRecords[Key: TypeTag, Value: TypeTag](
-  offsets: Offsets,
-  records: JConsumerRecords[Key, Value]
-) extends TypeTagged[ConsumerRecords[Key, Value]] with HasOffsets {
+    offsets: Offsets,
+    records: JConsumerRecords[Key, Value]
+) extends TypeTagged[ConsumerRecords[Key, Value]]
+    with HasOffsets {
 
-  /**
-    * Convert to Kafka's `ProducerRecord`s.
+  /** Convert to Kafka's `ProducerRecord`s.
     *
     * @param topic the Kafka topic to use for the records
     * @return a sequence of Kafka's `ProducerRecord`s
@@ -118,32 +136,30 @@ final case class ConsumerRecords[Key: TypeTag, Value: TypeTag](
   def toProducerRecords(topic: String): Seq[ProducerRecord[Key, Value]] =
     pairs.map { case (k, v) => KafkaProducerRecord(topic, k, v) }
 
-  /**
-    * Convert only values to Kafka's `ProducerRecord`.
+  /** Convert only values to Kafka's `ProducerRecord`.
     *
     * @param topic the Kafka topic to use for the records
     * @return a sequence of Kafka's `ProducerRecord`s
     */
-  def valuesToProducerRecords(topic: String): Seq[ProducerRecord[Nothing, Value]] =
+  def valuesToProducerRecords(
+      topic: String
+  ): Seq[ProducerRecord[Nothing, Value]] =
     values.map { v => KafkaProducerRecord(topic, v) }
 
-  /**
-    * All the records as a list.
+  /** All the records as a list.
     */
   def recordsList: List[JConsumerRecord[Key, Value]] = records.asScala.toList
 
-  /**
-    * All the keys and values as a sequence.
+  /** All the keys and values as a sequence.
     */
-  def pairs: Seq[(Option[Key], Value)] = recordsList.map(r => (Option(r.key()), r.value()))
+  def pairs: Seq[(Option[Key], Value)] =
+    recordsList.map(r => (Option(r.key()), r.value()))
 
-  /**
-    * All the values as a sequence.
+  /** All the values as a sequence.
     */
   def values: Seq[Value] = recordsList.map(_.value())
 
-  /**
-    * The number of records.
+  /** The number of records.
     */
   def size: Int = records.count()
 
