@@ -1,4 +1,4 @@
-package cakesolutions.kafka
+package com.pirum
 
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.scalatest.concurrent.Waiters.Waiter
@@ -19,17 +19,21 @@ class KafkaConsumerSpec extends KafkaIntSpec {
   private val deserializer = (bytes: Array[Byte]) => new String(bytes)
 
   val consumerConfig: KafkaConsumer.Conf[String, String] = {
-    KafkaConsumer.Conf(KafkaDeserializer(deserializer),
+    KafkaConsumer.Conf(
+      KafkaDeserializer(deserializer),
       KafkaDeserializer(deserializer),
       bootstrapServers = s"localhost:$kafkaPort",
       groupId = randomString,
-      enableAutoCommit = false)
+      enableAutoCommit = false
+    )
   }
 
   val producerConfig: KafkaProducer.Conf[String, String] = {
-    KafkaProducer.Conf(KafkaSerializer(serializer),
+    KafkaProducer.Conf(
       KafkaSerializer(serializer),
-      bootstrapServers = s"localhost:$kafkaPort")
+      KafkaSerializer(serializer),
+      bootstrapServers = s"localhost:$kafkaPort"
+    )
   }
 
   "KafkaConsumer and KafkaProducer with Function serializers" should "deliver and consume a message" in {

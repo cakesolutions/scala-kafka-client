@@ -1,4 +1,4 @@
-package cakesolutions.kafka.akka
+package com.pirum.akka
 
 import akka.actor.{ActorLogging, Actor, Cancellable}
 
@@ -6,8 +6,7 @@ import scala.concurrent.duration.FiniteDuration
 
 private object PollScheduling {
 
-  /**
-    * Internal poll trigger
+  /** Internal poll trigger
     *
     * @param correlationId unique correlation id
     * @param timeout Kafka blocking timeout.  Usually we don't want to block when polling the driver for new messages (default 0),
@@ -36,8 +35,7 @@ private[akka] trait PollScheduling extends ActorLogging {
     Poll(lastCorrelationId, timeout)
   }
 
-  /**
-    * Match poll messages's correlation ID against the last sent correlation ID.
+  /** Match poll messages's correlation ID against the last sent correlation ID.
     * Used for ensuring that poll messages don't build up.
     *
     * @param poll the poll message to compare to current correlation ID
@@ -46,8 +44,7 @@ private[akka] trait PollScheduling extends ActorLogging {
   protected def isCurrentPoll(poll: Poll): Boolean =
     poll.correlationId == lastCorrelationId
 
-  /**
-    * Match poll messages's correlation ID against the last sent correlation ID.
+  /** Match poll messages's correlation ID against the last sent correlation ID.
     * Used for ensuring that poll messages don't build up.
     *
     * @param id the correlation ID to compare to current correlation ID
@@ -56,8 +53,7 @@ private[akka] trait PollScheduling extends ActorLogging {
   protected def isCurrentPoll(id: Long): Boolean =
     id == lastCorrelationId
 
-  /**
-    * Schedule poll immediately.
+  /** Schedule poll immediately.
     *
     * @param timeout Kafka blocking timeout
     */
@@ -67,8 +63,7 @@ private[akka] trait PollScheduling extends ActorLogging {
     context.self ! nextPoll(timeout)
   }
 
-  /**
-    * Schedule a poll to occur after a given timeout. The poll will not block the Kafka driver (blocking timeout = 0).
+  /** Schedule a poll to occur after a given timeout. The poll will not block the Kafka driver (blocking timeout = 0).
     *
     * @param timeout the time after which a poll is scheduled to occur
     */
@@ -76,7 +71,8 @@ private[akka] trait PollScheduling extends ActorLogging {
     log.debug("Schedule poll to occur after {}", timeout)
     import context.dispatcher
     cancelPoll()
-    pollCancellable = context.system.scheduler.scheduleOnce(timeout, context.self, nextPoll(0))
+    pollCancellable =
+      context.system.scheduler.scheduleOnce(timeout, context.self, nextPoll(0))
   }
 
   protected def cancelPoll(): Unit = pollCancellable.cancel()

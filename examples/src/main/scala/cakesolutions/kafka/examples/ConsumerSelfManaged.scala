@@ -1,9 +1,9 @@
-package cakesolutions.kafka.examples
+package com.pirum.examples
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import cakesolutions.kafka.KafkaConsumer
-import cakesolutions.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe}
-import cakesolutions.kafka.akka.{ConsumerRecords, Extractor, KafkaConsumerActor, Offsets}
+import com.pirum.KafkaConsumer
+import com.pirum.akka.KafkaConsumerActor.{Confirm, Subscribe}
+import com.pirum.akka.{ConsumerRecords, Extractor, KafkaConsumerActor, Offsets}
 import com.typesafe.config.Config
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.TopicPartition
@@ -11,8 +11,7 @@ import org.apache.kafka.common.serialization.StringDeserializer
 
 import scala.concurrent.duration._
 
-/**
-  * Simple Kafka Consumer using ManualPartition subscription mode, subscribing to topic: 'topic1'.
+/** Simple Kafka Consumer using ManualPartition subscription mode, subscribing to topic: 'topic1'.
   *
   * Kafka bootstrap server can be provided as an environment variable: -DKAFKA=127.0.0.1:9092 (default).
   */
@@ -27,12 +26,14 @@ object ConsumerSelfManaged {
    * consumes from the configured KafkaConsumerActor.
    */
   def apply(config: Config): ActorRef = {
-    val consumerConf = KafkaConsumer.Conf(
-      new StringDeserializer,
-      new StringDeserializer,
-      groupId = "groupId",
-      enableAutoCommit = false,
-      autoOffsetReset = OffsetResetStrategy.EARLIEST)
+    val consumerConf = KafkaConsumer
+      .Conf(
+        new StringDeserializer,
+        new StringDeserializer,
+        groupId = "groupId",
+        enableAutoCommit = false,
+        autoOffsetReset = OffsetResetStrategy.EARLIEST
+      )
       .withConf(config)
 
     val actorConf = KafkaConsumerActor.Conf(1.seconds, 3.seconds)
@@ -43,16 +44,21 @@ object ConsumerSelfManaged {
 }
 
 class ConsumerSelfManaged(
-  kafkaConfig: KafkaConsumer.Conf[String, String],
-  actorConfig: KafkaConsumerActor.Conf) extends Actor with ActorLogging {
+    kafkaConfig: KafkaConsumer.Conf[String, String],
+    actorConfig: KafkaConsumerActor.Conf
+) extends Actor
+    with ActorLogging {
 
-  val recordsExt: Extractor[Any, ConsumerRecords[String, String]] = ConsumerRecords.extractor[String, String]
+  val recordsExt: Extractor[Any, ConsumerRecords[String, String]] =
+    ConsumerRecords.extractor[String, String]
 
   val consumer: ActorRef = context.actorOf(
     KafkaConsumerActor.props(kafkaConfig, actorConfig, self)
   )
 
-  consumer ! Subscribe.ManualOffset(Offsets(Map((new TopicPartition("topic1", 0), 1))))
+  consumer ! Subscribe.ManualOffset(
+    Offsets(Map((new TopicPartition("topic1", 0), 1)))
+  )
 
   override def receive: Receive = {
 

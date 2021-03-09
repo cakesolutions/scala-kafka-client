@@ -1,9 +1,12 @@
-package cakesolutions.kafka
+package com.pirum
 
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.requests.IsolationLevel
-import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
+import org.apache.kafka.common.serialization.{
+  StringDeserializer,
+  StringSerializer
+}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
@@ -15,32 +18,40 @@ class IdempotentProducerSpec extends KafkaIntSpec {
   private def randomString: String = Random.alphanumeric.take(5).mkString("")
 
   val idempotentProducerConfig: KafkaProducer.Conf[String, String] =
-    KafkaProducer.Conf(new StringSerializer(),
+    KafkaProducer.Conf(
+      new StringSerializer(),
       new StringSerializer(),
       bootstrapServers = s"localhost:$kafkaPort",
-      enableIdempotence = true)
+      enableIdempotence = true
+    )
 
   val transactionalProducerConfig: KafkaProducer.Conf[String, String] =
-    KafkaProducer.Conf(new StringSerializer(),
+    KafkaProducer.Conf(
+      new StringSerializer(),
       new StringSerializer(),
       bootstrapServers = s"localhost:$kafkaPort",
       transactionalId = Some("t1"),
-      enableIdempotence = true)
+      enableIdempotence = true
+    )
 
   val consumerConfig: KafkaConsumer.Conf[String, String] =
-    KafkaConsumer.Conf(new StringDeserializer(),
+    KafkaConsumer.Conf(
+      new StringDeserializer(),
       new StringDeserializer(),
       bootstrapServers = s"localhost:$kafkaPort",
       groupId = randomString,
-      enableAutoCommit = false)
+      enableAutoCommit = false
+    )
 
   val transactionConsumerConfig: KafkaConsumer.Conf[String, String] =
-    KafkaConsumer.Conf(new StringDeserializer(),
+    KafkaConsumer.Conf(
+      new StringDeserializer(),
       new StringDeserializer(),
       bootstrapServers = s"localhost:$kafkaPort",
       groupId = randomString,
       enableAutoCommit = false,
-      isolationLevel = IsolationLevel.READ_COMMITTED)
+      isolationLevel = IsolationLevel.READ_COMMITTED
+    )
 
   "Producer with idempotent config" should "deliver batch" in {
     val topic = randomString

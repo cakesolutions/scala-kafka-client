@@ -1,15 +1,19 @@
-package cakesolutions.kafka.akka
+package com.pirum.akka
 
 import akka.actor.ActorSystem
 import akka.testkit.TestProbe
-import cakesolutions.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
+import com.pirum.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
+import org.apache.kafka.common.serialization.{
+  StringDeserializer,
+  StringSerializer
+}
 
 import scala.util.Random
 
-class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_) {
+class KafkaProducerActorSpec(system_ : ActorSystem)
+    extends KafkaIntSpec(system_) {
 
   def this() = this(ActorSystem("KafkaProducerActorSpec"))
 
@@ -17,7 +21,8 @@ class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
 
   val deserializer = new StringDeserializer
   val consumerConf = KafkaConsumer.Conf(
-    deserializer, deserializer,
+    deserializer,
+    deserializer,
     bootstrapServers = s"localhost:$kafkaPort",
     groupId = "test",
     enableAutoCommit = false,
@@ -25,7 +30,11 @@ class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
   )
 
   val serializer = new StringSerializer
-  val producerConf = KafkaProducer.Conf(serializer, serializer, bootstrapServers = s"localhost:$kafkaPort")
+  val producerConf = KafkaProducer.Conf(
+    serializer,
+    serializer,
+    bootstrapServers = s"localhost:$kafkaPort"
+  )
 
   "KafkaProducerActor" should "write a given batch to Kafka" in {
     val topic = randomString
@@ -34,7 +43,8 @@ class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     val batch: Seq[ProducerRecord[String, String]] = Seq(
       KafkaProducerRecord(topic, "foo"),
       KafkaProducerRecord(topic, "key", "value"),
-      KafkaProducerRecord(topic, "bar"))
+      KafkaProducerRecord(topic, "bar")
+    )
     val message = ProducerRecords(batch, Some('response))
 
     probe.send(producer, message)
@@ -72,6 +82,16 @@ class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_
     results(2) shouldEqual ((None, "bar"))
   }
 
-  private def consumeFromTopic(topic: String, expectedNumOfMessages: Int, timeout: Long) =
-    kafkaServer.consume(topic, expectedNumOfMessages, timeout, deserializer, deserializer)
+  private def consumeFromTopic(
+      topic: String,
+      expectedNumOfMessages: Int,
+      timeout: Long
+  ) =
+    kafkaServer.consume(
+      topic,
+      expectedNumOfMessages,
+      timeout,
+      deserializer,
+      deserializer
+    )
 }

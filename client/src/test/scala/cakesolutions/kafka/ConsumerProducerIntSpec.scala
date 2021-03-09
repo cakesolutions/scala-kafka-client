@@ -1,8 +1,11 @@
-package cakesolutions.kafka
+package com.pirum
 
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.clients.consumer.{ConsumerRecords, OffsetResetStrategy}
-import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
+import org.apache.kafka.common.serialization.{
+  StringDeserializer,
+  StringSerializer
+}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
@@ -20,38 +23,48 @@ class ConsumerProducerIntSpec extends KafkaIntSpec {
         s"""
            | bootstrap.servers = "localhost:$kafkaPort",
          """.stripMargin
-      ), new StringSerializer, new StringSerializer
+      ),
+      new StringSerializer,
+      new StringSerializer
     )
 
   val consumerFromTypesafeConfig: KafkaConsumer.Conf[String, String] =
     KafkaConsumer.Conf(
-      ConfigFactory.parseString(
-        s"""
+      ConfigFactory.parseString(s"""
            | bootstrap.servers = "localhost:$kafkaPort",
            | group.id = "$randomString"
            | enable.auto.commit = false
            | auto.offset.reset = "earliest"
-        """.stripMargin), new StringDeserializer, new StringDeserializer)
+        """.stripMargin),
+      new StringDeserializer,
+      new StringDeserializer
+    )
 
   val producerFromDirectConfig: KafkaProducer.Conf[String, String] =
-    KafkaProducer.Conf(new StringSerializer(),
+    KafkaProducer.Conf(
       new StringSerializer(),
-      bootstrapServers = s"localhost:$kafkaPort")
+      new StringSerializer(),
+      bootstrapServers = s"localhost:$kafkaPort"
+    )
 
   val consumerFromDirectConfig: KafkaConsumer.Conf[String, String] =
-    KafkaConsumer.Conf(new StringDeserializer(),
+    KafkaConsumer.Conf(
+      new StringDeserializer(),
       new StringDeserializer(),
       bootstrapServers = s"localhost:$kafkaPort",
       groupId = randomString,
-      enableAutoCommit = false)
+      enableAutoCommit = false
+    )
 
   val consumerConfigWithEarliest: KafkaConsumer.Conf[String, String] =
-    KafkaConsumer.Conf(new StringDeserializer(),
+    KafkaConsumer.Conf(
+      new StringDeserializer(),
       new StringDeserializer(),
       bootstrapServers = s"localhost:$kafkaPort",
       groupId = randomString,
       enableAutoCommit = false,
-      autoOffsetReset = OffsetResetStrategy.EARLIEST)
+      autoOffsetReset = OffsetResetStrategy.EARLIEST
+    )
 
   "KafkaConsumer and KafkaProducer from direct config" should "deliver and consume a message" in {
     val topic = randomString

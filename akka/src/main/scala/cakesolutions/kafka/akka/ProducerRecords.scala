@@ -1,17 +1,15 @@
-package cakesolutions.kafka.akka
+package com.pirum.akka
 
-import cakesolutions.kafka.KafkaProducerRecord
+import com.pirum.KafkaProducerRecord
 import org.apache.kafka.clients.producer.ProducerRecord
 
 import scala.reflect.runtime.universe._
 
-/**
-  * Helper functions for [[ProducerRecords]].
+/** Helper functions for [[ProducerRecords]].
   */
 object ProducerRecords {
 
-  /**
-    * Create producer records from a sequence of values.
+  /** Create producer records from a sequence of values.
     * All the records will have the given topic and no key.
     *
     * @param topic topic to write the records to
@@ -21,10 +19,10 @@ object ProducerRecords {
     */
   @deprecated("Use fromValuesWithKey instead.", "0.10.1.3")
   def fromValues[Value: TypeTag](
-    topic: String,
-    values: Seq[Value],
-    successResponse: Option[Any],
-    failureResponse: Option[Any]
+      topic: String,
+      values: Seq[Value],
+      successResponse: Option[Any],
+      failureResponse: Option[Any]
   ): ProducerRecords[Nothing, Value] =
     ProducerRecords[Nothing, Value](
       KafkaProducerRecord.fromValues(topic, values),
@@ -32,8 +30,7 @@ object ProducerRecords {
       failureResponse
     )
 
-  /**
-    * Create producer records from a single key and multiple values.
+  /** Create producer records from a single key and multiple values.
     * All the records will have the given topic and key.
     *
     * @param topic topic to write the records to
@@ -43,11 +40,11 @@ object ProducerRecords {
     * @param failureResponse optional response message to the sender on failed delivery
     */
   def fromValuesWithKey[Key: TypeTag, Value: TypeTag](
-    topic: String,
-    key: Option[Key],
-    values: Seq[Value],
-    successResponse: Option[Any],
-    failureResponse: Option[Any]
+      topic: String,
+      key: Option[Key],
+      values: Seq[Value],
+      successResponse: Option[Any],
+      failureResponse: Option[Any]
   ): ProducerRecords[Key, Value] =
     ProducerRecords(
       KafkaProducerRecord.fromValuesWithKey(topic, key, values),
@@ -55,8 +52,7 @@ object ProducerRecords {
       failureResponse
     )
 
-  /**
-    * Create producer records from topics and values.
+  /** Create producer records from topics and values.
     * All the records will have no key.
     *
     * @param valuesWithTopic a sequence of topic and value pairs
@@ -64,9 +60,9 @@ object ProducerRecords {
     * @param failureResponse optional response message to the sender on failed delivery
     */
   def fromValuesWithTopic[Value: TypeTag](
-    valuesWithTopic: Seq[(String, Value)],
-    successResponse: Option[Any],
-    failureResponse: Option[Any]
+      valuesWithTopic: Seq[(String, Value)],
+      successResponse: Option[Any],
+      failureResponse: Option[Any]
   ): ProducerRecords[Nothing, Value] =
     ProducerRecords[Nothing, Value](
       KafkaProducerRecord.fromValuesWithTopic(valuesWithTopic),
@@ -74,8 +70,7 @@ object ProducerRecords {
       failureResponse
     )
 
-  /**
-    * Create producer records from key-value pairs.
+  /** Create producer records from key-value pairs.
     * All the records will have the given topic.
     *
     * @param topic topic to write the records to
@@ -84,10 +79,10 @@ object ProducerRecords {
     * @param failureResponse optional response message to the sender on failed delivery
     */
   def fromKeyValues[Key: TypeTag, Value: TypeTag](
-    topic: String,
-    keyValues: Seq[(Option[Key], Value)],
-    successResponse: Option[Any],
-    failureResponse: Option[Any]
+      topic: String,
+      keyValues: Seq[(Option[Key], Value)],
+      successResponse: Option[Any],
+      failureResponse: Option[Any]
   ): ProducerRecords[Key, Value] =
     ProducerRecords(
       KafkaProducerRecord.fromKeyValues(topic, keyValues),
@@ -95,17 +90,16 @@ object ProducerRecords {
       failureResponse
     )
 
-  /**
-    * Create producer records from topic, key, and value triples.
+  /** Create producer records from topic, key, and value triples.
     *
     * @param keyValuesWithTopic a sequence of topic, key, and value triples.
     * @param successResponse optional response message to the sender on successful delivery
     * @param failureResponse optional response message to the sender on failed delivery
     */
   def fromKeyValuesWithTopic[Key: TypeTag, Value: TypeTag](
-    keyValuesWithTopic: Seq[(String, Option[Key], Value)],
-    successResponse: Option[Any],
-    failureResponse: Option[Any]
+      keyValuesWithTopic: Seq[(String, Option[Key], Value)],
+      successResponse: Option[Any],
+      failureResponse: Option[Any]
   ): ProducerRecords[Key, Value] =
     ProducerRecords(
       KafkaProducerRecord.fromKeyValuesWithTopic(keyValuesWithTopic),
@@ -113,8 +107,7 @@ object ProducerRecords {
       failureResponse
     )
 
-  /**
-    * Convert consumer records to key-value pairs.
+  /** Convert consumer records to key-value pairs.
     * All the records will have the given topic, and the offsets are used as the response message.
     *
     * @param topic topic to write the records to
@@ -122,9 +115,9 @@ object ProducerRecords {
     * @param failureResponse optional response message to the sender on failed delivery
     */
   def fromConsumerRecords[Key: TypeTag, Value: TypeTag](
-    topic: String,
-    consumerRecords: ConsumerRecords[Key, Value],
-    failureResponse: Option[Any]
+      topic: String,
+      consumerRecords: ConsumerRecords[Key, Value],
+      failureResponse: Option[Any]
   ): ProducerRecords[Key, Value] =
     ProducerRecords(
       consumerRecords.toProducerRecords(topic),
@@ -132,28 +125,27 @@ object ProducerRecords {
       Some(failureResponse)
     )
 
-  /**
-    * Create an extractor for pattern matching any value with a specific [[ProducerRecords]] type.
+  /** Create an extractor for pattern matching any value with a specific [[ProducerRecords]] type.
     *
     * @tparam Key the type of the key to match in the extractor
     * @tparam Value the type of the value to match in the extractor
     * @return an extractor for given key and value types
     */
-  def extractor[Key: TypeTag, Value: TypeTag]: Extractor[Any, ProducerRecords[Key, Value]] =
+  def extractor[Key: TypeTag, Value: TypeTag]
+      : Extractor[Any, ProducerRecords[Key, Value]] =
     new TypeTaggedExtractor[ProducerRecords[Key, Value]]
 }
 
-/**
-  * Records that [[KafkaProducerActor]] can write to Kafka.
+/** Records that [[KafkaProducerActor]] can write to Kafka.
   *
   * @param records the records that are to be written to Kafka
   * @param successResponse an optional message that is to be sent back to the sender after records have been successfully written to Kafka
   * @param failureResponse optional message that is to be sent back to the sender when messages were not successfully written to Kafka
   */
 final case class ProducerRecords[Key: TypeTag, Value: TypeTag](
-  records: Iterable[ProducerRecord[Key, Value]],
-  successResponse: Option[Any] = None,
-  failureResponse: Option[Any] = None
+    records: Iterable[ProducerRecord[Key, Value]],
+    successResponse: Option[Any] = None,
+    failureResponse: Option[Any] = None
 ) extends TypeTagged[ProducerRecords[Key, Value]] {
 
   /** @inheritdoc */

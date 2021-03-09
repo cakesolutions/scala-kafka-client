@@ -1,9 +1,9 @@
-package cakesolutions.kafka.examples
+package com.pirum.examples
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import cakesolutions.kafka.KafkaConsumer
-import cakesolutions.kafka.akka.KafkaConsumerActor._
-import cakesolutions.kafka.akka.{ConsumerRecords, KafkaConsumerActor, Offsets}
+import com.pirum.KafkaConsumer
+import com.pirum.akka.KafkaConsumerActor._
+import com.pirum.akka.{ConsumerRecords, KafkaConsumerActor, Offsets}
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.TopicPartition
@@ -11,8 +11,7 @@ import org.apache.kafka.common.serialization.StringDeserializer
 
 import scala.concurrent.duration._
 
-/**
-  * Simple Kafka Consumer using AutoPartition subscription mode with manual offset control, subscribing to topic: 'topic1'.
+/** Simple Kafka Consumer using AutoPartition subscription mode with manual offset control, subscribing to topic: 'topic1'.
   *
   * If the topic is configured in Kafka with multiple partitions, this app can be started multiple times (potentially on separate nodes)
   * and Kafka will balance the partitions to the instances providing parallel consumption of the topic.
@@ -20,7 +19,9 @@ import scala.concurrent.duration._
   * Kafka bootstrap server can be provided as an environment variable: -DKAFKA=127.0.0.1:9092 (default).
   */
 object AutoPartitionConsumerWithManualOffsetBoot extends App {
-  AutoPartitionConsumerWithManualOffset(ConfigFactory.load().getConfig("consumer"))
+  AutoPartitionConsumerWithManualOffset(
+    ConfigFactory.load().getConfig("consumer")
+  )
 }
 
 object AutoPartitionConsumerWithManualOffset {
@@ -30,24 +31,30 @@ object AutoPartitionConsumerWithManualOffset {
    * consumes from the configured KafkaConsumerActor.
    */
   def apply(config: Config): ActorRef = {
-    val consumerConf = KafkaConsumer.Conf(
-      new StringDeserializer,
-      new StringDeserializer,
-      groupId = "test_group",
-      enableAutoCommit = false,
-      autoOffsetReset = OffsetResetStrategy.EARLIEST)
+    val consumerConf = KafkaConsumer
+      .Conf(
+        new StringDeserializer,
+        new StringDeserializer,
+        groupId = "test_group",
+        enableAutoCommit = false,
+        autoOffsetReset = OffsetResetStrategy.EARLIEST
+      )
       .withConf(config)
 
     val actorConf = KafkaConsumerActor.Conf(1.seconds, 3.seconds)
 
     val system = ActorSystem()
-    system.actorOf(Props(new AutoPartitionConsumerWithManualOffset(consumerConf, actorConf)))
+    system.actorOf(
+      Props(new AutoPartitionConsumerWithManualOffset(consumerConf, actorConf))
+    )
   }
 }
 
 class AutoPartitionConsumerWithManualOffset(
-  kafkaConfig: KafkaConsumer.Conf[String, String],
-  actorConfig: KafkaConsumerActor.Conf) extends Actor with ActorLogging {
+    kafkaConfig: KafkaConsumer.Conf[String, String],
+    actorConfig: KafkaConsumerActor.Conf
+) extends Actor
+    with ActorLogging {
 
   private val recordsExt = ConsumerRecords.extractor[String, String]
 
@@ -55,7 +62,11 @@ class AutoPartitionConsumerWithManualOffset(
     KafkaConsumerActor.props(kafkaConfig, actorConfig, self)
   )
 
-  consumer ! Subscribe.AutoPartitionWithManualOffset(List("topic1"), assignedListener, revokedListener)
+  consumer ! Subscribe.AutoPartitionWithManualOffset(
+    List("topic1"),
+    assignedListener,
+    revokedListener
+  )
 
   override def receive: Receive = {
 
@@ -74,8 +85,8 @@ class AutoPartitionConsumerWithManualOffset(
     log.info("Partitions have been assigned" + tps.toString())
 
     // Should load the offsets from a persistent store and any related state
-    val offsetMap = tps.map{ tp =>
-      tp -> 0l
+    val offsetMap = tps.map { tp =>
+      tp -> 0L
     }.toMap
 
     // Return the required offsets for the assigned partitions
@@ -88,4 +99,3 @@ class AutoPartitionConsumerWithManualOffset(
     ()
   }
 }
-

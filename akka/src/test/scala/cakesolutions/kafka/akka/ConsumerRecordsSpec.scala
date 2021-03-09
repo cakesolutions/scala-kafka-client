@@ -1,12 +1,13 @@
-package cakesolutions.kafka.akka
+package com.pirum.akka
 
-import cakesolutions.kafka.KafkaTopicPartition
+import com.pirum.KafkaTopicPartition
 import org.scalatest.{FlatSpecLike, Inside, Matchers}
 
 class ConsumerRecordsSpec extends FlatSpecLike with Matchers with Inside {
 
   val partition = KafkaTopicPartition("sometopic", 0)
-  val knownInput: ConsumerRecords[String, Int] = ConsumerRecords.fromPairs(partition, Seq(Some("foo") -> 1))
+  val knownInput: ConsumerRecords[String, Int] =
+    ConsumerRecords.fromPairs(partition, Seq(Some("foo") -> 1))
   val partiallyKnownInput: ConsumerRecords[_, _] = knownInput
   val anyInput: Any = knownInput
 
@@ -27,13 +28,11 @@ class ConsumerRecordsSpec extends FlatSpecLike with Matchers with Inside {
     val correctExt = ConsumerRecords.extractor[String, Int]
     val incorrectExt = ConsumerRecords.extractor[Int, String]
 
-    anyInput should not matchPattern {
-      case incorrectExt(_) =>
+    anyInput should not matchPattern { case incorrectExt(_) =>
     }
 
-    inside(anyInput) {
-      case correctExt(kvs) =>
-        kvs shouldEqual knownInput
+    inside(anyInput) { case correctExt(kvs) =>
+      kvs shouldEqual knownInput
     }
   }
 }

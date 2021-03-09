@@ -1,9 +1,12 @@
-package cakesolutions.kafka.akka
+package com.pirum.akka
 
 import java.util.{Collection => JCollection}
 
 import akka.actor.ActorRef
-import org.apache.kafka.clients.consumer.{ConsumerRebalanceListener, KafkaConsumer}
+import org.apache.kafka.clients.consumer.{
+  ConsumerRebalanceListener,
+  KafkaConsumer
+}
 import org.apache.kafka.common.TopicPartition
 import org.slf4j.LoggerFactory
 
@@ -14,12 +17,13 @@ sealed trait TrackPartitions extends ConsumerRebalanceListener {
 
   def reset(): Unit
 
-  def offsetsToTopicPartitions(offsets: Map[TopicPartition, Long]): List[TopicPartition] =
+  def offsetsToTopicPartitions(
+      offsets: Map[TopicPartition, Long]
+  ): List[TopicPartition] =
     offsets.map { case (tp, _) => tp }.toList
 }
 
-/**
-  * Listens to partition change events coming from Kafka driver.  A best-effort is made to continue processing once
+/** Listens to partition change events coming from Kafka driver.  A best-effort is made to continue processing once
   * reassignment is complete without causing duplications.  Due to limitations in the driver it is not possible in all
   * cases to allow buffered messages to flush through prior to the partition reassignment completing.
   *
@@ -29,16 +33,20 @@ sealed trait TrackPartitions extends ConsumerRebalanceListener {
   * @param consumerActor Tha KafkaConsumerActor to notify of partition change events
   */
 private final class TrackPartitionsCommitMode(
-  consumer: KafkaConsumer[_, _], consumerActor: ActorRef,
-  assignedListener: List[TopicPartition] => Unit,
-  revokedListener: List[TopicPartition] => Unit) extends TrackPartitions {
+    consumer: KafkaConsumer[_, _],
+    consumerActor: ActorRef,
+    assignedListener: List[TopicPartition] => Unit,
+    revokedListener: List[TopicPartition] => Unit
+) extends TrackPartitions {
 
   private val log = LoggerFactory.getLogger(getClass)
 
   private var _offsets: Map[TopicPartition, Long] = Map.empty
   private var _revoked = false
 
-  override def onPartitionsRevoked(partitions: JCollection[TopicPartition]): Unit = {
+  override def onPartitionsRevoked(
+      partitions: JCollection[TopicPartition]
+  ): Unit = {
     log.debug("onPartitionsRevoked: " + partitions.toString)
 
     _revoked = true
@@ -47,13 +55,17 @@ private final class TrackPartitionsCommitMode(
 
     // If partitions have been revoked, keep a record of our current position within them.
     if (!partitions.isEmpty) {
-      _offsets = partitions.asScala.map(partition => partition -> consumer.position(partition)).toMap
+      _offsets = partitions.asScala
+        .map(partition => partition -> consumer.position(partition))
+        .toMap
     } else {
       _offsets = Map.empty
     }
   }
 
-  override def onPartitionsAssigned(partitions: JCollection[TopicPartition]): Unit = {
+  override def onPartitionsAssigned(
+      partitions: JCollection[TopicPartition]
+  ): Unit = {
     log.debug("onPartitionsAssigned: " + partitions.toString)
 
     _revoked = false
@@ -61,7 +73,9 @@ private final class TrackPartitionsCommitMode(
     // If all of our previous partition assignments are present in the new assignment, we can continue uninterrupted by
     // seeking to the required offsets.  If we have lost any partition assignments (i.e to another group member), we
     // need to clear down the consumer actor state and proceed from the Kafka commit points.
-    val allExisting = _offsets.forall { case (partition, _) => partitions.contains(partition) }
+    val allExisting = _offsets.forall { case (partition, _) =>
+      partitions.contains(partition)
+    }
 
     if (allExisting) {
       assignedListener(partitions.asScala.toList)
@@ -90,8 +104,7 @@ private final class TrackPartitionsCommitMode(
   }
 }
 
-/**
-  * Listens to partition change events coming from Kafka driver. Unlike [[TrackPartitionsCommitMode]], relies
+/** Listens to partition change events coming from Kafka driver. Unlike [[TrackPartitionsCommitMode]], relies
   * exclusively on Kafka for tracking offsets without attempting any optimizations for when same partitions
   * are reassigned after a rebalance.
   *
@@ -101,22 +114,28 @@ private final class TrackPartitionsCommitMode(
   * @param consumerActor Tha KafkaConsumerActor to notify of partition change events
   */
 private final class TrackPartitionsCommitModeBasic(
-  consumer: KafkaConsumer[_, _], consumerActor: ActorRef,
-  assignedListener: List[TopicPartition] => Unit,
-  revokedListener: List[TopicPartition] => Unit) extends TrackPartitions {
+    consumer: KafkaConsumer[_, _],
+    consumerActor: ActorRef,
+    assignedListener: List[TopicPartition] => Unit,
+    revokedListener: List[TopicPartition] => Unit
+) extends TrackPartitions {
 
   private val log = LoggerFactory.getLogger(getClass)
 
   private var _revoked = false
 
-  override def onPartitionsRevoked(partitions: JCollection[TopicPartition]): Unit = {
+  override def onPartitionsRevoked(
+      partitions: JCollection[TopicPartition]
+  ): Unit = {
     log.debug("onPartitionsRevoked: " + partitions.toString)
     _revoked = true
     revokedListener(partitions.asScala.toList)
     consumerActor ! KafkaConsumerActor.RevokeReset
   }
 
-  override def onPartitionsAssigned(partitions: JCollection[TopicPartition]): Unit = {
+  override def onPartitionsAssigned(
+      partitions: JCollection[TopicPartition]
+  ): Unit = {
     log.debug("onPartitionsAssigned: " + partitions.toString)
     _revoked = false
   }
@@ -128,8 +147,7 @@ private final class TrackPartitionsCommitModeBasic(
   }
 }
 
-/**
-  * Listens to partition change events coming from Kafka driver.  A best-effort is made to continue processing once
+/** Listens to partition change events coming from Kafka driver.  A best-effort is made to continue processing once
   * reassignment is complete without causing duplications.  Due to limitations in the driver it is not possible in all
   * cases to allow buffered messages to flush through prior to the partition reassignment completing.
   *
@@ -141,26 +159,34 @@ private final class TrackPartitionsCommitModeBasic(
   * @param revokedListener  Callback to the client when partitions have been revoked from the consumer
   */
 private final class TrackPartitionsManualOffset(
-  consumer: KafkaConsumer[_, _], consumerActor: ActorRef,
-  assignedListener: List[TopicPartition] => Offsets,
-  revokedListener: List[TopicPartition] => Unit) extends TrackPartitions {
+    consumer: KafkaConsumer[_, _],
+    consumerActor: ActorRef,
+    assignedListener: List[TopicPartition] => Offsets,
+    revokedListener: List[TopicPartition] => Unit
+) extends TrackPartitions {
 
   private val log = LoggerFactory.getLogger(getClass)
 
   private var _offsets: Map[TopicPartition, Long] = Map.empty
   private var _revoked = false
 
-  override def onPartitionsRevoked(partitions: JCollection[TopicPartition]): Unit = {
+  override def onPartitionsRevoked(
+      partitions: JCollection[TopicPartition]
+  ): Unit = {
     log.debug("onPartitionsRevoked: " + partitions.toString)
 
     _revoked = true
 
     if (!partitions.isEmpty) {
-      _offsets = partitions.asScala.map(partition => partition -> consumer.position(partition)).toMap
+      _offsets = partitions.asScala
+        .map(partition => partition -> consumer.position(partition))
+        .toMap
     }
   }
 
-  override def onPartitionsAssigned(partitions: JCollection[TopicPartition]): Unit = {
+  override def onPartitionsAssigned(
+      partitions: JCollection[TopicPartition]
+  ): Unit = {
 
     log.debug("onPartitionsAssigned: " + partitions.toString)
 
@@ -180,10 +206,13 @@ private final class TrackPartitionsManualOffset(
     // If all of our previous partition assignments are present in the new assignment, we can continue uninterrupted by
     // seeking to the required offsets.  If we have lost any partition assignments (i.e to another group member), we
     // need to clear down the consumer actor state.
-    val allExisting = _offsets.forall { case (partition, _) => partitions.contains(partition) }
+    val allExisting = _offsets.forall { case (partition, _) =>
+      partitions.contains(partition)
+    }
 
     if (allExisting) {
-      val newPartitions = partitions.asScala.toList.diff(offsetsToTopicPartitions(_offsets))
+      val newPartitions =
+        partitions.asScala.toList.diff(offsetsToTopicPartitions(_offsets))
       assign(newPartitions)
     } else {
       consumerActor ! KafkaConsumerActor.RevokeReset
@@ -208,7 +237,11 @@ private final class EmptyTrackPartitions extends TrackPartitions {
 
   def reset(): Unit = {}
 
-  override def onPartitionsAssigned(partitions: JCollection[TopicPartition]): Unit = throw new IllegalStateException("TrackPartitions not initialised")
+  override def onPartitionsAssigned(
+      partitions: JCollection[TopicPartition]
+  ): Unit = throw new IllegalStateException("TrackPartitions not initialised")
 
-  override def onPartitionsRevoked(partitions: JCollection[TopicPartition]): Unit = throw new IllegalStateException("TrackPartitions not initialised")
+  override def onPartitionsRevoked(
+      partitions: JCollection[TopicPartition]
+  ): Unit = throw new IllegalStateException("TrackPartitions not initialised")
 }
