@@ -37,6 +37,11 @@ lazy val commonSettings = Seq(
   </scm>
     <developers>
       <developer>
+        <id>regiskuckaertz</id>
+        <name>Regis Kuckaertz</name>
+        <url>https://github.com/regiskuckaertz</url>
+      </developer>
+      <developer>
         <id>simon</id>
         <name>Simon Souter</name>
         <url>https://github.com/simonsouter</url>
