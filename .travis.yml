@@ -1,21 +1,21 @@
 language: scala
 jdk: openjdk8
 scala:
-    - 2.12.12
-    - 2.13.5
+  - 2.12.12
+  - 2.13.5
 
 script:
-- sbt ++$TRAVIS_SCALA_VERSION -Dakka.test.timefactor=5 clean coverage test coverageReport
-- sbt coverageAggregate
+  - sbt -sbt-launch-repo https://repo1.maven.org/maven2 ++$TRAVIS_SCALA_VERSION -Dakka.test.timefactor=5 clean coverage test coverageReport
+  - sbt -sbt-launch-repo https://repo1.maven.org/maven2 coverageAggregate
 
 after_success:
-- bash <(curl -s https://codecov.io/bash)
+  - bash <(curl -s https://codecov.io/bash)
 
 cache:
   directories:
-  - $HOME/.sbt
-  - $HOME/.ivy2
-  - $HOME/.m2
+    - $HOME/.sbt
+    - $HOME/.ivy2
+    - $HOME/.m2
 
 before_cache:
   # Cleanup the cached directories to avoid unnecessary cache updates
