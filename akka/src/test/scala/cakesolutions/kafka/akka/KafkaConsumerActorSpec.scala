@@ -165,7 +165,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem)
 
     downstreamActor ! PoisonPill
     testProbe.expectTerminated(downstreamActor)
-    testProbe.expectTerminated(consumer)
+    testProbe.expectTerminated(consumer, 5.seconds)
 
     producer.close()
   }
