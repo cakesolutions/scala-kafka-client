@@ -28,6 +28,7 @@ lazy val commonSettings = Seq(
   javacOptions in (Compile, doc) ++= Seq("-notimestamp", "-linksource"),
   autoAPIMappings := true,
   publishTo := sonatypePublishToBundle.value,
+  sonatypeCredentialHost := "s01.oss.sonatype.org",
   parallelExecution in Test := false,
   parallelExecution in IntegrationTest := true,
   publishArtifact in Test := false,
