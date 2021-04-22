@@ -1,11 +1,11 @@
 import ReleaseTransformations._
+import xerial.sbt.Sonatype._
 
 lazy val commonSettings = Seq(
   organization := "com.pirum",
   organizationName := "Pirum Systems",
   organizationHomepage := Some(url("https://pirum.com")),
   pomIncludeRepository := { _ => false },
-  publishMavenStyle := true,
   scalaVersion := "2.12.12",
   crossScalaVersions := Seq("2.12.12", "2.13.5"),
   //  resolvers += "Apache Staging" at "https://repository.apache.org/content/groups/staging/",
@@ -26,33 +26,51 @@ lazy val commonSettings = Seq(
   }),
   scalacOptions in (Compile, doc) ++= Seq("-groups", "-implicits"),
   javacOptions in (Compile, doc) ++= Seq("-notimestamp", "-linksource"),
-  autoAPIMappings := true,
-  publishTo := sonatypePublishToBundle.value,
-  sonatypeCredentialHost := "s01.oss.sonatype.org",
   parallelExecution in Test := false,
   parallelExecution in IntegrationTest := true,
+  autoAPIMappings := true,
+  publishTo := sonatypePublishToBundle.value,
   publishArtifact in Test := false,
-  pomExtra := <scm>
-    <url>git@github.com:Pirum-Systems/scala-kafka-client.git</url>
-    <connection>scm:git:git@github.com:Pirum-Systems/scala-kafka-client.git</connection>
-  </scm>
-    <developers>
-      <developer>
-        <id>regiskuckaertz</id>
-        <name>Regis Kuckaertz</name>
-        <url>https://github.com/regiskuckaertz</url>
-      </developer>
-      <developer>
-        <id>simon</id>
-        <name>Simon Souter</name>
-        <url>https://github.com/simonsouter</url>
-      </developer>
-      <developer>
-        <id>jkpl</id>
-        <name>Jaakko Pallari</name>
-        <url>https://github.com/jkpl</url>
-      </developer>
-    </developers>
+  publishMavenStyle := true,
+  licenses := Seq(
+    "MIT" -> url(
+      "https://github.com/Pirum-Systems/scala-kafka-client/blob/master/LICENSE.txt"
+    )
+  ),
+  sonatypeProjectHosting := Some(
+    GitHubHosting(
+      "Pirum-Systems",
+      "scala-kafka-client",
+      "regis.kuckaertz@pirum.com"
+    )
+  ),
+  sonatypeCredentialHost := "s01.oss.sonatype.org",
+  scmInfo := Some(
+    ScmInfo(
+      url("https://github.com/Pirum-Systems/scala-kafka-client"),
+      "scm:git@github.com:Pirum-Systems/scala-kafka-client.git"
+    )
+  ),
+  developers := List(
+    Developer(
+      id = "regiskuckaertz",
+      name = "Regis Kuckaertz",
+      email = "",
+      url = url("https://github.com/regiskuckaertz")
+    ),
+    Developer(
+      id = "simon",
+      name = "Simon Souter",
+      email = "",
+      url = url("https://github.com/simonsouter")
+    ),
+    Developer(
+      id = "jkpl",
+      name = "aakko Pallari",
+      email = "",
+      url = url("https://github.com/jkpl")
+    )
+  )
 )
 
 val releaseSettings = List(
