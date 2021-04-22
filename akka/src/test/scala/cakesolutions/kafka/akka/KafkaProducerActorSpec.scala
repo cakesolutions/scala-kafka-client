@@ -1,8 +1,8 @@
-package com.pirum.akka
+package com.pirum.kafka.akka
 
 import akka.actor.ActorSystem
 import akka.testkit.TestProbe
-import com.pirum.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
+import com.pirum.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.{

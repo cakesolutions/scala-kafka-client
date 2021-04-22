@@ -1,6 +1,6 @@
-package com.pirum
+package com.pirum.kafka
 
-import com.pirum.KafkaTopicPartition.{Partition, Topic}
+import com.pirum.kafka.KafkaTopicPartition.{Partition, Topic}
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 

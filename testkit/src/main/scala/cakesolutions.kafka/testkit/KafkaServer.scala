@@ -1,4 +1,4 @@
-package com.pirum.testkit
+package com.pirum.kafka.testkit
 
 import java.io.File
 import java.net.ServerSocket

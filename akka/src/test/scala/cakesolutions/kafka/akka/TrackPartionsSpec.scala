@@ -1,11 +1,11 @@
-package com.pirum.akka
+package com.pirum.kafka.akka
 
 import java.util.{Collection => JCollection}
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
-import com.pirum.KafkaConsumer
-import com.pirum.akka.KafkaConsumerActor.{Confirm, Subscribe}
+import com.pirum.kafka.KafkaConsumer
+import com.pirum.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe}
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.kafka.clients.consumer.{
   ConsumerRebalanceListener,

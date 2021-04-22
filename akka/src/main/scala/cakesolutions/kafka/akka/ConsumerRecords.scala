@@ -1,6 +1,6 @@
-package com.pirum.akka
+package com.pirum.kafka.akka
 
-import com.pirum.KafkaProducerRecord
+import com.pirum.kafka.KafkaProducerRecord
 import org.apache.kafka.clients.consumer.{
   ConsumerRecord => JConsumerRecord,
   ConsumerRecords => JConsumerRecords

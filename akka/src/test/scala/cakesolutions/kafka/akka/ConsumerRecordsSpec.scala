@@ -1,6 +1,6 @@
-package com.pirum.akka
+package com.pirum.kafka.akka
 
-import com.pirum.KafkaTopicPartition
+import com.pirum.kafka.KafkaTopicPartition
 import org.scalatest.{FlatSpecLike, Inside, Matchers}
 
 class ConsumerRecordsSpec extends FlatSpecLike with Matchers with Inside {

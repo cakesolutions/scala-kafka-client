@@ -1,8 +1,8 @@
-package com.pirum.akka
+package com.pirum.kafka.akka
 
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
-import com.pirum.testkit.KafkaServer
+import com.pirum.kafka.testkit.KafkaServer
 import org.scalatest.concurrent.Waiters
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 

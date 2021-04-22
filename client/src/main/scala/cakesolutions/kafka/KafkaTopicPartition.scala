@@ -1,4 +1,4 @@
-package com.pirum
+package com.pirum.kafka
 
 import com.typesafe.config.Config
 import org.apache.kafka.common.TopicPartition

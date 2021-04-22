@@ -1,10 +1,10 @@
-package com.pirum.akka
+package com.pirum.kafka.akka
 
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 
 import akka.actor._
-import com.pirum.KafkaConsumer
+import com.pirum.kafka.KafkaConsumer
 import com.typesafe.config.Config
 import org.apache.kafka.clients.consumer.{
   CommitFailedException,

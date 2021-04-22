@@ -1,4 +1,4 @@
-package com.pirum.akka
+package com.pirum.kafka.akka
 
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition

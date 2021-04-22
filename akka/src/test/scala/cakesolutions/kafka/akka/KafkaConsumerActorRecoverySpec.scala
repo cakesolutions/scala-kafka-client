@@ -1,4 +1,4 @@
-package com.pirum.akka
+package com.pirum.kafka.akka
 
 import akka.actor.{
   Actor,
@@ -9,13 +9,13 @@ import akka.actor.{
   Props,
   SupervisorStrategy
 }
-import com.pirum.akka.KafkaConsumerActor.{
+import com.pirum.kafka.akka.KafkaConsumerActor.{
   Confirm,
   Subscribe,
   TriggerConsumerFailure,
   Unsubscribe
 }
-import com.pirum.{KafkaConsumer, KafkaProducerRecord, KafkaTopicPartition}
+import com.pirum.kafka.{KafkaConsumer, KafkaProducerRecord, KafkaTopicPartition}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.slf4j.LoggerFactory

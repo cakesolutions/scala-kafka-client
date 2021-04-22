@@ -1,6 +1,6 @@
-package com.pirum
+package com.pirum.kafka
 
-import com.pirum.KafkaConsumer.Conf
+import com.pirum.kafka.KafkaConsumer.Conf
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.common.serialization.{
   StringDeserializer,

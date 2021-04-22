@@ -1,4 +1,4 @@
-package com.pirum
+package com.pirum.kafka
 
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.clients.consumer.{ConsumerRecords, OffsetResetStrategy}

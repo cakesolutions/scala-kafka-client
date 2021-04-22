@@ -1,4 +1,4 @@
-package com.pirum
+package com.pirum.kafka
 
 import java.util.Properties
 import com.typesafe.config.Config

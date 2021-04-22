@@ -1,7 +1,7 @@
-package com.pirum.akka
+package com.pirum.kafka.akka
 
 import akka.actor._
-import com.pirum.KafkaProducer
+import com.pirum.kafka.KafkaProducer
 import com.typesafe.config.Config
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 import org.apache.kafka.common.serialization.Serializer

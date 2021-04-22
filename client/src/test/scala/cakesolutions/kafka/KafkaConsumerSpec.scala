@@ -1,4 +1,4 @@
-package com.pirum
+package com.pirum.kafka
 
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.scalatest.concurrent.Waiters.Waiter

@@ -1,8 +1,8 @@
-package com.pirum
+package com.pirum.kafka
 
 import java.util.concurrent.TimeUnit
 
-import com.pirum.TypesafeConfigExtensions._
+import com.pirum.kafka.TypesafeConfigExtensions._
 import com.typesafe.config.Config
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.clients.producer.{

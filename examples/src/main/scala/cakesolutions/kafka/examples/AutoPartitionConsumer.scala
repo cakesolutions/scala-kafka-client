@@ -1,9 +1,9 @@
-package com.pirum.examples
+package com.pirum.kafka.examples
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import com.pirum.KafkaConsumer
-import com.pirum.akka.KafkaConsumerActor.{Confirm, Subscribe}
-import com.pirum.akka.{ConsumerRecords, KafkaConsumerActor}
+import com.pirum.kafka.KafkaConsumer
+import com.pirum.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe}
+import com.pirum.kafka.akka.{ConsumerRecords, KafkaConsumerActor}
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.serialization.StringDeserializer

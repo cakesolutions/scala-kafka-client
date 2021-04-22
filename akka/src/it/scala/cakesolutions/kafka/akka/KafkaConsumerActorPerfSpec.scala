@@ -1,10 +1,10 @@
-package com.pirum.akka
+package com.pirum.kafka.akka
 
 import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.TestActor.AutoPilot
 import akka.testkit.{ImplicitSender, TestActor, TestKit, TestProbe}
-import com.pirum.akka.KafkaConsumerActor.{Confirm, Subscribe}
-import com.pirum.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
+import com.pirum.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe}
+import com.pirum.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.{

@@ -1,4 +1,4 @@
-package com.pirum.akka
+package com.pirum.kafka.akka
 
 import java.util.{Collection => JCollection}
 

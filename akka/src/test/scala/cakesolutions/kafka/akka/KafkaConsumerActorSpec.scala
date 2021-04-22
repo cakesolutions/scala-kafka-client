@@ -1,9 +1,9 @@
-package com.pirum.akka
+package com.pirum.kafka.akka
 
 import akka.actor.{ActorSystem, PoisonPill}
 import akka.testkit.TestProbe
-import com.pirum.akka.KafkaConsumerActor.{Confirm, Subscribe, Unsubscribe}
-import com.pirum.{
+import com.pirum.kafka.akka.KafkaConsumerActor.{Confirm, Subscribe, Unsubscribe}
+import com.pirum.kafka.{
   KafkaConsumer,
   KafkaProducer,
   KafkaProducerRecord,

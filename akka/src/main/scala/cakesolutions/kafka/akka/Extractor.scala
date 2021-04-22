@@ -1,4 +1,4 @@
-package com.pirum.akka
+package com.pirum.kafka.akka
 
 /** Scala's extractor pattern (unapply) encapsulated in a trait.
   *
