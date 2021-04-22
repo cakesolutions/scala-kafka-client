@@ -1,6 +1,6 @@
-package com.pirum
+package com.pirum.kafka
 
-import com.pirum.TypesafeConfigExtensions._
+import com.pirum.kafka.TypesafeConfigExtensions._
 import com.typesafe.config.Config
 import org.apache.kafka.clients.consumer.{
   ConsumerConfig,
@@ -15,7 +15,7 @@ import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
 /** Utilities for creating a Kafka consumer.
-  *
+  * X
   * This singleton object provides tools for creating Kafka consumers using helpful functions.
   * Unlike with [[KafkaProducer]], the consumer object is not wrapped in an object that provides a Scala-like API.
   */
