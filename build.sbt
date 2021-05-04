@@ -1,12 +1,8 @@
 lazy val commonSettings = Seq(
   organization := "net.cakesolutions",
-  scalaVersion := "2.12.10",
-  crossScalaVersions := Seq("2.11.12", "2.12.10", "2.13.1"),
+  scalaVersion := "2.12.13",
+  crossScalaVersions := Seq("2.11.12", "2.12.13"),
   publishMavenStyle := true,
-  bintrayOrganization := Some("cakesolutions"),
-  bintrayPackageLabels := Seq("scala", "kafka"),
-  //  resolvers += "Apache Staging" at "https://repository.apache.org/content/groups/staging/",
-  resolvers += Resolver.bintrayRepo("mockito", "maven"),
   scalacOptions in Compile ++= Seq(
     "-encoding", "UTF-8",
     "-target:jvm-1.8",
@@ -24,16 +20,7 @@ lazy val commonSettings = Seq(
   javacOptions in(Compile, doc) ++= Seq("-notimestamp", "-linksource"),
   autoAPIMappings := true,
 
-  //  publishTo :=
-  //TODO publish snapshots to OSS
-  //  if (Version.endsWith("-SNAPSHOT"))
-  //    Seq(
-  //      publishTo := Some("Artifactory Realm" at "http://oss.jfrog.org/artifactory/oss-snapshot-local"),
-  //      bintrayReleaseOnPublish := false,
-  //      // Only setting the credentials file if it exists (#52)
-  //      credentials := List(Path.userHome / ".bintray" / ".artifactory").filter(_.exists).map(Credentials(_))
-  //    )
-  //  else
+  publishTo := Some("Artifactory Realm" at "https://iadvize.jfrog.io/iadvize/iadvize-sbt"),
 
   parallelExecution in Test := false,
   parallelExecution in IntegrationTest := true,
