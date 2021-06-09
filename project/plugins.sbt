@@ -3,7 +3,7 @@ logLevel := Level.Warn
 resolvers ++= Seq(
   Resolver.url(
     "Artifactory ivy",
-    url("http://artifactory.prod.livongo.com/artifactory/plugins-release-local")
+    url("https://artifactory.internal.livongo.com/artifactory/plugins-release-local")
   )(Resolver.ivyStylePatterns)
 )
 
