@@ -63,7 +63,7 @@ class KafkaConsumerSpec extends KafkaIntSpec {
     val topic = randomString
     log.info(s"Using topic [$topic] and kafka port [$kafkaPort]")
 
-    val badSerializer = (msg: String) => {
+    val badSerializer = (_: String) => {
       throw new Exception("Serialization failed")
     }
 

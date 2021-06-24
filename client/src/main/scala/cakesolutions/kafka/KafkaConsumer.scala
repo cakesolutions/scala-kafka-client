@@ -26,7 +26,9 @@ object KafkaConsumer {
   implicit def toJavaOffsetQuery(
       offsetQuery: Map[TopicPartition, scala.Long]
   ): java.util.Map[TopicPartition, java.lang.Long] =
-    offsetQuery.map { case (tp, time) => tp -> new java.lang.Long(time) }.asJava
+    offsetQuery.map { case (tp, time) =>
+      tp -> java.lang.Long.valueOf(time)
+    }.asJava
 
   /** Utilities for creating Kafka consumer configurations.
     */
