@@ -10,7 +10,7 @@ lazy val commonSettings = Seq(
   crossScalaVersions := Seq("2.12.12", "2.13.5"),
   //  resolvers += "Apache Staging" at "https://repository.apache.org/content/groups/staging/",
   resolvers += Resolver.bintrayRepo("mockito", "maven"),
-  scalacOptions in Compile ++= Seq(
+  Compile / scalacOptions ++= Seq(
     "-encoding",
     "UTF-8",
     "-target:jvm-1.8",
@@ -24,13 +24,13 @@ lazy val commonSettings = Seq(
     case Some((2, 13)) => Seq()
     case _             => Seq("-Xfuture", "-Ywarn-unused-import", "-Ywarn-nullary-unit")
   }),
-  scalacOptions in (Compile, doc) ++= Seq("-groups", "-implicits"),
-  javacOptions in (Compile, doc) ++= Seq("-notimestamp", "-linksource"),
-  parallelExecution in Test := false,
-  parallelExecution in IntegrationTest := true,
+  Compile / doc / scalacOptions ++= Seq("-groups", "-implicits"),
+  Compile / doc / javacOptions ++= Seq("-notimestamp", "-linksource"),
+  Test / parallelExecution := false,
+  IntegrationTest / parallelExecution := true,
   autoAPIMappings := true,
   publishTo := sonatypePublishToBundle.value,
-  publishArtifact in Test := false,
+  Test / publishArtifact := false,
   publishMavenStyle := true,
   licenses := Seq(
     "MIT" -> url(
