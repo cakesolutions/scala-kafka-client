@@ -14,7 +14,7 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.serialization.Deserializer
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 import scala.language.implicitConversions
 import scala.reflect.runtime.universe.TypeTag
@@ -558,10 +558,10 @@ private final class KafkaConsumerActorImpl[K: TypeTag, V: TypeTag](
   }
 
   private def timeOffsets2regularOffsets(timeOffsets: Offsets): Offsets = {
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
     val javaOffsetsAndTimestamps =
       consumer.offsetsForTimes(timeOffsets.offsetsMap).asScala.toMap
-    val offsets = javaOffsetsAndTimestamps.mapValues(_.offset()).toMap
+    val offsets = javaOffsetsAndTimestamps.view.mapValues(_.offset()).toMap
     Offsets(offsets)
   }
 

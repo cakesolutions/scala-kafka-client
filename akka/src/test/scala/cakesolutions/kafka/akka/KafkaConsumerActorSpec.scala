@@ -253,7 +253,7 @@ class KafkaConsumerActorSpec(system_ : ActorSystem)
       consumer ! Confirm(rs.offsets)
       expectNoMessage(5.seconds)
 
-      import scala.collection.JavaConverters._
+      import scala.jdk.CollectionConverters._
       val messages = rs.records.iterator().asScala.toList.map(_.value())
       messages should be(List("second"))
       consumer ! Unsubscribe

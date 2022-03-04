@@ -1,8 +1,7 @@
 language: scala
 jdk: openjdk8
 scala:
-  - 2.12.12
-  - 2.13.5
+  - 2.13.6
 
 script:
   - sbt -sbt-launch-repo https://repo1.maven.org/maven2 ++$TRAVIS_SCALA_VERSION -Dakka.test.timefactor=5 clean coverage test coverageReport

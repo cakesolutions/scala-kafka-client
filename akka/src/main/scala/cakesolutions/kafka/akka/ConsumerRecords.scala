@@ -8,7 +8,7 @@ import org.apache.kafka.clients.consumer.{
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.reflect.runtime.universe._
 
 /** Helper functions for [[ConsumerRecords]].
@@ -73,11 +73,13 @@ object ConsumerRecords {
     }
 
     val offsets = Offsets(
-      recordsMap.mapValues(_.maxBy(_.offset()).offset()).toMap
+      recordsMap.view
+        .mapValues(_.maxByOption(_.offset()).fold(0L)(_.offset()))
+        .toMap
     )
 
     val records = new JConsumerRecords(
-      recordsMap.mapValues(_.asJava).toMap.asJava
+      recordsMap.view.mapValues(_.asJava).toMap.asJava
     )
 
     ConsumerRecords(offsets, records)

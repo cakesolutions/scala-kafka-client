@@ -10,7 +10,7 @@ import org.apache.kafka.clients.consumer.{
 import org.apache.kafka.common.TopicPartition
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 sealed trait TrackPartitions extends ConsumerRebalanceListener {
   def isRevoked: Boolean

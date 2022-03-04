@@ -6,8 +6,7 @@ lazy val commonSettings = Seq(
   organizationName := "Pirum Systems",
   organizationHomepage := Some(url("https://pirum.com")),
   pomIncludeRepository := { _ => false },
-  scalaVersion := "2.12.12",
-  crossScalaVersions := Seq("2.12.12", "2.13.5"),
+  scalaVersion := "2.13.6",
   //  resolvers += "Apache Staging" at "https://repository.apache.org/content/groups/staging/",
   resolvers += Resolver.bintrayRepo("mockito", "maven"),
   Compile / scalacOptions ++= Seq(

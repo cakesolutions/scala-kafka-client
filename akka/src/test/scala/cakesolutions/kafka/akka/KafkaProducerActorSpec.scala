@@ -45,11 +45,11 @@ class KafkaProducerActorSpec(system_ : ActorSystem)
       KafkaProducerRecord(topic, "key", "value"),
       KafkaProducerRecord(topic, "bar")
     )
-    val message = ProducerRecords(batch, Some('response))
+    val message = ProducerRecords(batch, Some(Symbol("response")))
 
     probe.send(producer, message)
 
-    probe.expectMsg('response)
+    probe.expectMsg(Symbol("response"))
 
     val results = consumeFromTopic(topic, 3, 10000)
 

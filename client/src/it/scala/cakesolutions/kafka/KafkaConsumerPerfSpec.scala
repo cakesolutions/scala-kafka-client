@@ -6,17 +6,19 @@ import org.apache.kafka.common.serialization.{
   StringDeserializer,
   StringSerializer
 }
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.Random
 
 /** Ad hoc performance test for validating consumer performance.  Pass environment variable KAFKA with contact point for
   * Kafka server e.g. -DKAFKA=127.0.0.1:9092
   */
 class KafkaConsumerPerfSpec
-    extends FlatSpecLike
+    extends AnyFlatSpecLike
     with Matchers
     with BeforeAndAfterAll {
 
@@ -47,7 +49,7 @@ class KafkaConsumerPerfSpec
     )
     val producer = KafkaProducer[String, String](producerConf)
 
-    1 to 100000 foreach { n =>
+    1 to 100000 foreach { _ =>
       producer.send(KafkaProducerRecord(topic, None, msg1k))
     }
     producer.flush()

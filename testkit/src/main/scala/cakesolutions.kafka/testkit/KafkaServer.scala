@@ -18,7 +18,7 @@ import org.apache.kafka.clients.producer.{
 import org.apache.kafka.common.serialization.{Deserializer, Serializer}
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.util.{Random, Try}
 

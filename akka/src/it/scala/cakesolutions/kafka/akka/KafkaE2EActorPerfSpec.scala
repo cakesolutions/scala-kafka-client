@@ -12,7 +12,9 @@ import org.apache.kafka.common.serialization.{
 }
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Promise
@@ -24,7 +26,7 @@ import scala.util.Random
 class KafkaE2EActorPerfSpec(system_ : ActorSystem)
     extends TestKit(system_)
     with ImplicitSender
-    with FlatSpecLike
+    with AnyFlatSpecLike
     with Matchers
     with BeforeAndAfterAll
     with ScalaFutures {
