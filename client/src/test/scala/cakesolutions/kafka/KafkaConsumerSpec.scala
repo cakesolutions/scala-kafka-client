@@ -6,7 +6,7 @@ import org.scalatest.concurrent.Waiters.Waiter
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Random, Success}
 
 class KafkaConsumerSpec extends KafkaIntSpec {

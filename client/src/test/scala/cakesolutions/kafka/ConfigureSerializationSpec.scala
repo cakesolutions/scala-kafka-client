@@ -58,7 +58,7 @@ class ConfigureSerializationSpec extends KafkaIntSpec {
     )
 
     val producer = KafkaProducer(conf)
-    producer.close
+    producer.close()
 
     keySerializer.configuration shouldEqual "mock_value"
     keySerializer.isKeySerializer shouldEqual true

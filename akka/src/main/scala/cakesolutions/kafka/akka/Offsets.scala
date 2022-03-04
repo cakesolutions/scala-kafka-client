@@ -31,7 +31,7 @@ final case class Offsets(offsetsMap: Map[TopicPartition, Long]) extends AnyVal {
   /** Convert offsets to map of Kafka commit offsets
     */
   def toCommitMap: Map[TopicPartition, OffsetAndMetadata] =
-    offsetsMap.mapValues(offset => new OffsetAndMetadata(offset)).toMap
+    offsetsMap.view.mapValues(offset => new OffsetAndMetadata(offset)).toMap
 
   /** Keep only the offsets for partitions that are also in the given set of partitions.
     *

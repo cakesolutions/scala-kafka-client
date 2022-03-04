@@ -11,7 +11,7 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.requests.IsolationLevel
 import org.apache.kafka.common.serialization.Deserializer
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 
 /** Utilities for creating a Kafka consumer.

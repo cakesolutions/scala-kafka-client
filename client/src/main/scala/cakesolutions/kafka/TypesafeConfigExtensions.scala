@@ -2,7 +2,7 @@ package com.pirum.kafka
 
 import java.util.Properties
 import com.typesafe.config.Config
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.collection.immutable._
 import scala.collection.mutable
 
