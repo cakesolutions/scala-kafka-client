@@ -5,15 +5,11 @@ import akka.testkit.TestProbe
 import com.pirum.kafka.{KafkaConsumer, KafkaProducer, KafkaProducerRecord}
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.serialization.{
-  StringDeserializer,
-  StringSerializer
-}
+import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 
 import scala.util.Random
 
-class KafkaProducerActorSpec(system_ : ActorSystem)
-    extends KafkaIntSpec(system_) {
+class KafkaProducerActorSpec(system_ : ActorSystem) extends KafkaIntSpec(system_) {
 
   def this() = this(ActorSystem("KafkaProducerActorSpec"))
 
@@ -37,8 +33,8 @@ class KafkaProducerActorSpec(system_ : ActorSystem)
   )
 
   "KafkaProducerActor" should "write a given batch to Kafka" in {
-    val topic = randomString
-    val probe = TestProbe()
+    val topic    = randomString
+    val probe    = TestProbe()
     val producer = system.actorOf(KafkaProducerActor.props(producerConf))
     val batch: Seq[ProducerRecord[String, String]] = Seq(
       KafkaProducerRecord(topic, "foo"),
@@ -61,8 +57,8 @@ class KafkaProducerActorSpec(system_ : ActorSystem)
   "KafkaProducerActor" should "write a given batch to Kafka, requiring no response" in {
     import scala.concurrent.duration._
 
-    val topic = randomString
-    val probe = TestProbe()
+    val topic    = randomString
+    val probe    = TestProbe()
     val producer = system.actorOf(KafkaProducerActor.props(producerConf))
     val batch: Seq[ProducerRecord[String, String]] = Seq(
       KafkaProducerRecord(topic, "foo"),
@@ -82,10 +78,56 @@ class KafkaProducerActorSpec(system_ : ActorSystem)
     results(2) shouldEqual ((None, "bar"))
   }
 
+  "KafkaProducerActor" should "write a given batch to Kafka transactionally" in {
+    val topic    = randomString
+    val probe    = TestProbe()
+    val producer = system.actorOf(KafkaProducerActor.props(producerConf, isTransactional = true))
+    val batch: Seq[ProducerRecord[String, String]] = Seq(
+      KafkaProducerRecord(topic, "foo"),
+      KafkaProducerRecord(topic, "key", "value"),
+      KafkaProducerRecord(topic, "bar")
+    )
+    val message = ProducerRecords(batch, Some(Symbol("response")))
+
+    probe.send(producer, message)
+
+    probe.expectMsg(Symbol("response"))
+
+    val results = consumeFromTopic(topic, 3, 10000)
+
+    results(0) shouldEqual ((None, "foo"))
+    results(1) shouldEqual ((Some("key"), "value"))
+    results(2) shouldEqual ((None, "bar"))
+  }
+
+  "KafkaProducerActor" should "write a given batch to Kafka transactionally, requiring no response" in {
+    import scala.concurrent.duration._
+
+    val topic    = randomString
+    val probe    = TestProbe()
+    val producer = system.actorOf(KafkaProducerActor.props(producerConf, isTransactional = true))
+    val batch: Seq[ProducerRecord[String, String]] = Seq(
+      KafkaProducerRecord(topic, "foo"),
+      KafkaProducerRecord(topic, "key", "value"),
+      KafkaProducerRecord(topic, "bar")
+    )
+    val message = ProducerRecords(batch)
+
+    probe.send(producer, message)
+
+    probe.expectNoMessage(3.seconds)
+
+    val results = consumeFromTopic(topic, 3, 10000)
+
+    results(0) shouldEqual ((None, "foo"))
+    results(1) shouldEqual ((Some("key"), "value"))
+    results(2) shouldEqual ((None, "bar"))
+  }
+
   private def consumeFromTopic(
-      topic: String,
-      expectedNumOfMessages: Int,
-      timeout: Long
+    topic: String,
+    expectedNumOfMessages: Int,
+    timeout: Long
   ) =
     kafkaServer.consume(
       topic,
