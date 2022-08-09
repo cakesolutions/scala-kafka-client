@@ -19,4 +19,4 @@ addSbtPlugin("com.updateimpact" % "updateimpact-sbt-plugin" % "2.1.3")
 
 addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.5.1")
 
-addSbtPlugin("livongo" %% "build-plugins" % "0.1.16")
+addSbtPlugin("livongo" %% "build-plugins" % "4.2.0")
